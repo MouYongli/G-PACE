@@ -1,8 +1,8 @@
 # Project DAG: the single source of structure, status and dates.
 # Edited only by the integration owner, through a PR to main. Schema: README.md in this folder.
-project: G-PACE
+project: GRACE
 updated: 2026-11-22
-repo: null            # e.g. https://github.com/<owner>/G-PACE, used to link Issues
+repo: https://github.com/MouYongli/GRACE   # used to link Issues
 
 milestones:           # plan.md section 9; one milestone per implementation phase
   - id: M1

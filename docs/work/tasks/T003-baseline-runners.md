@@ -23,7 +23,7 @@ Runnable baselines needed by the pilot: same-reader full history, text retrieval
 
 ## Deliverables
 
-`src/gpace/` baseline modules and their configs.
+`src/grace/` baseline modules and their configs.
 
 ## Log
 

@@ -163,7 +163,7 @@ wheels = [
 ]
 
 [[package]]
-name = "gpace"
+name = "grace"
 version = "0.0.0"
 source = { editable = "." }
 dependencies = [

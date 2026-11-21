@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gpace"
+name = "grace"
 version = "0.0.0"
-description = "G-PACE research code"
+description = "GRACE research code"
 requires-python = ">=3.12,<3.13"
 # CPU-only research code. GPU inference runs in the separate serving environment (envs/serve);
 # research code reaches it over its OpenAI-compatible HTTP API (decision D004).

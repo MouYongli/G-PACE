@@ -1,6 +1,6 @@
-# G-PACE
+# GRACE
 
-Research repository for G-PACE, worked on by Codex and Claude Code sessions in manager and worker roles. This checkout (the main checkout, `PROJECT_ROOT`) stays on `main`; managers and workers each work in their own git worktree. Work is planned as a DAG of milestones, tasks, experiments and decisions in `docs/work/plan/plan.yaml`.
+Research repository for GRACE, worked on by Codex and Claude Code sessions in manager and worker roles. This checkout (the main checkout, `PROJECT_ROOT`) stays on `main`; managers and workers each work in their own git worktree. Work is planned as a DAG of milestones, tasks, experiments and decisions in `docs/work/plan/plan.yaml`.
 
 ## Getting started
 
