@@ -78,10 +78,11 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 ## 常用命令
 
 ```bash
-python3 -m pip install -e ".[test]"                     # 安装包及测试依赖（Python >= 3.10）
-python3 -m unittest discover -s tests -t .              # 全部测试
-python3 -m unittest discover -s tests/contracts -t .    # 仅契约测试
-ruff check .                                            # lint
+make setup                                              # 创建 .venv 并安装包及测试依赖（uv sync；Python >= 3.10）
+make test                                               # 全部测试
+make test-contracts                                     # 仅契约测试
+make lint                                               # lint（ruff）
+uv run python <script>                                  # 其他命令都在该环境中运行；不要直接调用 python3 或 pip
 git worktree list                                       # 列出所有 worktree 及其分支
 ```
 

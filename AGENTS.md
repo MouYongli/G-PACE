@@ -76,10 +76,11 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 ## Commands
 
 ```bash
-python3 -m pip install -e ".[test]"                     # install the package and test deps (Python >= 3.10)
-python3 -m unittest discover -s tests -t .              # all tests
-python3 -m unittest discover -s tests/contracts -t .    # contract tests only
-ruff check .                                            # lint
+make setup                                              # create .venv and install the package with test deps (uv sync; Python >= 3.10)
+make test                                               # all tests
+make test-contracts                                     # contract tests only
+make lint                                               # lint (ruff)
+uv run python <script>                                  # run anything else inside the environment; do not call python3 or pip directly
 git worktree list                                       # all worktrees and their branches
 ```
 

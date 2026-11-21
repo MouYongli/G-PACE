@@ -18,7 +18,7 @@ Your worktree may be created by your tool or with `git worktree add`; its locati
 ## Definition of done
 
 - [ ] Every item in `ACCEPTANCE` maps to a passing test or a run report.
-- [ ] `python3 -m unittest discover -s tests -t .` and `ruff check .` pass on your head.
+- [ ] `make test` and `make lint` pass on your head.
 - [ ] Each formal run has a `run.json` with status `completed` or `failed` and a filled experiment report.
 - [ ] The PR is open against `PR_BASE`, and the handoff is written.
 
