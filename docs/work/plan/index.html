@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G-PACE Plan</title>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #dcdcd6; --accent: #2f6fd6;
+  --s-planned: #9a9a94; --s-active: #2f6fd6; --s-review: #b7791f; --s-done: #2f8f4e; --s-blocked: #c53030;
+  --s-dropped: #c9c9c3; --s-proposed: #b7791f; --s-accepted: #2f8f4e; --s-superseded: #9a9a94; --s-rejected: #9a9a94;
+  --node-bg: #ffffff; --group-bg: #efefea;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --panel: #1f1f1d; --text: #ececea; --muted: #a3a39d; --line: #3a3a36; --accent: #6b9cf0;
+    --s-planned: #85857f; --s-active: #6b9cf0; --s-review: #d9a441; --s-done: #4fb36f; --s-blocked: #ef6b6b;
+    --s-dropped: #4a4a46; --s-proposed: #d9a441; --s-accepted: #4fb36f; --s-superseded: #85857f; --s-rejected: #85857f;
+    --node-bg: #262624; --group-bg: #232321;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --panel: #1f1f1d; --text: #ececea; --muted: #a3a39d; --line: #3a3a36; --accent: #6b9cf0;
+  --s-planned: #85857f; --s-active: #6b9cf0; --s-review: #d9a441; --s-done: #4fb36f; --s-blocked: #ef6b6b;
+  --s-dropped: #4a4a46; --s-proposed: #d9a441; --s-accepted: #4fb36f; --s-superseded: #85857f; --s-rejected: #85857f;
+  --node-bg: #262624; --group-bg: #232321;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { font-size: 16px; margin: 0; }
+header .meta { color: var(--muted); font-size: 12px; }
+nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+nav a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; }
+nav a.on { background: var(--bg); color: var(--text); font-weight: 600; }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; min-width: 80px; }
+.bar > span { display: block; height: 100%; background: var(--s-done); }
+.overall { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.overall .bar { width: 140px; }
+main { flex: 1; display: flex; min-height: 0; position: relative; }
+#view { flex: 1; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
+#cy { flex: 1; min-height: 360px; }
+.crumbs { padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); border-bottom: 1px solid var(--line); }
+.crumbs a { color: var(--accent); text-decoration: none; }
+.crumbs .gate { flex-basis: 100%; font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; font-size: 12px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 12px; color: #fff; white-space: nowrap; }
+aside#detail { width: min(560px, 48%); border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 16px 20px 40px; }
+aside#detail[hidden] { display: none; }
+aside .top { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+aside button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 6px; cursor: pointer; }
+aside dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; margin: 12px 0 16px; }
+aside dt { color: var(--muted); }
+aside dd { margin: 0; }
+aside a { color: var(--accent); }
+.md { border-top: 1px solid var(--line); padding-top: 8px; }
+.md table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.md th, .md td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+.md code { background: var(--bg); padding: 0 3px; border-radius: 3px; }
+.md pre { background: var(--bg); padding: 8px; overflow: auto; }
+.cards { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.card h3 { margin: 0 0 4px; font-size: 15px; }
+.card h3 a { color: var(--text); text-decoration: none; }
+.card .gate { color: var(--muted); font-size: 12px; margin: 8px 0; }
+.card ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.card li { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
+.card li a { color: var(--text); text-decoration: none; flex: 1; }
+.filters { padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+select { font: inherit; padding: 3px 6px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+table.list { border-collapse: collapse; width: 100%; }
+table.list th, table.list td { padding: 6px 16px; border-bottom: 1px solid var(--line); text-align: left; }
+table.list tr[data-id] { cursor: pointer; }
+table.list tr[data-id]:hover { background: var(--panel); }
+.tl { padding: 16px; }
+.tl .row { display: grid; grid-template-columns: 220px 1fr; align-items: center; min-height: 26px; }
+.tl .row a { color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+.tl .track { position: relative; height: 18px; border-left: 1px solid var(--line); }
+.tl .seg { position: absolute; top: 3px; height: 12px; border-radius: 3px; min-width: 4px; }
+.tl .today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--s-blocked); }
+.tl .axis { color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+.msg { padding: 24px 16px; color: var(--muted); }
+.msg code { color: var(--text); }
+@media (max-width: 760px) {
+  aside#detail { position: absolute; inset: 0; width: 100%; border-left: 0; }
+  .tl .row { grid-template-columns: 120px 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Plan</h1>
+  <span class="meta" id="updated"></span>
+  <span class="overall"><span class="bar"><span id="overall-bar" style="width:0"></span></span><span id="overall-text"></span></span>
+  <nav>
+    <a href="#/graph" data-view="graph">Graph</a>
+    <a href="#/milestones" data-view="milestones">Milestones</a>
+    <a href="#/table" data-view="table">Table</a>
+    <a href="#/timeline" data-view="timeline">Timeline</a>
+  </nav>
+</header>
+<main>
+  <section id="view"></section>
+  <aside id="detail" hidden></aside>
+</main>
+<script>
+"use strict";
+const RESOLVED = new Set(["done", "dropped", "accepted", "rejected", "superseded"]);
+const STARTED = new Set(["active", "review", "proposed"]);
+const TYPE_SHAPE = { task: "round-rectangle", experiment: "barrel", decision: "diamond" };
+const state = { plan: null, nodes: new Map(), ms: new Map(), dependents: new Map(), lastView: "graph", cy: null };
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const color = (status) => css("--s-" + status) || css("--s-planned");
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "style") e.style.cssText = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+const pill = (status) => el("span", { class: "pill", style: `background:${color(status)}` }, status);
+
+async function load() {
+  let text;
+  try {
+    const res = await fetch("plan.yaml", { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    text = await res.text();
+  } catch (err) {
+    $("#view").innerHTML = "";
+    $("#view").append(el("div", { class: "msg" },
+      "Could not load plan.yaml (" + err.message + "). Serve the repository over HTTP: ",
+      el("code", {}, 'cd "$PROJECT_ROOT" && python3 -m http.server 8000'),
+      ", then open ", el("code", {}, "http://localhost:8000/docs/work/plan/"), "."));
+    return;
+  }
+  const plan = jsyaml.load(text);
+  state.plan = plan;
+  for (const m of plan.milestones || []) state.ms.set(m.id, m);
+  for (const n of plan.nodes || []) { state.nodes.set(n.id, n); state.dependents.set(n.id, []); }
+  for (const n of state.nodes.values()) for (const d of n.depends_on || []) if (state.dependents.has(d)) state.dependents.get(d).push(n.id);
+  try { if (window.cytoscapeDagre) cytoscape.use(cytoscapeDagre); } catch (e) { /* already registered */ }
+  renderHeader();
+  window.addEventListener("hashchange", route);
+  route();
+}
+
+function msNodes(mid) { return [...state.nodes.values()].filter((n) => n.milestone === mid); }
+function progress(nodes) {
+  const live = nodes.filter((n) => n.status !== "dropped");
+  const done = live.filter((n) => RESOLVED.has(n.status)).length;
+  return { done, total: live.length, pct: live.length ? Math.round((100 * done) / live.length) : 0 };
+}
+function msStatus(m) {
+  if (m.status) return m.status;
+  const nodes = msNodes(m.id);
+  if (!nodes.length) return "planned";
+  if (nodes.every((n) => RESOLVED.has(n.status))) return "done";
+  if (nodes.some((n) => n.status === "blocked")) return "blocked";
+  if (nodes.some((n) => STARTED.has(n.status) || RESOLVED.has(n.status))) return "active";
+  return "planned";
+}
+
+function renderHeader() {
+  const p = state.plan;
+  document.title = (p.project || "Project") + " Plan";
+  $("#title").textContent = (p.project || "Project") + " plan";
+  $("#updated").textContent = p.updated ? "updated " + p.updated : "";
+  const all = progress([...state.nodes.values()]);
+  $("#overall-bar").style.width = all.pct + "%";
+  $("#overall-text").textContent = `${all.done}/${all.total} nodes resolved (${all.pct}%)`;
+}
+
+function route() {
+  const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  const view = parts[0] || "graph";
+  if (view === "node") {
+    const id = parts[1];
+    const n = state.nodes.get(id);
+    if (!$("#view").dataset.view) {
+      state.lastView = n && n.milestone ? "graph/" + n.milestone : "graph";
+      renderView(state.lastView.split("/"));
+    }
+    openDetail(id);
+    return;
+  }
+  closeDetail();
+  state.lastView = parts.join("/") || "graph";
+  renderView(parts.length ? parts : ["graph"]);
+}
+
+function renderView([view, arg]) {
+  document.querySelectorAll("nav a").forEach((a) => a.classList.toggle("on", a.dataset.view === view));
+  const root = $("#view");
+  root.innerHTML = "";
+  root.dataset.view = view;
+  if (state.cy) { state.cy.destroy(); state.cy = null; }
+  if (view === "milestones") return renderMilestones(root);
+  if (view === "table") return renderTable(root);
+  if (view === "timeline") return renderTimeline(root);
+  return renderGraph(root, arg);
+}
+
+function legend() {
+  const box = el("span", { class: "legend" });
+  for (const s of ["planned", "active", "review", "done", "blocked", "proposed", "accepted"]) {
+    box.append(el("span", {}, el("i", { style: `background:${color(s)}` }), s));
+  }
+  box.append(el("span", {}, "▭ task · ⬭ experiment · ◇ decision"));
+  return box;
+}
+
+function renderGraph(root, arg) {
+  const crumbs = el("div", { class: "crumbs" });
+  const elements = [];
+  let mode = "overview";
+  if (arg === "all") mode = "all"; else if (arg && state.ms.has(arg)) mode = "milestone";
+
+  if (mode === "overview") {
+    crumbs.append(el("strong", {}, "Milestones"), " · ", el("a", { href: "#/graph/all" }, "all nodes"));
+    for (const m of state.ms.values()) {
+      const p = progress(msNodes(m.id));
+      elements.push({ data: { id: m.id, label: `${m.id} · ${m.title}\n${p.done}/${p.total} resolved${m.conditional ? " · conditional" : ""}`, status: msStatus(m), kind: "milestone" } });
+      for (const d of m.depends_on || []) elements.push({ data: { id: d + ">" + m.id, source: d, target: m.id } });
+    }
+  } else {
+    const inScope = mode === "all" ? [...state.nodes.values()] : msNodes(arg);
+    const ids = new Set(inScope.map((n) => n.id));
+    const external = new Set();
+    for (const n of inScope) for (const d of n.depends_on || []) if (!ids.has(d) && state.nodes.has(d)) external.add(d);
+    if (mode === "all") {
+      crumbs.append(el("a", { href: "#/graph" }, "Milestones"), " / ", el("strong", {}, "all nodes"));
+      for (const m of state.ms.values()) if (msNodes(m.id).length) elements.push({ data: { id: m.id, label: `${m.id} · ${m.title}`, kind: "group" } });
+      if (inScope.some((n) => !n.milestone)) elements.push({ data: { id: "_none", label: "Project-wide", kind: "group" } });
+    } else {
+      const m = state.ms.get(arg);
+      const p = progress(inScope);
+      crumbs.append(el("a", { href: "#/graph" }, "Milestones"), " / ", el("strong", {}, `${m.id} · ${m.title}`), " ", pill(msStatus(m)),
+        el("span", { class: "bar", style: "width:120px" }, el("span", { style: `width:${p.pct}%` })), `${p.done}/${p.total}`);
+      if (m.gate) crumbs.append(el("span", { class: "gate" }, "Gate: " + m.gate));
+    }
+    for (const n of inScope) {
+      const parent = mode === "all" ? (n.milestone || "_none") : undefined;
+      elements.push({ data: { id: n.id, label: `${n.id}\n${n.title}`, status: n.status, kind: n.type, parent } });
+    }
+    for (const id of external) {
+      const n = state.nodes.get(id);
+      elements.push({ data: { id, label: `${id}\n${n.title}\n(${n.milestone || "project-wide"})`, status: n.status, kind: n.type, external: 1 } });
+    }
+    const shown = new Set([...ids, ...external]);
+    for (const n of inScope) for (const d of n.depends_on || []) if (shown.has(d)) {
+      elements.push({ data: { id: d + ">" + n.id, source: d, target: n.id, dashed: state.nodes.get(d).type === "decision" ? 1 : 0 } });
+    }
+  }
+  crumbs.append(legend());
+  const box = el("div", { id: "cy" });
+  root.append(crumbs, box);
+  if (!elements.length) { box.replaceWith(el("div", { class: "msg" }, "No nodes in this milestone yet.")); return; }
+
+  const hasDagre = typeof cytoscape("layout", "dagre") === "function";
+  const cy = cytoscape({
+    container: box, elements, wheelSensitivity: 0.2, minZoom: 0.2, maxZoom: 2.5,
+    layout: hasDagre ? { name: "dagre", rankDir: "LR", nodeSep: 24, rankSep: 70, padding: 24 } : { name: "breadthfirst", directed: true, padding: 24 },
+    style: [
+      { selector: "node", style: {
+        "shape": (e) => TYPE_SHAPE[e.data("kind")] || "round-rectangle",
+        "background-color": css("--node-bg"), "border-width": 3, "border-color": (e) => color(e.data("status")),
+        "label": "data(label)", "color": css("--text"), "font-size": 11, "text-wrap": "wrap", "text-max-width": 150,
+        "text-valign": "center", "text-halign": "center", "width": "label", "height": "label", "padding": 12 } },
+      { selector: 'node[kind = "milestone"]', style: { "font-size": 13, "font-weight": 600, "text-max-width": 190, "padding": 16,
+        "background-color": (e) => color(e.data("status")), "background-opacity": 0.16 } },
+      { selector: 'node[kind = "decision"]', style: { "padding": 22 } },
+      { selector: 'node[kind = "group"]', style: { "shape": "round-rectangle", "background-color": css("--group-bg"), "border-width": 1,
+        "border-color": css("--line"), "label": "data(label)", "text-valign": "top", "text-halign": "center", "font-weight": 600, "padding": 18, "color": css("--muted") } },
+      { selector: 'node[status = "dropped"]', style: { "border-style": "dashed", "color": css("--muted") } },
+      { selector: "node[external]", style: { "opacity": 0.55, "border-style": "dotted" } },
+      { selector: "node.sel", style: { "border-width": 5, "underlay-color": css("--accent"), "underlay-opacity": 0.25, "underlay-padding": 6 } },
+      { selector: "edge", style: { "width": 1.5, "line-color": css("--muted"), "target-arrow-color": css("--muted"),
+        "target-arrow-shape": "triangle", "curve-style": "bezier", "arrow-scale": 0.9 } },
+      { selector: "edge[dashed = 1]", style: { "line-style": "dashed" } },
+    ],
+  });
+  cy.on("tap", "node", (e) => {
+    const id = e.target.id(), kind = e.target.data("kind");
+    if (kind === "milestone" || (kind === "group" && state.ms.has(id))) location.hash = "#/graph/" + id;
+    else if (state.nodes.has(id)) location.hash = "#/node/" + id;
+  });
+  cy.on("mouseover", "node", () => { box.style.cursor = "pointer"; });
+  cy.on("mouseout", "node", () => { box.style.cursor = ""; });
+  state.cy = cy;
+}
+
+function renderMilestones(root) {
+  const grid = el("div", { class: "cards" });
+  for (const m of state.ms.values()) {
+    const nodes = msNodes(m.id), p = progress(nodes);
+    const list = el("ul");
+    for (const n of nodes) list.append(el("li", {}, pill(n.status), el("a", { href: "#/node/" + n.id }, `${n.id} · ${n.title}`)));
+    if (!nodes.length) list.append(el("li", { style: "color:var(--muted)" }, "No nodes yet."));
+    grid.append(el("div", { class: "card" },
+      el("h3", {}, el("a", { href: "#/graph/" + m.id }, `${m.id} · ${m.title}`)),
+      el("div", {}, pill(msStatus(m)), m.conditional ? " conditional" : "", m.due ? ` · due ${m.due}` : "", ` · ${p.done}/${p.total} resolved`),
+      el("div", { class: "bar", style: "margin-top:6px" }, el("span", { style: `width:${p.pct}%` })),
+      m.gate ? el("div", { class: "gate" }, "Gate: " + m.gate) : null,
+      list));
+  }
+  const loose = [...state.nodes.values()].filter((n) => !n.milestone);
+  if (loose.length) {
+    const list = el("ul");
+    for (const n of loose) list.append(el("li", {}, pill(n.status), el("a", { href: "#/node/" + n.id }, `${n.id} · ${n.title}`)));
+    grid.append(el("div", { class: "card" }, el("h3", {}, "Project-wide"), list));
+  }
+  root.append(grid);
+}
+
+function renderTable(root) {
+  const nodes = [...state.nodes.values()];
+  const opts = (key) => [...new Set(nodes.map((n) => n[key] || "—"))].sort();
+  const filters = el("div", { class: "filters" });
+  const sels = {};
+  for (const key of ["type", "status", "milestone", "owner"]) {
+    const s = el("select", {}, el("option", { value: "" }, "any " + key));
+    for (const v of opts(key)) s.append(el("option", { value: v }, v));
+    s.addEventListener("change", draw);
+    sels[key] = s;
+    filters.append(s);
+  }
+  const table = el("table", { class: "list" });
+  root.append(filters, table);
+  function draw() {
+    table.innerHTML = "";
+    table.append(el("tr", {}, ...["ID", "Title", "Type", "Status", "Milestone", "Owner", "Start", "Finish"].map((h) => el("th", {}, h))));
+    for (const n of nodes) {
+      if (Object.entries(sels).some(([k, s]) => s.value && (n[k] || "—") !== s.value)) continue;
+      const tr = el("tr", { "data-id": n.id },
+        el("td", {}, n.id), el("td", {}, n.title), el("td", {}, n.type), el("td", {}, pill(n.status)),
+        el("td", {}, n.milestone || "—"), el("td", {}, n.owner || "—"), el("td", {}, n.start || "—"), el("td", {}, n.finish || "—"));
+      tr.addEventListener("click", () => { location.hash = "#/node/" + n.id; });
+      table.append(tr);
+    }
+  }
+  draw();
+}
+
+function renderTimeline(root) {
+  const day = 86400000, today = new Date(new Date().toISOString().slice(0, 10));
+  const toDate = (s) => (s ? new Date(String(s)) : null);
+  const dated = [...state.nodes.values()].filter((n) => n.start);
+  const dues = [...state.ms.values()].filter((m) => m.due);
+  if (!dated.length && !dues.length) {
+    root.append(el("div", { class: "msg" }, "No dated nodes yet. Dates appear when nodes get a start date in plan.yaml."));
+    return;
+  }
+  const points = [today, ...dated.map((n) => toDate(n.start)), ...dated.map((n) => toDate(n.finish)).filter(Boolean), ...dues.map((m) => toDate(m.due))];
+  const min = new Date(Math.min(...points) - 2 * day), max = new Date(Math.max(...points) + 2 * day);
+  const pos = (d) => (100 * (d - min)) / (max - min);
+  const box = el("div", { class: "tl" });
+  box.append(el("div", { class: "row" }, el("span"), el("div", { class: "axis" },
+    el("span", {}, min.toISOString().slice(0, 10)), el("span", {}, max.toISOString().slice(0, 10)))));
+  const row = (label, href, segs) => {
+    const track = el("div", { class: "track" }, el("div", { class: "today", style: `left:${pos(today)}%` }));
+    for (const s of segs) track.append(s);
+    box.append(el("div", { class: "row" }, el("a", { href, title: label }, label), track));
+  };
+  for (const m of state.ms.values()) {
+    const nodes = dated.filter((n) => n.milestone === m.id);
+    if (!nodes.length && !m.due) continue;
+    const segs = [];
+    if (m.due) segs.push(el("div", { class: "seg", title: "due " + m.due, style: `left:calc(${pos(toDate(m.due))}% - 2px);width:4px;background:${color("blocked")}` }));
+    row(`${m.id} · ${m.title}`, "#/graph/" + m.id, segs);
+    for (const n of nodes) addNode(n);
+  }
+  for (const n of dated.filter((n) => !n.milestone || !state.ms.has(n.milestone))) addNode(n);
+  function addNode(n) {
+    const a = toDate(n.start), b = toDate(n.finish) || today;
+    const seg = el("div", { class: "seg", title: `${n.start} → ${n.finish || "ongoing"}`,
+      style: `left:${pos(a)}%;width:${Math.max(pos(b) - pos(a), 0.5)}%;background:${color(n.status)}` });
+    row(`   ${n.id} · ${n.title}`, "#/node/" + n.id, [seg]);
+  }
+  root.append(box);
+}
+
+async function openDetail(id) {
+  const aside = $("#detail");
+  aside.hidden = false;
+  aside.innerHTML = "";
+  if (state.cy) { state.cy.nodes().removeClass("sel"); state.cy.$id(id).addClass("sel"); }
+  const n = state.nodes.get(id);
+  const back = el("button", {}, "← Back");
+  back.addEventListener("click", () => { if (history.length > 1) history.back(); else location.hash = "#/" + state.lastView; });
+  const close = el("button", {}, "Close");
+  close.addEventListener("click", () => { location.hash = "#/" + state.lastView; });
+  aside.append(el("div", { class: "top" }, back, close));
+  if (!n) { aside.append(el("p", {}, "Unknown node " + id)); return; }
+  const link = (x) => el("a", { href: "#/node/" + x }, x);
+  const join = (ids) => { const s = el("span"); ids.forEach((x, i) => { if (i) s.append(", "); s.append(state.nodes.has(x) ? link(x) : x); }); return ids.length ? s : "—"; };
+  const repo = state.plan.repo;
+  const issue = n.issue ? (repo ? el("a", { href: `${repo}/issues/${n.issue}`, target: "_blank", rel: "noopener" }, "#" + n.issue) : "#" + n.issue) : "—";
+  aside.append(el("h2", { style: "margin:4px 0" }, `${n.id} · ${n.title}`),
+    el("div", {}, pill(n.status), " ", n.type),
+    el("dl", {},
+      el("dt", {}, "Milestone"), el("dd", {}, n.milestone ? el("a", { href: "#/graph/" + n.milestone }, `${n.milestone} · ${state.ms.get(n.milestone)?.title || ""}`) : "project-wide"),
+      el("dt", {}, "Depends on"), el("dd", {}, join(n.depends_on || [])),
+      el("dt", {}, "Needed by"), el("dd", {}, join(state.dependents.get(n.id) || [])),
+      el("dt", {}, "Owner"), el("dd", {}, n.owner || "—"),
+      el("dt", {}, "Issue"), el("dd", {}, issue),
+      el("dt", {}, "Start / finish"), el("dd", {}, `${n.start || "—"} / ${n.finish || "—"}`),
+      el("dt", {}, "File"), el("dd", {}, n.file ? el("a", { href: n.file, target: "_blank", rel: "noopener" }, n.file) : "—")));
+  const md = el("div", { class: "md" }, "Loading…");
+  aside.append(md);
+  if (!n.file) { md.textContent = "No file."; return; }
+  try {
+    const url = new URL(n.file, location.href);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    let text = await res.text();
+    if (text.startsWith("---")) { const end = text.indexOf("\n---", 3); if (end > 0) text = text.slice(text.indexOf("\n", end + 1) + 1); }
+    md.innerHTML = DOMPurify.sanitize(marked.parse(text));
+    md.querySelectorAll("a[href]").forEach((a) => {
+      const href = a.getAttribute("href");
+      if (/^(https?:|#|mailto:)/.test(href)) return;
+      const target = new URL(href, url);
+      const m = target.pathname.match(/\/([TED]\d{3})-[^/]*\.md$/);
+      if (m && state.nodes.has(m[1])) a.setAttribute("href", "#/node/" + m[1]);
+      else { a.setAttribute("href", target.href); a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener"); }
+    });
+  } catch (err) {
+    md.textContent = "Could not load " + n.file + " (" + err.message + ").";
+  }
+}
+
+function closeDetail() {
+  $("#detail").hidden = true;
+  if (state.cy) state.cy.nodes().removeClass("sel");
+}
+
+load();
+</script>
+</body>
+</html>
