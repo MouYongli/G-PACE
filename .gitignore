@@ -1,0 +1,13 @@
+# Shared benchmark store and run artifacts; they exist only in the main checkout (PROJECT_ROOT)
+/data
+/runs/
+# Worktrees created inside the repository by agent tools
+.claude/worktrees/
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.ruff_cache/
+.DS_Store
+.env
+.env.*
