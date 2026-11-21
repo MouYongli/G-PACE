@@ -1,0 +1,7 @@
+# Fill in when the data is bound; null means not configured yet. Card: docs/research/benchmarks.md#change-seq
+benchmark: change-seq
+version: null
+data_root: data/change-seq        # relative to PROJECT_ROOT
+manifest_sha256: null
+splits: {}
+metric: null

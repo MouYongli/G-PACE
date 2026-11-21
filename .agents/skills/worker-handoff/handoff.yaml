@@ -1,0 +1,19 @@
+# Worker handoff. Write to the HANDOFF path from the assignment ($PROJECT_ROOT/runs/T<NNN>/handoffs/<sub>.yaml).
+task:                  # T<NNN> (and Issue URL)
+parent_manager:        # manager SESSION_ID
+worker_session:        # worker SESSION_ID
+status:                # ready-for-review | blocked | partial
+pr:                    # PR URL
+pr_base:               # task branch
+head_sha:              # full SHA
+changed_scope: []      # paths changed
+interface_changes:     # contract-relevant changes, or "none"
+acceptance:            # one entry per criterion
+  - criterion:
+    evidence:          # test name or run report path
+    result:            # pass | fail | not verified
+commands: []           # exact commands run, with results
+runs: []               # run IDs and absolute RUN_DIR paths
+unverified_and_risks: []
+status_change:         # e.g. "T002: active -> review", or none
+decisions_requested: [] # what the manager must decide

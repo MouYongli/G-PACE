@@ -1,0 +1,4 @@
+# Shared directories, relative to PROJECT_ROOT (the main checkout; see AGENTS.md).
+# Never put absolute paths in this file. Resolved absolute paths are recorded in each run.json.
+data_root: data   # read-only benchmark store, git-ignored, exists only in the main checkout
+runs_root: runs   # parent of every RUN_DIR, git-ignored, exists only in the main checkout

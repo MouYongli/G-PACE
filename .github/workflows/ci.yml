@@ -1,0 +1,26 @@
+name: Checks
+on:
+  pull_request:
+    branches: [main, 'task/**']
+  merge_group:
+permissions:
+  contents: read
+env:
+  UV_PYTHON: '3.10'
+jobs:
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: make setup
+      - run: make test
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: make setup
+      - run: make lint

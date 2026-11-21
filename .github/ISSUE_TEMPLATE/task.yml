@@ -1,0 +1,18 @@
+name: Task
+description: Discussion thread for one task T<NNN> from docs/work/plan/plan.yaml
+title: "[T<NNN>] "
+body:
+  - type: textarea
+    id: assignment
+    attributes:
+      label: Task, owner and dependencies
+      description: Task ID and file (docs/work/tasks/T<NNN>-*.md), manager session, owners of shared files and contract sections, dependencies from plan.yaml.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance and deliverables
+      description: Verifiable criteria, tests and experiment scope.
+    validations:
+      required: true

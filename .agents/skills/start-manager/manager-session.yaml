@@ -1,0 +1,14 @@
+# Manager session record. Copy to $PROJECT_ROOT/runs/T<NNN>/manager.yaml and fill every field.
+ROLE: manager
+SESSION_ID:            # m<NN>-T<NNN>, e.g. m01-T001
+TASK:                  # T<NNN> and its Issue URL
+WORKDIR:               # absolute path of this manager's worktree (informational; never commit it)
+BRANCH:                # task/T<NNN>-<slug>
+BASE_SHA:              # full SHA of main the task branch starts from
+MILESTONE:             # M<N> of this task in docs/work/plan/plan.yaml
+DEPENDENCIES: []       # node IDs from plan.yaml that must finish first
+ACCEPTANCE: []         # verifiable criteria copied from the Issue
+SHARED_FILE_OWNERS: {} # path or contract section -> owner session/person
+COMPUTE_ALLOCATION:    # GPUs, ports, CPU limits reserved for this task
+INTEGRATION_OWNER:     # who maintains docs/work/plan/plan.yaml this round
+resume_log: []         # one entry per resumed session: date, findings, actions

@@ -1,0 +1,146 @@
+# Project DAG: the single source of structure, status and dates.
+# Edited only by the integration owner, through a PR to main. Schema: README.md in this folder.
+project: G-PACE
+updated: 2026-11-21
+repo: null            # e.g. https://github.com/<owner>/G-PACE, used to link Issues
+
+milestones:           # plan.md section 9; one milestone per implementation phase
+  - id: M1
+    title: Pilot measurements
+    depends_on: []
+    due: null
+    gate: >-
+      If natural update density is low, state that view maintenance targets high-revision
+      workloads and base RQ4 mainly on MultiWOZ, HaluMem and the controlled sequences.
+  - id: M2
+    title: Core mechanism on gold graphs
+    depends_on: [M1]
+    due: null
+    gate: >-
+      If query-pattern dependencies are no better than used-claim dependencies on the
+      new-match stratum, or re-querying at read time is equivalent, narrow RQ4 to
+      "freshness checks are cheap".
+  - id: M3
+    title: End-to-end extraction and planning
+    depends_on: [M2]
+    due: null
+    gate: >-
+      If most gains disappear with extracted graphs, conclude that the bottleneck is
+      extraction and key alignment, and report how much a larger writer recovers.
+  - id: M4
+    title: Context assembly and baselines
+    depends_on: [M3]
+    due: null
+    gate: >-
+      If the role-aware JSON table ties with the graph, report only the joins or scopes
+      where the graph adds value.
+  - id: M5
+    title: Vocabulary evolution
+    depends_on: [M4]
+    due: null
+    conditional: true   # only if the frozen vocabulary shows real naming conflicts
+    gate: >-
+      If a frozen vocabulary with aliases is equally effective, use it in the main
+      configuration and report dynamic vocabulary as a negative result.
+  - id: M6
+    title: Lock and formal evaluation
+    depends_on: [M4, M5]
+    due: null
+    gate: >-
+      No tuning after the lock; disclose every deviation from the preregistration.
+  - id: M7
+    title: Robustness checks
+    depends_on: [M6]
+    due: null
+    gate: >-
+      If conclusions hold only on the primary model, restrict the claimed scope.
+
+nodes:
+  - id: T001
+    type: task
+    title: Record contracts
+    milestone: M1
+    status: planned
+    depends_on: []
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T001-record-contracts.md
+  - id: T002
+    type: task
+    title: Benchmark adapters
+    milestone: M1
+    status: planned
+    depends_on: [T001]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T002-benchmark-adapters.md
+  - id: T003
+    type: task
+    title: Baseline runners
+    milestone: M1
+    status: planned
+    depends_on: [T001]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T003-baseline-runners.md
+  - id: T004
+    type: task
+    title: Prompts, counters, judges
+    milestone: M1
+    status: planned
+    depends_on: [T001]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T004-prompts-counters-judges.md
+  - id: E001
+    type: experiment
+    title: Pilot measurements
+    milestone: M1
+    status: planned
+    depends_on: [T002, T003, T004, D002]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../experiments/E001-pilot-measurements.md
+  - id: D001
+    type: decision
+    title: Shared benchmark storage and run artifacts
+    milestone: null
+    status: accepted
+    depends_on: []
+    issue: null
+    owner: null
+    start: 2026-11-21
+    finish: 2026-11-21
+    file: ../decisions/D001-shared-benchmark-storage.md
+  - id: D002
+    type: decision
+    title: Evaluation aggregation
+    milestone: M1
+    status: proposed
+    depends_on: []
+    issue: null
+    owner: null
+    start: 2026-11-21
+    finish: null
+    file: ../decisions/D002-evaluation-aggregation.md
+  - id: D003
+    type: decision
+    title: Agent workspace layout and language policy
+    milestone: null
+    status: accepted
+    depends_on: []
+    issue: null
+    owner: null
+    start: 2026-11-21
+    finish: 2026-11-21
+    file: ../decisions/D003-agent-workspace-layout.md
