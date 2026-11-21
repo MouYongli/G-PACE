@@ -1,0 +1,13 @@
+# Worker assignment. Copy to $PROJECT_ROOT/runs/T<NNN>/assignments/<sub>.yaml and fill every field.
+ROLE: worker
+SESSION_ID:          # m<NN>-T<NNN>-<sub>, e.g. m01-T002-locomo
+PARENT_MANAGER:      # manager SESSION_ID
+TASK:                # T<NNN> and one-sentence subtask goal
+BRANCH:              # worker/T<NNN>-<sub>; switch to it inside your worktree
+PR_BASE:             # parent task branch, e.g. task/T001-record-contracts
+BASE_SHA:            # full SHA; HEAD must equal this at the start of a new task
+WRITE_SCOPE: []      # paths/globs this worker may modify
+RUN_DIR:             # $PROJECT_ROOT/runs/T<NNN>/artifacts/<sub>, exclusive to this worker
+GPU_OR_CPU:          # e.g. "GPU 1" or "CPU, 8 cores"
+ACCEPTANCE: []       # verifiable criteria
+HANDOFF:             # $PROJECT_ROOT/runs/T<NNN>/handoffs/<sub>.yaml

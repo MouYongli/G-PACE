@@ -1,0 +1,30 @@
+# Experiment report. Write to RUN_DIR/<experiment>/<run-id>/report.yaml.
+experiment:            # e.g. E001
+run_id:
+status:                # completed | failed | partial
+question:              # what this run tests and against what comparison
+code_sha:              # full SHA, must match run.json
+config:
+  path:
+  sha256:
+data:
+  benchmark:
+  version:
+  manifest_sha256:
+  split:
+seed:
+environment:           # python version, lock file hash, host
+device:
+command:
+counts:
+  n_total:
+  n_scored:
+  n_invalid:
+metrics: {}            # metric name -> value, copied from metrics.json
+artifacts:             # paths under RUN_DIR
+  predictions:
+  metrics:
+  log:
+interpretation:        # what the result does and does not support
+limitations: []
+reviewed_by:
