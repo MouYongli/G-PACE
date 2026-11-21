@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-test = ["pyyaml>=6"]
+test = ["pyyaml>=6", "ruff>=0.6"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
