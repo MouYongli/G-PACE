@@ -1,8 +1,8 @@
-# G-PACE Agent 指南（中文译本）
+# GRACE Agent 指南（中文译本）
 
 > 本文件是 `AGENTS.md` 的中文译本，仅供人阅读，不会被任何工具自动加载。内容以英文版为准。修改 `AGENTS.md` 的 PR 必须同步修改本文件（CI 会检查两者的标题结构是否一致）。
 
-G-PACE 是一个研究项目。研究问题、假设和设计见 `docs/research/plan.md`；里程碑、任务及其状态见 `docs/work/plan/plan.yaml`。Codex 直接加载 `AGENTS.md`，Claude Code 通过 `CLAUDE.md` 加载。本文件保持精简：只做索引并列出硬性规则，细节放在它指向的文件中。
+GRACE 是一个研究项目。研究问题、假设和设计见 `docs/research/plan.md`；里程碑、任务及其状态见 `docs/work/plan/plan.yaml`。Codex 直接加载 `AGENTS.md`，Claude Code 通过 `CLAUDE.md` 加载。本文件保持精简：只做索引并列出硬性规则，细节放在它指向的文件中。
 
 ## 语言
 
@@ -70,7 +70,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `docs/work/plan/` | `plan.yaml`（项目 DAG：里程碑、节点、状态、日期）、`README.md`（schema、检查点）、`index.html`（可视化） | 集成负责人 |
 | `docs/work/tasks/`、`experiments/`、`decisions/` | 每个任务 `T<NNN>`、实验 `E<NNN>`、决策 `D<NNN>` 一个文件 | 任务 manager；实验执行者；决策 owner |
 | `configs/` | `paths.yaml`、benchmark 与实验配置 | 任务负责人 |
-| `src/gpace/` | Python 包 | 任务负责人，限 `WRITE_SCOPE` 内 |
+| `src/grace/` | Python 包 | 任务负责人，限 `WRITE_SCOPE` 内 |
 | `tests/` | `contracts/`（接口测试）、`integration/`、`docs/`、`fixtures/`（合成数据） | 任务负责人 |
 | `paper/` | 论文稿件与图表脚本 | 论文负责人 |
 | `data/`、`runs/` | 仅在主 checkout，git 忽略；见"项目根目录与路径" | 数据维护者 / 运行负责人 |
@@ -127,7 +127,7 @@ git worktree list                                       # 列出所有 worktree 
 ## 编码约定
 
 - Python >= 3.10，优先用标准库；向 `pyproject.toml` 添加依赖须在 PR 中说明理由。
-- 代码放在 `src/gpace/`；测试使用 `unittest`；用 `ruff` 做 lint。
+- 代码放在 `src/grace/`；测试使用 `unittest`；用 `ruff` 做 lint。
 - 共享路径通过 `PROJECT_ROOT` 和 `configs/paths.yaml` 解析；路径不存在时明确报错。
 
 ## 需要停下来询问的情况
