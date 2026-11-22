@@ -58,6 +58,7 @@ Tracked files (present in every worktree):
 | Tasks, experiments, decisions | `docs/work/tasks/`, `docs/work/experiments/`, `docs/work/decisions/` |
 | Shared paths, benchmark and experiment configs | `configs/` |
 | GPU inference environment and launcher | `envs/serve/`, `scripts/serve-model.sh` |
+| Benchmark download sources and scripts | `configs/data/sources.yaml`, `scripts/data/` (Python in `src/grace/cli/data/`) |
 
 Runtime files (main checkout only, git-ignored):
 
