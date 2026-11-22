@@ -12,7 +12,7 @@ The research and serving environments of decision D004 exist and are documented:
 
 ## Scope
 
-- In scope: `pyproject.toml`, `uv.lock`, `.python-version`, CI Python version, Makefile targets, `envs/serve/` and its lock, `scripts/serve-model.sh`, AGENTS.md and its translation, README.md, `docs/README.md`, D004.
+- In scope: renaming the package and project from `gpace`/G-PACE to `grace`/GRACE (from branch `chore/rename-grace`); `pyproject.toml`, `uv.lock`, `.python-version`, CI Python version, Makefile targets, `envs/serve/` and its lock, `scripts/serve-model.sh`, AGENTS.md and its translation, README.md, `docs/README.md`, D004.
 - Out of scope: choosing the judge provider; reserving GPUs; external baseline environments (Mem0, Graphiti); the `environment` field of the experiment-run contract (requested from its owner).
 - Candidate worker subtasks: none.
 
@@ -29,3 +29,4 @@ The files in scope; decision D004.
 ## Log
 
 - 2026-11-22: created at the user's request; branch `task/T009-env-setup`.
+- 2026-11-22: rename commit from `chore/rename-grace` cherry-picked onto this branch; stale worktree record pruned.
