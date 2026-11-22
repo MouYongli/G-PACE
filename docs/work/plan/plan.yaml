@@ -1,7 +1,7 @@
 # Project DAG: the single source of structure, status and dates.
 # Edited only by the integration owner, through a PR to main. Schema: README.md in this folder.
 project: G-PACE
-updated: 2026-11-21
+updated: 2026-11-22
 repo: null            # e.g. https://github.com/<owner>/G-PACE, used to link Issues
 
 milestones:           # plan.md section 9; one milestone per implementation phase
@@ -144,3 +144,25 @@ nodes:
     start: 2026-11-21
     finish: 2026-11-21
     file: ../decisions/D003-agent-workspace-layout.md
+  - id: T009
+    type: task
+    title: Python and inference environment
+    milestone: M1
+    status: active
+    depends_on: [D004]
+    issue: null
+    owner: user
+    start: 2026-11-22
+    finish: null
+    file: ../tasks/T009-env-setup.md
+  - id: D004
+    type: decision
+    title: Python version and inference environment
+    milestone: null
+    status: accepted
+    depends_on: []
+    issue: null
+    owner: null
+    start: 2026-11-22
+    finish: 2026-11-22
+    file: ../decisions/D004-python-and-inference-environment.md

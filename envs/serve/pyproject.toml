@@ -1,0 +1,12 @@
+# Serving environment for local GPU inference (decision D004). Kept separate from the research
+# environment because vLLM pins its own torch and CUDA wheels. Created with `make setup-serve`.
+[project]
+name = "grace-serve"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "vllm>=0.10",  # needs a build with Blackwell (sm_100) support; the exact version is pinned in uv.lock
+]
+
+[tool.uv]
+package = false

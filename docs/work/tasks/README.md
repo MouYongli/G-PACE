@@ -12,6 +12,7 @@ The integration owner adds a row here when a task is created. The task's manager
 | [T002](T002-benchmark-adapters.md) | Benchmark adapters | Adapters for the development histories of all benchmarks |
 | [T003](T003-baseline-runners.md) | Baseline runners | Full history, text retrieval, rolling summary and JSON state table |
 | [T004](T004-prompts-counters-judges.md) | Prompts, counters, judges | Frozen English prompts, token counters, budgets and judges |
+| [T009](T009-env-setup.md) | Python and inference environment | Python 3.12, research and vLLM serving environments (D004) |
 
 ## Template
 

@@ -69,6 +69,7 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 | `docs/work/tasks/`, `experiments/`, `decisions/` | One file per task `T<NNN>`, experiment `E<NNN>`, decision `D<NNN>` | Task manager; experiment runner; decision owner |
 | `configs/` | `paths.yaml`, benchmark and experiment configs | Task owners |
 | `src/gpace/` | Python package | Task owners within `WRITE_SCOPE` |
+| `envs/serve/`, `scripts/serve-model.sh` | GPU inference environment (vLLM) and its launcher | Integration owner |
 | `tests/` | `contracts/` (interface tests), `integration/`, `docs/`, `fixtures/` (synthetic data) | Task owners |
 | `paper/` | Manuscript and figure scripts | Paper owner |
 | `data/`, `runs/` | Main checkout only, git-ignored; see "Project root and paths" | Data maintainer / run owners |
@@ -76,7 +77,8 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 ## Commands
 
 ```bash
-make setup                                              # create .venv and install the package with test deps (uv sync; Python >= 3.10)
+make setup                                              # create .venv with the package, analysis and test deps (uv sync; Python 3.12)
+make setup-serve                                        # create envs/serve/.venv with vLLM for GPU inference (decision D004)
 make test                                               # all tests
 make test-contracts                                     # contract tests only
 make lint                                               # lint (ruff)
@@ -124,7 +126,8 @@ MUST NOT:
 
 ## Coding conventions
 
-- Python >= 3.10, standard library first; add dependencies to `pyproject.toml` only with a reason in the PR.
+- Python 3.12 (`.python-version`), standard library first; add dependencies to `pyproject.toml` only with a reason in the PR.
+- Research code stays CPU-only. GPU inference runs in the serving environment (`envs/serve`, started with `scripts/serve-model.sh`) and is reached over its OpenAI-compatible HTTP API; never add GPU packages to `pyproject.toml`. The machine's GPUs are shared: reserve them in `COMPUTE_ALLOCATION` before starting a server.
 - Code lives in `src/gpace/`; tests use `unittest`; lint with `ruff`.
 - Resolve shared paths through `PROJECT_ROOT` and `configs/paths.yaml`; fail loudly when a path is missing.
 

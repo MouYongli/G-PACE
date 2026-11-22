@@ -9,6 +9,7 @@ A decision records a choice that constrains later work: context, options, the ch
 | [D001](D001-shared-benchmark-storage.md) | Shared benchmark storage and run artifacts | Data and run artifacts in the main checkout, located through `PROJECT_ROOT` |
 | [D002](D002-evaluation-aggregation.md) | Evaluation aggregation | Report each benchmark separately; no unregistered overall score |
 | [D003](D003-agent-workspace-layout.md) | Agent workspace layout and language policy | `.agents/` as single source, worktrees, language policy, docs layout |
+| [D004](D004-python-and-inference-environment.md) | Python version and inference environment | Python 3.12; CPU-only research environment; separate vLLM serving environment over HTTP |
 
 ## Template
 

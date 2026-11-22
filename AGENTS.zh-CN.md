@@ -71,6 +71,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `docs/work/tasks/`、`experiments/`、`decisions/` | 每个任务 `T<NNN>`、实验 `E<NNN>`、决策 `D<NNN>` 一个文件 | 任务 manager；实验执行者；决策 owner |
 | `configs/` | `paths.yaml`、benchmark 与实验配置 | 任务负责人 |
 | `src/gpace/` | Python 包 | 任务负责人，限 `WRITE_SCOPE` 内 |
+| `envs/serve/`、`scripts/serve-model.sh` | GPU 推理环境（vLLM）及其启动脚本 | 集成负责人 |
 | `tests/` | `contracts/`（接口测试）、`integration/`、`docs/`、`fixtures/`（合成数据） | 任务负责人 |
 | `paper/` | 论文稿件与图表脚本 | 论文负责人 |
 | `data/`、`runs/` | 仅在主 checkout，git 忽略；见"项目根目录与路径" | 数据维护者 / 运行负责人 |
@@ -78,7 +79,8 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 ## 常用命令
 
 ```bash
-make setup                                              # 创建 .venv 并安装包及测试依赖（uv sync；Python >= 3.10）
+make setup                                              # 创建 .venv 并安装包、分析与测试依赖（uv sync；Python 3.12）
+make setup-serve                                        # 创建 envs/serve/.venv，安装用于 GPU 推理的 vLLM（决策 D004）
 make test                                               # 全部测试
 make test-contracts                                     # 仅契约测试
 make lint                                               # lint（ruff）
@@ -126,7 +128,8 @@ git worktree list                                       # 列出所有 worktree 
 
 ## 编码约定
 
-- Python >= 3.10，优先用标准库；向 `pyproject.toml` 添加依赖须在 PR 中说明理由。
+- Python 3.12（`.python-version`），优先用标准库；向 `pyproject.toml` 添加依赖须在 PR 中说明理由。
+- 研究代码只用 CPU。GPU 推理在服务环境（`envs/serve`，用 `scripts/serve-model.sh` 启动）中运行，通过其 OpenAI 兼容的 HTTP 接口调用；不要把 GPU 相关的包加进 `pyproject.toml`。本机 GPU 是共享的：启动服务前先在 `COMPUTE_ALLOCATION` 中登记占用的卡。
 - 代码放在 `src/gpace/`；测试使用 `unittest`；用 `ruff` 做 lint。
 - 共享路径通过 `PROJECT_ROOT` 和 `configs/paths.yaml` 解析；路径不存在时明确报错。
 

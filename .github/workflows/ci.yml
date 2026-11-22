@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 env:
-  UV_PYTHON: '3.10'
+  UV_PYTHON: '3.12'
 jobs:
   contracts:
     name: contracts
