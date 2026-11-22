@@ -24,7 +24,7 @@ Adapters that turn each benchmark's development histories into the T001 records,
 
 ## Deliverables
 
-`src/gpace/` adapters, `configs/benchmarks/<slug>.yaml`, filled sections in `docs/research/benchmarks.md`.
+`src/grace/` adapters, `configs/benchmarks/<slug>.yaml`, filled sections in `docs/research/benchmarks.md`.
 
 ## Log
 

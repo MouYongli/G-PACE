@@ -23,7 +23,7 @@ Freeze what phase 1 must hold fixed: English prompts, the token counter and chat
 
 ## Deliverables
 
-`configs/` prompt and budget files, `src/gpace/` scorer and judge wrappers, an evaluation section update in `docs/research/contracts.md` (through its owner).
+`configs/` prompt and budget files, `src/grace/` scorer and judge wrappers, an evaluation section update in `docs/research/contracts.md` (through its owner).
 
 ## Log
 

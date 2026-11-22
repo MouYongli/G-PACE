@@ -57,6 +57,7 @@ Tracked files (present in every worktree):
 | Project DAG: milestones, status, dates, checkpoints | `docs/work/plan/plan.yaml`, `docs/work/plan/README.md` |
 | Tasks, experiments, decisions | `docs/work/tasks/`, `docs/work/experiments/`, `docs/work/decisions/` |
 | Shared paths, benchmark and experiment configs | `configs/` |
+| GPU inference environment and launcher | `envs/serve/`, `scripts/serve-model.sh` |
 
 Runtime files (main checkout only, git-ignored):
 
@@ -67,6 +68,7 @@ Runtime files (main checkout only, git-ignored):
 | Worker assignments | `$PROJECT_ROOT/runs/T<NNN>/assignments/<sub>.yaml` |
 | Worker handoffs | `$PROJECT_ROOT/runs/T<NNN>/handoffs/<sub>.yaml` |
 | Run artifacts (`RUN_DIR`) | `$PROJECT_ROOT/runs/T<NNN>/artifacts/<sub>/<experiment>/<run-id>/` |
+| Model weights | Hugging Face cache (`HF_HOME`, default `~/.cache/huggingface`), shared by all worktrees; never under `data/` |
 
 Worktrees: their location is chosen by whoever creates them (Claude Code, the Codex app, or `git worktree add`). `git worktree list` from any worktree shows all of them.
 

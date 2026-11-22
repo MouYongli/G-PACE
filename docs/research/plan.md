@@ -1,10 +1,10 @@
-# A Graph Memory–Enhanced Context Engine for LLM Agents
+# GRACE: A Graph Memory–Enhanced Context Engine for LLM Agents with Query-Defined Views over Bitemporal RDF
 
 Nov 20, 2026 · @Yongli
 
 ## 1. Overview
 
-English title: A Graph Memory–Enhanced Context Engine for LLM Agents (tentative)
+English title: GRACE: A Graph Memory–Enhanced Context Engine for LLM Agents with Query-Defined Views over Bitemporal RDF (tentative)
 
 This plan builds and evaluates a three-layer system: graph memory maintains the history, the context engine organizes evidence for the current task, and a downstream LLM generates the answer. The question to answer is whether, at equal answer quality, it can be cheaper than rereading the full history or repeatedly rewriting summaries, while keeping every answer traceable to the original messages.
 
