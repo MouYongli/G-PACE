@@ -1,6 +1,6 @@
 # Benchmarks
 
-Registry and cards for every benchmark in `docs/research/plan.md` (section 6). Each benchmark has one section here; its slug is shared by `configs/benchmarks/<slug>.yaml`, `tests/fixtures/benchmarks/<slug>/` and `$PROJECT_ROOT/data/<slug>/<version>/`. Split this file into a folder when a card grows beyond about 100 lines.
+Registry and cards for every benchmark in `docs/research/plan.md` (section 6). Download sources are pinned in `configs/data/sources.yaml` and fetched with `scripts/data/` (see the Benchmarks section of `README.md`). Each benchmark has one section here; its slug is shared by `configs/benchmarks/<slug>.yaml`, `tests/fixtures/benchmarks/<slug>/` and `$PROJECT_ROOT/data/<slug>/<version>/`. Split this file into a folder when a card grows beyond about 100 lines.
 
 ## Registry
 

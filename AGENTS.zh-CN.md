@@ -72,6 +72,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `configs/` | `paths.yaml`、benchmark 与实验配置 | 任务负责人 |
 | `src/grace/` | Python 包 | 任务负责人，限 `WRITE_SCOPE` 内 |
 | `envs/serve/`、`scripts/serve-model.sh` | GPU 推理环境（vLLM）及其启动脚本 | 集成负责人 |
+| `scripts/` | 只放 bash 入口脚本（`scripts/data/` 负责下载基准数据）；它们调用的 Python 代码放在 `src/grace/cli/` | 集成负责人 |
 | `tests/` | `contracts/`（接口测试）、`integration/`、`docs/`、`fixtures/`（合成数据） | 任务负责人 |
 | `paper/` | 论文稿件与图表脚本 | 论文负责人 |
 | `data/`、`runs/` | 仅在主 checkout，git 忽略；见"项目根目录与路径" | 数据维护者 / 运行负责人 |

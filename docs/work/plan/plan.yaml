@@ -166,3 +166,14 @@ nodes:
     start: 2026-11-22
     finish: 2026-11-22
     file: ../decisions/D004-python-and-inference-environment.md
+  - id: T010
+    type: task
+    title: Benchmark download scripts
+    milestone: M1
+    status: active
+    depends_on: [T009]
+    issue: null
+    owner: user
+    start: 2026-11-22
+    finish: null
+    file: ../tasks/T010-data-download.md
