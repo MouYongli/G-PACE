@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper figures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; --navy: #151A4E; --muted: #5A6082; --ind: #2B36CE; --tint: #EEF1FB; --line: #DDE2F8; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: var(--navy); }
+  body { font: 400 16px/1.55 'Fira Sans', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px 16px 64px; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 28px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .card { display: grid; grid-template-columns: 64px 1fr auto; gap: 16px; align-items: center; padding: 16px 20px;
+          border: 2px solid var(--ind); border-radius: 14px; box-shadow: -7px -7px 0 var(--ind); margin: 7px 0 0 7px;
+          color: inherit; text-decoration: none; background: #fff; }
+  a.card:hover { background: var(--tint); }
+  a.card:focus-visible { outline: 3px solid var(--ind); outline-offset: 3px; }
+  .no { font-weight: 700; color: var(--ind); }
+  .name { font-weight: 700; margin: 0; }
+  .desc { color: var(--muted); margin: 2px 0 0; font-size: 15px; }
+  .go { color: var(--ind); font-weight: 500; white-space: nowrap; }
+  .planned { border: 2px dashed #B9BFE6; box-shadow: none; }
+  .planned .no, .planned .go { color: var(--muted); }
+  h2 { font-size: 19px; font-weight: 700; margin: 36px 0 2px; }
+  .status { color: var(--muted); font-size: 14px; font-weight: 400; }
+  .small { font-size: 15px; margin-bottom: 18px; }
+  code { font: 400 14px 'Fira Code', Menlo, Consolas, monospace; }
+  .pick { display: inline-block; margin-top: 8px; padding: 8px 16px; border: 2px solid var(--ind); border-radius: 10px;
+          color: var(--ind); font-weight: 500; cursor: pointer; }
+  .pick:hover { background: var(--tint); }
+  footer { margin-top: 28px; color: var(--muted); font-size: 14px; }
+  @media (max-width: 540px) { .card { grid-template-columns: 52px 1fr; } .go { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Paper figures</h1>
+  <p class="lede">Method figures for the manuscript. Each page shows the artwork with its caption.</p>
+  <ul>
+    <li><a class="card" href="overview.html">
+      <span class="no">Fig. 1</span>
+      <span><p class="name">Framework overview</p>
+      <p class="desc">User, agent context engine, agent memory and LLM, with the seven steps of one message.</p></span>
+      <span class="go">Open &rarr;</span></a></li>
+  </ul>
+  <h2>Drafts <span id="draft-status" class="status"></span></h2>
+  <p class="lede small">Pages in <code>../draft/</code> (git-ignored), listed when this page loads.</p>
+  <ul id="drafts"></ul>
+  <div id="picker" hidden>
+    <p class="desc">The browser cannot list a folder from a <code>file://</code> page. Serve <code>paper/figures/</code> over HTTP
+      (for example <code>uv run python -m http.server -d paper/figures</code>, then open <code>/html/</code>), or pick the folder:</p>
+    <label class="pick">Choose the draft folder<input id="dir" type="file" webkitdirectory multiple hidden></label>
+  </div>
+  <footer>Print a figure page to PDF for a vector export; the header and caption are left out of the print.</footer>
+</main>
+<script>
+// Lists the draft figure pages in ../draft/ without a hard-coded list.
+// Over HTTP it reads the server's directory listing; on file:// the user picks the folder instead.
+const DRAFT = "../draft/";
+const list = document.getElementById("drafts");
+const status = document.getElementById("draft-status");
+
+function meta(name, html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const title = (doc.querySelector("title")?.textContent || name).trim();
+  const m = title.match(/^(Fig\.\s*\d+)\s*:\s*(.*)$/);
+  const cap = doc.querySelector("figcaption");
+  cap?.querySelector("b")?.remove();
+  const text = (doc.querySelector('meta[name="description"]')?.content || cap?.textContent || "").trim();
+  const desc = (text.match(/^.*?[.!?](\s|$)/) || [text])[0].trim();
+  return { name, no: m ? m[1] : "Draft", title: m ? m[2] : title, desc, order: m ? parseInt(m[1].replace(/\D/g, "")) : 1e9 };
+}
+
+function render(items) {
+  items.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+  list.replaceChildren(...items.map(it => {
+    const li = document.createElement("li");
+    const a = Object.assign(document.createElement("a"), { className: "card", href: DRAFT + encodeURIComponent(it.name) });
+    const no = Object.assign(document.createElement("span"), { className: "no", textContent: it.no });
+    const body = document.createElement("span");
+    body.append(Object.assign(document.createElement("p"), { className: "name", textContent: it.title }),
+                Object.assign(document.createElement("p"), { className: "desc", textContent: it.desc || it.name }));
+    const go = Object.assign(document.createElement("span"), { className: "go", innerHTML: "Open &rarr;" });
+    a.append(no, body, go); li.append(a); return li;
+  }));
+  status.textContent = items.length ? `(${items.length})` : "(none)";
+}
+
+async function fromServer() {
+  const res = await fetch(DRAFT);
+  if (!res.ok) throw new Error(res.status);
+  const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+  const names = [...new Set([...doc.querySelectorAll("a[href]")]
+    .map(a => decodeURIComponent(a.getAttribute("href").split(/[?#]/)[0].split("/").filter(Boolean).pop() || ""))
+    .filter(n => n.endsWith(".html")))];
+  return Promise.all(names.map(async n => meta(n, await (await fetch(DRAFT + encodeURIComponent(n))).text())));
+}
+
+document.getElementById("dir").addEventListener("change", async e => {
+  const files = [...e.target.files].filter(f => f.name.endsWith(".html") && f.webkitRelativePath.split("/").length === 2);
+  render(await Promise.all(files.map(async f => meta(f.name, await f.text()))));
+});
+
+fromServer().then(render).catch(() => {
+  status.textContent = "";
+  document.getElementById("picker").hidden = false;
+});
+</script>
+</body>
+</html>

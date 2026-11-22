@@ -1,0 +1,67 @@
+% Entry point of the G-PACE manuscript.
+% Target venue: ESWC 2027 Research Track (Springer LNCS, llncs v2.24).
+% Limits: 15 pages, excluding references, acknowledgements, the Generative AI
+% statement and the supplementary material statement; optional appendix of at
+% most 2 pages. Submissions are double-anonymous.
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+% Springer eBook style for URLs (see template/samplepaper.tex).
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+\urlstyle{rm}
+
+% Generated figures live in paper/figures/ (see paper/README.md).
+\graphicspath{{../figures/}}
+
+% Set to \anonymousfalse for the camera-ready version.
+\newif\ifanonymous
+\anonymoustrue
+
+\begin{document}
+
+\title{Contribution Title}
+%\titlerunning{Abbreviated paper title}
+
+\ifanonymous
+  \author{Anonymous Author(s)}
+  \authorrunning{Anonymous}
+  \institute{Anonymous Institution(s)}
+\else
+  \author{First Author\inst{1}\orcidID{0000-0000-0000-0000} \and
+    Second Author\inst{2}\orcidID{0000-0000-0000-0000}}
+  \authorrunning{F. Author et al.}
+  \institute{First Institution, City, Country\\
+    \email{first@example.org} \and
+    Second Institution, City, Country\\
+    \email{second@example.org}}
+\fi
+
+\maketitle
+
+\input{sections/abstract}
+
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/preliminaries}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+% Not counted towards the 15-page limit.
+\input{sections/statements}
+
+\bibliographystyle{splncs04}
+\bibliography{references}
+
+% Optional, at most 2 pages; reviewers are not required to read it.
+\appendix
+\input{sections/appendix}
+
+\end{document}
