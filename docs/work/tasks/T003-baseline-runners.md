@@ -8,7 +8,7 @@ created: 2026-11-21
 
 ## Goal
 
-Runnable baselines needed by the pilot: same-reader full history, text retrieval (BM25, dense, RRF), rolling summary with recent raw text, and the role-aware JSON state table, all producing predictions and cost-ledger entries under the T001 contracts.
+Runnable baselines needed by the pilot: same-reader full history, text retrieval (BM25, dense, RRF), rolling summary with recent raw text, and the role-aware relational state table, all producing predictions and cost-ledger entries under the T001 contracts.
 
 ## Scope
 
@@ -28,3 +28,4 @@ Runnable baselines needed by the pilot: same-reader full history, text retrieval
 ## Log
 
 - 2026-11-21: created from plan section 9, phase 1.
+- 2026-11-22: "JSON state table" renamed to "relational state table" to match plan v3.

@@ -10,16 +10,18 @@ milestones:           # plan.md section 9; one milestone per implementation phas
     depends_on: []
     due: null
     gate: >-
-      If natural update density is low, state that view maintenance targets high-revision
-      workloads and base RQ4 mainly on MultiWOZ, HaluMem and the controlled sequences.
+      Few MultiWOZ offer turns: the role claim's primary evidence moves to the controlled
+      sequences. Narrow spread of LoCoMo read points: streaming moves to the supplementary
+      material. Low natural update density: view maintenance targets high-revision workloads,
+      with RQ2 resting on the controlled sequences, MultiWOZ and HaluMem.
   - id: M2
     title: Core mechanism on gold graphs
     depends_on: [M1]
     due: null
     gate: >-
-      If query-pattern dependencies are no better than used-claim dependencies on the
-      new-match stratum, or re-querying at read time is equivalent, narrow RQ4 to
-      "freshness checks are cheap".
+      If claim-pattern dependencies are no better than used-claim dependencies on the
+      new-match stratum, or re-querying at read time is equivalent everywhere, narrow RQ2
+      to "freshness checks are cheap".
   - id: M3
     title: End-to-end extraction and planning
     depends_on: [M2]
@@ -32,8 +34,8 @@ milestones:           # plan.md section 9; one milestone per implementation phas
     depends_on: [M3]
     due: null
     gate: >-
-      If the role-aware JSON table ties with the graph, report only the joins or scopes
-      where the graph adds value.
+      If the role-aware relational state table ties with the graph, report only the joins
+      or scopes where the graph adds value.
   - id: M5
     title: Vocabulary evolution
     depends_on: [M4]
@@ -144,6 +146,50 @@ nodes:
     start: 2026-11-21
     finish: 2026-11-21
     file: ../decisions/D003-agent-workspace-layout.md
+  - id: T005
+    type: task
+    title: Research plan v3
+    milestone: null
+    status: active
+    depends_on: []
+    issue: null
+    owner: m01-T005
+    start: 2026-11-22
+    finish: null
+    file: ../tasks/T005-plan-v3.md
+  - id: T006
+    type: task
+    title: MultiWOZ offer-turn census
+    milestone: M1
+    status: planned
+    depends_on: [T002, T010]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T006-multiwoz-offer-turns.md
+  - id: T007
+    type: task
+    title: LoCoMo evidence-anchored read points
+    milestone: M1
+    status: planned
+    depends_on: [T002, T010]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T007-locomo-read-points.md
+  - id: T008
+    type: task
+    title: Controlled change-sequence generator design
+    milestone: M1
+    status: planned
+    depends_on: [T005]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T008-change-sequence-design.md
   - id: T009
     type: task
     title: Python and inference environment

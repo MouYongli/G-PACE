@@ -8,14 +8,14 @@ created: 2026-11-21
 
 ## Question
 
-On the development histories of each benchmark, how long are the histories, what does full-history reading cost, what cache ratio is achieved in practice, and how often is a rendered view read again after an invalidating update (natural update density)? Plan section 9, phase 1. If natural update density is low, view maintenance is positioned for high-revision workloads and RQ4 relies mainly on MultiWOZ, HaluMem and the controlled sequences.
+On the development histories of each benchmark, how long are the histories, what does full-history reading cost, what cache ratio is achieved in practice, and how often is a rendered view read again after an invalidating update (natural update density)? Plan section 9, phase 1. If natural update density is low, view maintenance is positioned for high-revision workloads and RQ2 rests mainly on the controlled sequences, MultiWOZ and HaluMem. The MultiWOZ offer-turn census (T006) and the LoCoMo read points (T007) are separate tasks of the same phase.
 
 ## Design
 
 | Item | Value |
 | --- | --- |
-| Benchmarks and splits | Development histories of all six benchmarks |
-| Systems and baselines | Full history, text retrieval, rolling summary, JSON state table (T003) |
+| Benchmarks and splits | Development histories of the six evaluated benchmarks (`docs/research/benchmarks.md`) |
+| Systems and baselines | Full history, text retrieval, rolling summary, role-aware relational state table (T003) |
 | Metrics | History length distribution, full-history cost, measured cache ratio, natural update density; cost per `docs/research/contracts.md` (cost ledger, from T001) |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E001-pilot-measurements.yaml` (to be created) |
@@ -41,3 +41,4 @@ Pending.
 ## Log
 
 - 2026-11-21: created from plan section 9, phase 1.
+- 2026-11-22: research question numbering and baseline names aligned with plan v3.

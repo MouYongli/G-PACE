@@ -12,8 +12,8 @@ Adapters that turn each benchmark's development histories into the T001 records,
 
 ## Scope
 
-- In scope: adapters and manifests for LoCoMo, LongMemEval S, MultiWOZ 2.4/2.2, HaluMem-Medium, MemoryAgentBench; the generator skeleton for the controlled change sequences.
-- Out of scope: held-out splits beyond what phase 1 needs; conditional benchmarks (STALE, Memora).
+- In scope: adapters for LoCoMo, LongMemEval S, MultiWOZ 2.4/2.2/2.1, HaluMem-Medium, MemoryAgentBench (LongMemEval(S\*) and FactConsolidation at 6K and 32K); the generator skeleton for the controlled change sequences, following the design of T008.
+- Out of scope: held-out splits beyond what phase 1 needs; benchmarks not evaluated (BEAM, Memora, STALE).
 - Candidate worker subtasks: one per benchmark.
 
 ## Acceptance
@@ -29,3 +29,5 @@ Adapters that turn each benchmark's development histories into the T001 records,
 ## Log
 
 - 2026-11-21: created from plan section 9, phase 1.
+- 2026-11-22: scope aligned with plan v3 (MultiWOZ 2.1 added, MemoryAgentBench subsets, BEAM/Memora/STALE not evaluated); T006 and T007 need only the MultiWOZ and LoCoMo parts.
+- 2026-11-22: downloads and manifests are provided by T010 (`scripts/data/`, `configs/data/sources.yaml`); this task binds the downloaded versions in `configs/benchmarks/` and writes the adapters.
