@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fig. 1: Framework overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; background: #ffffff; color: #151A4E; }
+  body { font: 400 16px/1.55 'Fira Sans', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px 16px 48px; }
+  header, figure { width: 100%; max-width: 1200px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 20px; border-bottom: 1.5px solid #DDE2F8; }
+  header a { color: #2B36CE; font-weight: 500; text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+  header h1 { font-size: 18px; font-weight: 700; margin: 0; }
+  header .export { margin-left: auto; display: flex; gap: 8px; }
+  header button { font: 500 14px 'Fira Sans', Inter, sans-serif; color: #2B36CE; background: #fff; border: 1.5px solid #2B36CE;
+                  border-radius: 8px; padding: 4px 12px; cursor: pointer; }
+  header button:hover { background: #EEF1FB; }
+  svg { display: block; width: 100%; height: auto; }
+  figcaption { margin-top: 20px; color: #5A6082; font-size: 15px; max-width: 860px; }
+  figcaption b { color: #151A4E; }
+  /* The figure is drawn by the script at the end of the page (helpers: figlib.js).
+     Printing to PDF exports the artwork only: no header, no caption. */
+  @media print { header, figcaption { display: none; } body { padding: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="index.html">&larr; All figures</a>
+  <h1>Fig. 1: Framework overview</h1>
+</header>
+<figure>
+<figcaption><b>Fig. 1.</b> Framework overview. The agent consists of the agent context engine and the agent memory; the LLM is external and frozen. (1) A message arrives from the user. (2) The memory writer stores it and writes the extracted claims to memory. (3) The task planner derives the information needs and a graph query. (4) The memory retriever queries memory and receives results with their source messages. (5) The context builder assembles a cited context and saves it as a view. (6) The context is sent to the LLM. (7) The LLM generates the reply with cited messages, which the agent returns to the user.</figcaption>
+</figure>
+<script src="figlib.js"></script>
+<script>
+// ================= agent container =================
+R(214, 26, 812, 566, { rx: 22, fill: "none", stroke: "#8F97E3", sw: 1.8, extra: 'stroke-dasharray="7 6"' });
+R(236, 13, 84, 26, { rx: 13, fill: IND });
+T(278, 31, "AGENT", { size: 13.5, w: 700, fill: "#fff", anchor: "middle", extra: 'letter-spacing="0.08em"' });
+
+// ================= agent context engine =================
+CARD(226, 62, 786, 190, CRI, { title: "Agent context engine" });
+const EX = [262, 452, 642, 832], EW = 164;
+const eng = [["Memory", "writer", "store · extract"], ["Task", "planner", "needs · query"],
+             ["Memory", "retriever", "search · query"], ["Context", "builder", "select · cite"]];
+eng.forEach(([a, b, m], i) => {
+  const x = EX[i];
+  R(x, 128, EW, 108, { rx: 12, fill: CRI_T });
+  T(x + 12, 188, a, { size: 15.5, w: 700, fill: NAVY }); T(x + 12, 206, b, { size: 15.5, w: 700, fill: NAVY });
+  T(x + 12, 225, m, { size: 11.5, fill: CRI, fam: MONO, w: 500 });
+});
+const ic = `fill="none" stroke="${CRI}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+let x = EX[0] + EW - 36;   // pen
+RAW(`<g ${ic}><path d="M${x + 4},164 l3,-9 13,-13 6,6 -13,13 z"/><path d="M${x + 17},145 l6,6"/></g>`);
+x = EX[1] + EW - 36;       // list / plan
+RAW(`<g ${ic}><circle cx="${x + 12}" cy="145" r="3.6"/><circle cx="${x + 3}" cy="163" r="3.6"/><circle cx="${x + 21}" cy="163" r="3.6"/><path d="M${x + 12},149 v5 M${x + 3},159 v-5 h18 v5"/></g>`);
+x = EX[2] + EW - 36;       // magnifier
+RAW(`<g ${ic}><circle cx="${x + 10}" cy="151" r="8"/><path d="M${x + 16},157 l7,7"/></g>`);
+x = EX[3] + EW - 34;       // document
+RAW(`<g ${ic}><rect x="${x - 3}" y="142" width="24" height="7" rx="2.5"/><rect x="${x - 3}" y="152" width="10" height="13" rx="2.5"/><rect x="${x + 10}" y="152" width="11" height="13" rx="2.5" fill="${CRI}"/></g>`);
+
+// ================= agent memory =================
+CARD(226, 322, 786, 246, IND, { title: "Agent memory" });
+const MX = [262, 515, 768], MW = 228, BY = [404, 452, 500];
+/** Small monospace pill used inside the memory boxes (smaller than figlib's chip). */
+function mini(x, y, s, { fill = TINT, col = NAVY, stroke = "none" } = {}) {
+  const w = Math.round(s.length * 6.4 + 11);
+  R(x, y, w, 15, { rx: 7.5, fill, stroke, sw: 1 });
+  T(x + w / 2, y + 11, s, { size: 10.5, fill: col, anchor: "middle", fam: MONO, w: 500 });
+  return x + w + 5;
+}
+const mem = [["Text memory", ["Message history", "Keyword index", "Vector index"]],
+             ["Graph memory", ["Entities", "Claims", "Vocabulary"]],
+             ["View memory", ["Cached views", "Dependencies", "Stale marks"]]];
+mem.forEach(([t, ps], i) => {
+  const x = MX[i];
+  R(x, 366, MW, 186, { rx: 12, fill: TINT });
+  T(x + 40, 393, t, { size: 15, w: 700, fill: NAVY });
+  ps.forEach((p, j) => {
+    R(x + 10, BY[j], MW - 20, 44, { rx: 9, fill: "#fff", stroke: BORDER, sw: 1.2 });
+    T(x + 20, BY[j] + 16, p, { size: 12.5, fill: NAVY, w: 500 });
+  });
+});
+// --- text memory visuals
+let vy, nx;
+x = MX[0] + 20;
+vy = BY[0] + 25;   // message history: a run of messages, newest highlighted
+R(x, vy, 28, 9, { rx: 4.5, fill: LIGHT }); R(x + 33, vy, 36, 9, { rx: 4.5, fill: "#fff", stroke: BORDER, sw: 1.2 });
+R(x + 74, vy, 18, 9, { rx: 4.5, fill: LIGHT }); R(x + 97, vy, 25, 9, { rx: 4.5, fill: IND });
+vy = BY[1] + 23;   // keyword index
+nx = mini(x, vy, "TR7143"); nx = mini(nx, vy, "20:38"); T(nx + 2, vy + 11, "…", { size: 12, fill: MUTED });
+vy = BY[2] + 24;   // vector index: embedding cells
+[IND, "#8F97E3", IND, LIGHT, "#5A64DC", TINT2, NAVY, "#8F97E3", IND, LIGHT]
+  .forEach((c, i) => R(x + i * 12.4, vy, 10, 10, { rx: 2.5, fill: c }));
+// --- graph memory visuals
+x = MX[1] + 20;
+vy = BY[0] + 23;   // entities
+for (const lab of ["TR7143", "20:38"]) {
+  RAW(`<circle cx="${x + 5}" cy="${vy + 7.5}" r="5" fill="${IND}"/>`);
+  T(x + 14, vy + 11, lab, { size: 10.5, fill: NAVY, fam: MONO, w: 500 }); x += 14 + lab.length * 6.4 + 10;
+}
+x = MX[1] + 20;
+vy = BY[1] + 23;   // claims: a triple with its communicative function
+RAW(`<line x1="${x + 10}" y1="${vy + 7.5}" x2="${x + 50}" y2="${vy + 7.5}" stroke="${IND}" stroke-width="2" marker-end="url(#ah-ind)"/>`);
+RAW(`<circle cx="${x + 5}" cy="${vy + 7.5}" r="5" fill="${IND}"/><circle cx="${x + 58}" cy="${vy + 7.5}" r="5" fill="#fff" stroke="${IND}" stroke-width="2"/>`);
+mini(x + 72, vy, "offer", { fill: CRI_T, col: CRI });
+vy = BY[2] + 23;   // vocabulary
+nx = mini(x, vy, "arriveBy"); mini(nx, vy, "offers");
+// --- view memory visuals
+x = MX[2] + 20;
+vy = BY[0] + 23;   // cached views: text with citations
+R(x, vy + 3, 46, 9, { rx: 4.5, fill: LIGHT }); nx = mini(x + 52, vy, "h2", { fill: IND, col: "#fff" }); mini(nx, vy, "h3", { fill: IND, col: "#fff" });
+vy = BY[1] + 23;   // dependencies: a query pattern
+T(x, vy + 11, "(req, accepts, ?x)", { size: 10.5, fill: IND, fam: MONO, w: 500 });
+vy = BY[2] + 23;   // stale marks
+for (let i = 0; i < 3; i++) RAW(`<circle cx="${x + 5 + i * 15}" cy="${vy + 7.5}" r="5" fill="${IND}"/>`);
+RAW(`<circle cx="${x + 50}" cy="${vy + 7.5}" r="4.5" fill="#fff" stroke="${CRI}" stroke-width="2"/>`);
+T(x + 61, vy + 11, "stale", { size: 10.5, fill: CRI, fam: MONO, w: 500 });
+const mi = `fill="none" stroke="${IND}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+x = MX[0] + 12;   // chat bubble
+RAW(`<g ${mi}><path d="M${x + 2},378 h18 a3,3 0 0 1 3,3 v9 a3,3 0 0 1 -3,3 h-10 l-5,5 v-5 h-3 a3,3 0 0 1 -3,-3 v-9 a3,3 0 0 1 3,-3 z"/></g>`);
+x = MX[1] + 12;   // graph
+RAW(`<g ${mi}><path d="M${x + 6},382 L${x + 18},380 M${x + 5},385 L${x + 11},395 M${x + 19},384 L${x + 13},395"/><circle cx="${x + 4}" cy="382" r="3.5" fill="#fff"/><circle cx="${x + 21}" cy="380" r="3.5" fill="${IND}"/><circle cx="${x + 12}" cy="397" r="3.5" fill="#fff"/></g>`);
+x = MX[2] + 12;   // card with cite
+RAW(`<g ${mi}><rect x="${x}" y="377" width="23" height="21" rx="3.5"/><path d="M${x + 5},384 h13 M${x + 5},391 h6"/></g>`);
+
+// ================= user card =================
+R(6, 10, 176, 240, { rx: 16, fill: TINT, stroke: BORDER, sw: 1.8 });
+RAW(`<g fill="none" stroke="${IND}" stroke-width="2.2" stroke-linecap="round"><circle cx="30" cy="29" r="7"/><path d="M18,50 a12,12 0 0 1 24,0"/></g>`);
+T(52, 46, "User", { size: 19, w: 700, fill: NAVY });
+BUB(46, 61, 128, ["Arrive by 20:45"], { tag: "h1" });
+BUB(14, 103, 128, ["TR7143 arrives", "at 20:38."], { kind: "agent", tag: "h2" });
+BUB(46, 163, 128, ["Book it."], { tag: "h3" });
+// composer: the current question sits in the send box
+R(14, 205, 160, 34, { rx: 17, fill: "#fff", stroke: IND, sw: 1.8 });
+T(27, 227, "When do I arrive?", { size: 13, fill: NAVY, w: 500 });
+RAW(`<circle cx="159" cy="222" r="11" fill="${IND}"/>`);
+RAW('<path d="M154,222 h9 M159.5,218 l4,4 -4,4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>');
+// ================= LLM card =================
+R(1066, 92, 122, 180, { rx: 16, fill: IND });
+RAW('<path d="M1127,118 l6,15 15,6 -15,6 -6,15 -6,-15 -15,-6 15,-6 z" fill="#fff"/>');
+T(1127, 204, "LLM", { size: 22, w: 700, fill: "#fff", anchor: "middle" });
+T(1127, 227, "generates", { size: 14, fill: "#DDE2F8", anchor: "middle" });
+T(1127, 245, "the reply", { size: 14, fill: "#DDE2F8", anchor: "middle" });
+BUB(1066, 330, 122, ["You arrive at", "20:38."], { kind: "reply", cite: "[h2, h3]", citeSize: 12.5 });
+RAW(`<circle cx="1178" cy="334" r="13" fill="${NAVY}" stroke="#fff" stroke-width="2"/>`);
+RAW('<g fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1170.5" y="328.5" width="15" height="11" rx="2"/><path d="M1171,329.5 l7,5.5 7,-5.5"/></g>');
+
+// ================= flows =================
+// 1: message from the user into the engine, then to writer and planner
+P("M170,222 H240", NAVY, { head: false });
+RAW(`<circle cx="240" cy="222" r="3.5" fill="${NAVY}"/>`);
+P("M240,222 H259", IND);
+P(`M240,222 V108 H${EX[1] + EW / 2} V125`, CRI);
+// engine pipeline
+P(`M${EX[1] + EW},182 H${EX[2] - 3}`, CRI); P(`M${EX[2] + EW},182 H${EX[3] - 3}`, CRI);
+P(`M${EX[3] + EW},182 H1063`, CRI);
+// engine <-> memory
+P("M344,238 V309", IND); T(354, 290, "write", { size: 13.5, fill: IND, w: 500 });
+P("M712,238 V309", CRI); T(703, 290, "query", { size: 13.5, fill: CRI, w: 500, anchor: "end" });
+P("M736,312 V241", CRI); T(745, 290, "results", { size: 13.5, fill: CRI, w: 500 });
+P("M914,238 V309", IND); T(924, 290, "save view", { size: 13.5, fill: IND, w: 500 });
+// reply
+P("M1127,272 V327", NAVY);
+P("M1127,402 V614 H94 V253", NAVY, { dash: "7 5" });
+R(572, 602, 76, 24, { rx: 0, fill: "#fff" }); T(610, 619, "reply", { size: 14.5, fill: NAVY, w: 500, anchor: "middle" });
+
+// step badges; a yellow dot marks steps that may call the LLM
+N(204, 222, 1, NAVY);
+N(EX[0] + 20, 146, 2, IND); LLM(EX[0] + 37, 146);
+N(EX[1] + 20, 146, 3, CRI); LLM(EX[1] + 37, 146);
+N(EX[2] + 20, 146, 4, CRI); N(EX[3] + 20, 146, 5, CRI);
+N(1038, 182, 6, CRI); N(1127, 299, 7, NAVY);
+
+// ================= legend =================
+R(418, 636, 364, 34, { rx: 17, fill: TINT });
+RAW(`<line x1="440" y1="653" x2="468" y2="653" stroke="${IND}" stroke-width="3" stroke-linecap="round"/>`); T(478, 658, "write", { size: 14.5, fill: NAVY });
+RAW(`<line x1="536" y1="653" x2="564" y2="653" stroke="${CRI}" stroke-width="3" stroke-linecap="round"/>`); T(574, 658, "read", { size: 14.5, fill: NAVY });
+RAW(`<circle cx="634" cy="653" r="6" fill="${YEL}"/>`); T(648, 658, "may call the LLM", { size: 14.5, fill: NAVY });
+
+save(684, 1200);
+</script>
+</body>
+</html>
