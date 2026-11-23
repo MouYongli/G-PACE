@@ -238,6 +238,29 @@ aside dd a.ref:hover { border-color: var(--ink-2); }
 .md th, .md td { border-bottom: 1px solid var(--line); padding: 5px 8px 5px 0; text-align: left; vertical-align: top; }
 .md code { font: 400 12px var(--mono); background: var(--sunken); padding: 1px 4px; border-radius: 3px; }
 .md pre { background: var(--sunken); padding: 10px; overflow: auto; border-radius: 6px; }
+/* ---------- editing ---------- */
+nav a#changes-link { color: var(--brand); }
+nav a#changes-link[hidden] { display: none; }
+.tag.edited { border-color: var(--brand); color: var(--brand); }
+.edit { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0 0 18px; background: var(--bg); }
+.edit h3 { font: 600 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.edit .grid { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: center; font-size: 13px; }
+.edit label { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.edit input, .edit select { font: inherit; padding: 5px 9px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; min-width: 0; width: 100%; }
+.edit .was { grid-column: 2; font: 400 11px var(--mono); color: var(--muted); margin-top: -4px; }
+.edit .actions, .changes .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.btn { border: 1px solid var(--line-2); background: var(--surface); border-radius: 7px; padding: 5px 12px; font-size: 13px; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.btn.danger { color: var(--s-blocked); }
+.err { color: var(--s-blocked); font-size: 12.5px; margin: 10px 0 0; padding-left: 18px; }
+.note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.changes { max-width: 900px; }
+.changes table.list td.from { color: var(--muted); text-decoration: line-through; }
+.changes pre { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow: auto; font: 400 12px/1.5 var(--mono); margin: 14px 0 0; }
+.changes ol { color: var(--ink-2); padding-left: 20px; }
+.changes ol code, .changes p code { font-family: var(--mono); background: var(--sunken); padding: 1px 5px; border-radius: 4px; }
+.toast { position: fixed; right: 16px; bottom: 16px; background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 10; box-shadow: var(--shadow); }
 @media (max-width: 820px) {
   body > header { padding: 12px 16px 0; }
   nav { margin-left: 0; overflow-x: auto; width: 100%; }
@@ -259,6 +282,7 @@ aside dd a.ref:hover { border-color: var(--ink-2); }
     <a href="#/milestones" data-view="milestones">Milestones</a>
     <a href="#/table" data-view="table">Table</a>
     <a href="#/timeline" data-view="timeline">Timeline</a>
+    <a href="#/changes" data-view="changes" id="changes-link" hidden>Changes</a>
     <button id="theme" title="Switch colour theme">auto</button>
   </nav>
 </header>
@@ -276,6 +300,7 @@ const state = {
   plan: null, nodes: new Map(), ms: new Map(), dependents: new Map(), optional: new Set(), deliverables: new Set(),
   chain: new Set(), chainEdges: new Set(), maxWave: 0, lastView: "graph", graph: null,
   opts: { chain: true, hideOptional: false, hideResolved: false },
+  raw: "", base: new Map(), edits: new Map(), editing: null,
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -314,12 +339,19 @@ async function load() {
   }
   const plan = jsyaml.load(text);
   state.plan = plan;
+  state.raw = text;
   for (const m of plan.milestones || []) state.ms.set(m.id, m);
-  for (const n of plan.nodes || []) { state.nodes.set(n.id, n); state.dependents.set(n.id, []); }
+  for (const n of plan.nodes || []) {
+    state.nodes.set(n.id, n);
+    state.dependents.set(n.id, []);
+    state.base.set(n.id, fieldsOf(n));
+  }
   for (const n of state.nodes.values()) for (const d of deps(n)) state.dependents.get(d).push(n.id);
   state.optional = new Set(plan.optional || []);
   state.deliverables = new Set(plan.deliverables || (plan.end ? [plan.end] : []));
+  restoreEdits();
   analyse();
+  initTheme();
   renderHeader();
   window.addEventListener("hashchange", route);
   route();
@@ -329,6 +361,8 @@ async function load() {
 // Nodes in the same wave do not depend on each other, so a wave can run in parallel.
 function analyse() {
   const wave = new Map(), down = new Map();
+  state.chain = new Set();
+  state.chainEdges = new Set();
   const w = (id) => {
     if (wave.has(id)) return wave.get(id);
     const n = state.nodes.get(id);
@@ -403,6 +437,11 @@ function renderHeader() {
     stat(big(all.filter((n) => n.ready).length), "ready now"),
     stat(big(state.maxWave), "waves left"),
     stat(big(Math.max(0, ...widths.values())), "widest wave"));
+  const link = $("#changes-link");
+  link.hidden = state.edits.size === 0;
+  link.textContent = "Changes · " + state.edits.size;
+}
+function initTheme() {
   const btn = $("#theme");
   const modes = ["auto", "light", "dark"];
   let mode = "auto";
@@ -445,6 +484,7 @@ function renderView([view, arg]) {
   if (view === "milestones") return renderMilestones(root);
   if (view === "table") return renderTable(root);
   if (view === "timeline") return renderTimeline(root);
+  if (view === "changes") return renderChanges(root);
   return renderGraph(root, arg);
 }
 const rerender = () => renderView(state.lastView.split("/"));
@@ -456,6 +496,7 @@ function flags(n) {
   else if (state.deliverables.has(n.id)) out.push(el("span", { class: "tag end" }, "deliverable"));
   if (n.ready) out.push(el("span", { class: "tag ready" }, "ready"));
   if (state.optional.has(n.id)) out.push(el("span", { class: "tag" }, "opt"));
+  if (state.edits.has(n.id)) out.push(el("span", { class: "tag edited", title: "Changed in this browser, not yet exported" }, "edited"));
   return out;
 }
 function nodeClass(n) {
@@ -808,8 +849,12 @@ async function openDetail(id) {
   back.addEventListener("click", () => { if (history.length > 1) history.back(); else location.hash = "#/" + state.lastView; });
   const close = el("button", {}, "Close");
   close.addEventListener("click", () => { location.hash = "#/" + state.lastView; });
-  aside.append(el("div", { class: "bar-top" }, back, close));
+  const bar = el("div", { class: "bar-top" }, back, close);
+  aside.append(bar);
   if (!n) { aside.append(el("p", {}, "Unknown node " + id)); return; }
+  const editBtn = el("button", {}, state.editing === id ? "Close editor" : "Edit");
+  editBtn.addEventListener("click", () => { state.editing = state.editing === id ? null : id; openDetail(id); });
+  bar.append(editBtn);
   const refs = (ids) => (ids.length ? ids.map((x) => { const r = state.nodes.get(x); return el("a", { class: "ref", href: "#/node/" + x, title: r.title + " · " + r.status }, glyph(r.status), x); }) : "—");
   const repo = state.plan.repo;
   const issue = n.issue ? (repo ? el("a", { href: `${repo}/issues/${n.issue}`, target: "_blank", rel: "noopener" }, "#" + n.issue) : "#" + n.issue) : "—";
@@ -827,6 +872,7 @@ async function openDetail(id) {
       el("dt", {}, "Issue"), el("dd", {}, issue),
       el("dt", {}, "Dates"), el("dd", {}, `${n.start ? String(n.start instanceof Date ? n.start.toISOString().slice(0, 10) : n.start) : "—"} → ${n.finish ? String(n.finish instanceof Date ? n.finish.toISOString().slice(0, 10) : n.finish) : "—"}`),
       el("dt", {}, "File"), el("dd", {}, n.file ? el("a", { href: n.file, target: "_blank", rel: "noopener" }, n.file.replace(/^\.\.\//, "")) : "—")));
+  if (state.editing === id) aside.append(editForm(n));
   const md = el("div", { class: "md" }, "Loading…");
   aside.append(md);
   if (!n.file) { md.textContent = "No file."; return; }
@@ -851,7 +897,287 @@ async function openDetail(id) {
 }
 function closeDetail() {
   $("#detail").hidden = true;
+  state.editing = null;
   if (state.graph) state.graph.select(null);
+}
+
+/* ---------- editing ----------
+   Edits change only the fields a status update needs (status, owner, issue, start, finish) and
+   stay in this browser until exported. Export rewrites just those lines of the loaded plan.yaml
+   text (comments and layout are kept), sets `updated:` to today, and parses the result again to
+   check it before offering it. The exported file reaches main through a PR like any other edit. */
+const FIELDS = ["status", "owner", "issue", "start", "finish"];
+const STATUSES = {
+  task: ["planned", "active", "review", "done", "blocked", "dropped"],
+  experiment: ["planned", "active", "review", "done", "blocked", "dropped"],
+  decision: ["proposed", "accepted", "superseded", "rejected"],
+};
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const fmtDate = (v) => (v == null || v === "" ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v));
+function fieldsOf(n) {
+  return {
+    status: n.status ?? null,
+    owner: n.owner == null || n.owner === "" ? null : String(n.owner),
+    issue: n.issue == null || n.issue === "" ? null : Number(n.issue),
+    start: fmtDate(n.start),
+    finish: fmtDate(n.finish),
+  };
+}
+const sameFields = (a, b) => FIELDS.every((f) => a[f] === b[f]);
+function changedFields(id) {
+  const a = state.base.get(id), b = state.edits.get(id);
+  return b ? FIELDS.filter((f) => a[f] !== b[f]) : [];
+}
+function isValidDate(s) {
+  if (!DATE_RE.test(s)) return false;
+  const d = new Date(s + "T00:00:00Z");
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+// The rules of docs/work/plan/README.md, "Editing rules" and "Schema".
+function validate(n, f) {
+  const errs = [];
+  const allowed = STATUSES[n.type] || [];
+  if (!allowed.includes(f.status)) errs.push(`Status of a ${n.type} must be one of: ${allowed.join(", ")}.`);
+  if (f.owner != null && /[\n\r]/.test(f.owner)) errs.push("Owner must be one line.");
+  if (f.issue != null && !(Number.isInteger(f.issue) && f.issue > 0)) errs.push("Issue must be a positive whole number, or empty.");
+  for (const k of ["start", "finish"]) if (f[k] != null && !isValidDate(f[k])) errs.push(`${k[0].toUpperCase() + k.slice(1)} must be a date in YYYY-MM-DD form, or empty.`);
+  if (f.status === "planned" && f.start != null) errs.push("A planned node has no start date.");
+  if (f.status !== "planned" && f.start == null) errs.push("Set start when a node becomes active, proposed or later.");
+  if (RESOLVED.has(f.status) && f.finish == null) errs.push(`Set finish when a node becomes ${f.status}.`);
+  if (!RESOLVED.has(f.status) && f.finish != null) errs.push("Only a resolved node has a finish date.");
+  if (f.start && f.finish && f.finish < f.start) errs.push("Finish is before start.");
+  return errs;
+}
+function setFields(n, f) { for (const k of FIELDS) n[k] = f[k]; }
+function commitEdit(n, f) {
+  if (sameFields(f, state.base.get(n.id))) state.edits.delete(n.id); else state.edits.set(n.id, { ...f });
+  setFields(n, f);
+  afterEdit();
+}
+function revertEdit(id) {
+  state.edits.delete(id);
+  setFields(state.nodes.get(id), state.base.get(id));
+  afterEdit();
+}
+function afterEdit() {
+  saveEdits();
+  analyse();
+  renderHeader();
+  delete $("#view").dataset.key;
+  rerender();
+}
+
+function editForm(n) {
+  const cur = fieldsOf(n), base = state.base.get(n.id);
+  const status = el("select", {}, ...(STATUSES[n.type] || []).map((s) => el("option", { value: s, selected: s === cur.status ? "" : null }, s)));
+  const owner = el("input", { type: "text", value: cur.owner ?? "", placeholder: "session ID or person" });
+  const issue = el("input", { type: "text", inputmode: "numeric", value: cur.issue ?? "", placeholder: "number" });
+  const start = el("input", { type: "date", value: cur.start ?? "" });
+  const finish = el("input", { type: "date", value: cur.finish ?? "" });
+  status.addEventListener("change", () => {
+    const s = status.value;
+    if (s === "planned") start.value = "";
+    else if (!start.value) start.value = today();
+    if (RESOLVED.has(s)) { if (!finish.value) finish.value = today(); } else finish.value = "";
+  });
+  const was = (k) => (cur[k] !== base[k] ? el("div", { class: "was" }, "in file: " + (base[k] ?? "null")) : null);
+  const row = (label, input, k) => [el("label", {}, label), input, was(k)];
+  const errBox = el("ul", { class: "err", hidden: "" });
+  const read = () => ({
+    status: status.value,
+    owner: owner.value.trim() || null,
+    issue: issue.value.trim() === "" ? null : Number(issue.value.trim()),
+    start: start.value || null,
+    finish: finish.value || null,
+  });
+  const apply = el("button", { class: "btn primary" }, "Apply");
+  apply.addEventListener("click", () => {
+    const f = read(), errs = validate(n, f);
+    if (errs.length) { errBox.replaceChildren(...errs.map((e) => el("li", {}, e))); errBox.hidden = false; return; }
+    commitEdit(n, f);
+    openDetail(n.id);
+    toast(state.edits.has(n.id) ? "Change kept in this browser · export it from Changes" : "No difference from plan.yaml");
+  });
+  const cancel = el("button", { class: "btn" }, "Cancel");
+  cancel.addEventListener("click", () => { state.editing = null; openDetail(n.id); });
+  const actions = el("div", { class: "actions" }, apply, cancel);
+  if (state.edits.has(n.id)) {
+    const rv = el("button", { class: "btn danger" }, "Revert to file");
+    rv.addEventListener("click", () => { revertEdit(n.id); openDetail(n.id); });
+    actions.append(rv);
+  }
+  return el("div", { class: "edit" },
+    el("h3", {}, "Edit status fields"),
+    el("div", { class: "grid" },
+      row("Status", status, "status"), row("Owner", owner, "owner"), row("Issue", issue, "issue"),
+      row("Start", start, "start"), row("Finish", finish, "finish")),
+    errBox, actions,
+    el("p", { class: "note" }, "Changes stay in this browser until you export them from the Changes tab."));
+}
+
+/* ---------- export ---------- */
+function yamlScalar(field, v) {
+  if (v == null) return "null";
+  if (field === "issue") return String(v);
+  if (field === "start" || field === "finish") return v;
+  const s = String(v);
+  const plain = /^[A-Za-z_][A-Za-z0-9_.\-\/ ]*$/.test(s) && !/\s$/.test(s)
+    && !/^(null|true|false|yes|no|on|off|y|n)$/i.test(s) && !/: | #/.test(s);
+  return plain ? s : JSON.stringify(s);
+}
+// Replace "key: value" on one line and keep a trailing "# comment".
+function setLine(line, indent, key, value) {
+  const m = line.match(new RegExp("^" + indent + key + ":(.*)$"));
+  const rest = m ? m[1] : "";
+  const c = rest.match(/\s+#[^"']*$/);
+  return indent + key + ": " + value + (c ? c[0] : "");
+}
+function buildExport() {
+  const lines = state.raw.split("\n");
+  const out = lines.slice();
+  const errors = [];
+  const top = out.findIndex((l) => /^updated:/.test(l));
+  if (top < 0) errors.push("No top-level updated: line found.");
+  else out[top] = setLine(out[top], "", "updated", today());
+  const nodesAt = out.findIndex((l) => /^nodes:\s*(#.*)?$/.test(l));
+  if (nodesAt < 0) errors.push("No top-level nodes: list found.");
+  for (const [id, f] of state.edits) {
+    if (nodesAt < 0) break;
+    const head = out.findIndex((l, i) => i > nodesAt && new RegExp("^(\\s*)- id:\\s*" + id + "\\s*(#.*)?$").test(l));
+    if (head < 0) { errors.push(`Node ${id} not found in plan.yaml.`); continue; }
+    const itemIndent = out[head].match(/^(\s*)-/)[1];
+    const fieldIndent = itemIndent + "  ";
+    let end = head + 1;
+    while (end < out.length) {
+      const l = out[end];
+      if (l.trim() !== "" && l.match(/^(\s*)/)[1].length <= itemIndent.length) break;
+      end++;
+    }
+    for (const k of changedFields(id)) {
+      const at = out.findIndex((l, i) => i > head && i < end && l.startsWith(fieldIndent + k + ":"));
+      if (at < 0) { errors.push(`Field ${k} of ${id} not found in plan.yaml.`); continue; }
+      out[at] = setLine(out[at], fieldIndent, k, yamlScalar(k, f[k]));
+    }
+  }
+  const text = out.join("\n");
+  if (!errors.length) {
+    try {
+      const parsed = jsyaml.load(text);
+      const byId = new Map((parsed.nodes || []).map((n) => [n.id, n]));
+      for (const [id, f] of state.edits) {
+        const got = fieldsOf(byId.get(id) || {});
+        for (const k of FIELDS) if (got[k] !== f[k]) errors.push(`Check failed: ${id}.${k} reads back as ${got[k]}, expected ${f[k]}.`);
+      }
+      const ids = (parsed.nodes || []).map((n) => n.id).join(), before = (state.plan.nodes || []).map((n) => n.id).join();
+      if (ids !== before) errors.push("Check failed: the list of nodes changed.");
+    } catch (e) {
+      errors.push("Check failed: the exported text does not parse (" + e.message + ").");
+    }
+  }
+  const path = "docs/work/plan/plan.yaml";
+  let diff = `--- a/${path}\n+++ b/${path}\n`;
+  lines.forEach((l, i) => { if (l !== out[i]) diff += `@@ -${i + 1} +${i + 1} @@\n-${l}\n+${out[i]}\n`; });
+  return { text, diff, errors };
+}
+function renderChanges(root) {
+  const box = el("div", { class: "pad changes" });
+  root.append(box);
+  box.append(el("div", { class: "lede" }, el("h2", {}, "Pending changes"),
+    el("p", {}, "Edits made in this browser and not yet in plan.yaml. Export them, then bring them to main through a PR.")));
+  if (!state.edits.size) { box.append(el("p", {}, "No pending changes. Open a node and choose Edit.")); return; }
+  const rows = [];
+  for (const id of [...state.edits.keys()].sort()) {
+    const base = state.base.get(id), f = state.edits.get(id), n = state.nodes.get(id);
+    for (const k of changedFields(id)) {
+      const tr = el("tr", { "data-id": id },
+        el("td", { class: "id" }, id), el("td", {}, n.title), el("td", { class: "mono" }, k),
+        el("td", { class: "from mono" }, String(base[k] ?? "null")), el("td", { class: "mono" }, String(f[k] ?? "null")));
+      tr.addEventListener("click", () => { location.hash = "#/node/" + id; });
+      rows.push(tr);
+    }
+  }
+  box.append(el("table", { class: "list" },
+    el("thead", {}, el("tr", {}, ...["ID", "Title", "Field", "In file", "New"].map((h) => el("th", {}, h)))),
+    el("tbody", {}, rows)));
+  const { text, diff, errors } = buildExport();
+  if (errors.length) {
+    box.append(el("ul", { class: "err" }, errors.map((e) => el("li", {}, e))),
+      el("p", { class: "note" }, "Export is disabled until this is resolved. Reload the page if plan.yaml changed on disk."));
+  }
+  const btn = (label, cls, fn) => { const b = el("button", { class: "btn " + cls }, label); b.addEventListener("click", fn); if (errors.length && cls !== "danger") b.disabled = true; return b; };
+  box.append(el("div", { class: "actions" },
+    btn("Download plan.yaml", "primary", () => download(text, "plan.yaml")),
+    btn("Copy plan.yaml", "", () => copy(text, "plan.yaml copied")),
+    btn("Copy diff", "", () => copy(diff, "Diff copied")),
+    btn("Discard all", "danger", () => {
+      if (!confirm("Discard all pending changes?")) return;
+      for (const id of [...state.edits.keys()]) setFields(state.nodes.get(id), state.base.get(id));
+      state.edits.clear();
+      afterEdit();
+    })));
+  box.append(el("h3", {}, "Bring the changes to main"),
+    el("ol", {},
+      el("li", {}, "In your own worktree on a ", el("code", {}, "chore/<slug>"), " branch cut from ", el("code", {}, "main"), ", replace ", el("code", {}, "docs/work/plan/plan.yaml"), " with the downloaded file (or apply the diff with ", el("code", {}, "git apply --unidiff-zero"), ")."),
+      el("li", {}, "Run ", el("code", {}, "make test"), ", commit, push and open a PR to ", el("code", {}, "main"), "."),
+      el("li", {}, "After the PR is merged, choose Discard all here and reload.")),
+    el("p", { class: "note" }, "Only the changed field lines and updated: are rewritten; comments and layout of plan.yaml are kept. The diff has no context lines."),
+    el("pre", {}, diff));
+}
+function download(text, name) {
+  const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "text/yaml" })), download: name });
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+async function copy(text, done) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const t = el("textarea", { style: "position:fixed;opacity:0" });
+    t.value = text;
+    document.body.append(t);
+    t.select();
+    document.execCommand("copy");
+    t.remove();
+  }
+  toast(done);
+}
+function toast(msg) {
+  const t = el("div", { class: "toast", role: "status" }, msg);
+  document.body.append(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+/* ---------- pending edits in browser storage ----------
+   Kept per viewer and tied to the exact plan.yaml text they were made on; if the file changes,
+   the stored edits no longer apply and are dropped. */
+function hashText(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+const editsKey = () => "plan-edits:" + hashText(state.raw);
+function saveEdits() {
+  try {
+    if (state.edits.size) localStorage.setItem(editsKey(), JSON.stringify(Object.fromEntries(state.edits)));
+    else localStorage.removeItem(editsKey());
+  } catch (e) { /* storage unavailable */ }
+}
+function restoreEdits() {
+  let saved = null, stale = 0;
+  try {
+    const key = editsKey();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("plan-edits:") && k !== key) { localStorage.removeItem(k); stale++; }
+    }
+    saved = JSON.parse(localStorage.getItem(key) || "null");
+  } catch (e) { saved = null; }
+  if (saved && typeof saved === "object") {
+    for (const [id, f] of Object.entries(saved)) {
+      const n = state.nodes.get(id);
+      if (!n || !f || validate(n, f).length) continue;
+      state.edits.set(id, f);
+      setFields(n, f);
+    }
+  }
+  if (stale) setTimeout(() => toast("plan.yaml changed on disk; older pending edits were dropped"), 300);
 }
 
 load();
