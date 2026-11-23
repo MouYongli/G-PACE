@@ -33,3 +33,4 @@ v3 plan text (then `docs/research/plan.md`); task files T006, T007, T008; `plan.
 
 - 2026-11-22: created at the user's request; manager session m01-T005 on `task/T005-plan-v3`.
 - 2026-11-22: v3 drafted and kept outside git pending approval; T006, T007, T008 registered; plan.yaml gates, benchmark registry, E001, T002, T003 and task index aligned with v3.
+- 2026-11-23: v3 drafts revised after an external review (formal model with four entry kinds, two-level staleness, template-serialisation arm, hybrid detection arm, minimal core, phase 0). Closed at the user's request. The work files were merged in PR #5; the v3 text itself stays outside git as drafts in the main checkout, so `docs/research/plan.md` still carries the earlier text and the third acceptance item is not met. Replacing `plan.md` needs a follow-up once the user approves the drafts.

@@ -150,12 +150,12 @@ nodes:
     type: task
     title: Research plan v3
     milestone: null
-    status: active
+    status: done
     depends_on: []
     issue: null
     owner: m01-T005
     start: 2026-11-22
-    finish: null
+    finish: 2026-11-23
     file: ../tasks/T005-plan-v3.md
   - id: T006
     type: task
