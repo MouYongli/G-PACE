@@ -18,6 +18,7 @@ The integration owner adds a row here when a task is created. The task's manager
 | [T008](T008-change-sequence-design.md) | Controlled change-sequence generator design | Design of the RQ2 primary benchmark |
 | [T009](T009-env-setup.md) | Python and inference environment | Python 3.12, research and vLLM serving environments (D004) |
 | [T010](T010-data-download.md) | Benchmark download scripts | Pinned downloads of the five benchmarks with verified manifests |
+| [T011](T011-novelty-check.md) | Novelty check of claim-pattern dependencies | Phase 0: whether the dependency granularity and two-level staleness are already covered |
 
 ## Template
 

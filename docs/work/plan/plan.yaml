@@ -9,7 +9,6 @@ milestones:           # plan.md section 9; one milestone per implementation phas
     title: Novelty check
     depends_on: []
     due: null
-    status: planned   # no node registered yet
     gate: >-
       If claim-pattern dependencies are already covered by published dependency keys, claim
       no novelty in granularity and narrow the contribution to two-level staleness, the
@@ -237,3 +236,14 @@ nodes:
     start: 2026-11-22
     finish: null
     file: ../tasks/T010-data-download.md
+  - id: T011
+    type: task
+    title: Novelty check of claim-pattern dependencies
+    milestone: M0
+    status: planned
+    depends_on: [T005]
+    issue: null
+    owner: null
+    start: null
+    finish: null
+    file: ../tasks/T011-novelty-check.md
