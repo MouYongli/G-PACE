@@ -409,6 +409,8 @@ The last three rebuild lazily, at the next read. They differ as follows.
 
 Read-time re-query is exact with respect to the claim graph and serves as the reference against which every other strategy's misses and over-marking are counted. It is exact only with respect to the claim graph: when extraction is wrong, every strategy on the graph misses together. That part is counted separately as end-to-end staleness against the event log (section 6.4). When the detection module errors or times out, the engine falls back to raw-text retrieval.
 
+**The writer does not read views.** The writer's input (section 5.6) never contains view text, staleness marks or fingerprints; it sees only the current message, local context, candidate entities and predicates, and claims retrieved from the graph. Views and their marks are derived state, and the graph is written only from what messages state. Tether reports why this matters: storing withdrawals at write time, where later LLM writers read them, was less safe than recomputing them at read time, because those writers then failed to demote more failed objects. A configuration that breaks this constraint is reported as a deviation.
+
 **View selection.** Questions are invisible during ingestion, so resident views can only be materialised from a template list. The main configuration uses six template families:
 
 | Template family | Binding | Example |
