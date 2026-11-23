@@ -7,3 +7,72 @@ Notes on papers, baseline code and benchmark sources, organized by research ques
 | TBD | | | | |
 
 When a baseline is chosen for reproduction, record its implementation version and required changes in the experiment file under `docs/work/experiments/`.
+
+## Phase 0 novelty check (T011)
+
+Reading done on 2026-11-23 for plan section 9, phase 0. "p" is the printed PDF page; section numbers are the papers' own. Source texts, code excerpts and the search log are kept in `$PROJECT_ROOT/runs/T011/artifacts/reading/`.
+
+### Dependency mechanisms compared with claim-pattern dependencies
+
+Claim-pattern dependencies (plan sections 3.3, 3.4, 5.4): the compiler derives every claim pattern of a view's query, including patterns inside negation and aggregation, with the pattern's constants, its attribution constraint and filters local to the pattern. Each new claim, attribution, evidence link or supersession event is matched against these patterns at write time; any match marks the view. Staleness has two levels, answer and citation.
+
+| Work | Dependency points to | Built by | Fires on | New record never consumed (new match, negation hit, new aggregate member) | Negation and aggregation | Insert vs delete | Answer vs citation change | Stated correctness | Anchors |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MemShift, scope key | The set of records a definition "ranges over": the definition's source, condition, time window and joins, without its threshold or aggregate; one global value per definition item, no per-entity constants | Hand-coded per definition by the authors (`SCOPE_RANGES`, "the executable form of SCOPE_PREDICATES"); held-out definitions use the generator's `admit` function; no query analysis | Change of a hash over the (record id, revision) pairs in range, recomputed at maintenance checkpoints (fork + 1, 2, 4, 8 weeks); any field revision of an in-range record, a record entering or leaving the range (including by a sliding window), a definition-version change | Yes for records entering the range (phantoms), at range granularity | Ignored: the range drops thresholds and aggregates; definitions are one-sentence natural-language rules evaluated by hand-written programs | Both, by hashing the range | No: "An item is changed at a checkpoint if its gold value or status differs" (§3.3, p4); the oracle key fires on dependency changes without value change, scored only as over-invalidation | None formal; empirical: no key missed a changed item-time (Table 9 note) | §3.1 p3; App. C.4 p24 ("built from each definition item's definition scope, the records its definition ranges over"); App. F.4 pp42–43; Table 9(a) p25; code `gen/kappa.py`, `holdmem/system.py` |
+| MemShift, source / citation / oracle keys | Source: event count per source of the item. Citation: event count per record group containing a cited record. Oracle: gold (id, revision) dependency set | System at write time (source, citation); gold annotation (oracle, offline only) | Count or hash change | Source: yes, unselectively (invalidates 99.7%, 99.3%, 100.0% of unchanged items). Citation: no; misses 16.9% and 32.4% of changed items after source revision and redefinition, "records that entered the item's scope after the write" | Not analysed | Both | No | None | §4 p5; App. C.1 p22; §6.3 p8; App. A p19 ("a read set or citation list recorded at write time is not a sound dependency set") |
+| Martin, Unbehauen and Auer (2010) | Paper text not yet read; see the next subsection | | | | | | | | |
+| Tether | Exact object versions the verdict rests on (`derived_from`) | LLM writer at write time, only for relations visible in its window | Read-time reachability pass: a version is bad if its check record is false or null, or any record names a higher version of the same object; passing verdicts deriving from a bad version are withdrawn | Only via the higher-version trigger, "a conservative re-verification trigger"; nothing for set or count members, empty to non-empty, or negated conditions (pass/fail conjunction, Eq. 1) | No | Not applicable (verdicts withdrawn, not deleted) | No: a withdrawn verdict "becomes null, not false" | None; "a missing one keeps a stale verdict" | §2 Eq. 1 p3; §3 "Records" and "Withdrawing" p4; §6.3 p7; §6.6 and Table 3 p8 (edge recall 1.000, .840 before, .658 after); §8 p9 |
+| StateMem | Other state units (`derived_from` for values, `coupled_with` for status) | TurnEncoder LLM at ingestion | A linked unit's status just changed; a deterministic Rechecker flags dependents `needs_recheck` | No: a new unit affects existing units only through LLM-judged supersession | No | Not applicable | No: every flag is treated as "its baked-in value is now wrong" (App. E.3 p16) | None; over-propagation reported (§6.2 p6) | §5.1 pp4–5; §5.2 p5; §5.3 p5 ("The LLM only recomputes the answer given those flags"); App. E.1 p15 |
+| StateGraph | State nodes and pending actions (DERIVED-FROM, DEPENDS-ON, AFFECTS-ACTION), each state with supporting evidence π | LLM proposes candidate edges at write time; LLM counterfactual verifier grades STRICT / WEAK / NONE | Direct revision of a state matched "by canonical revision keys and functional identity", then breadth-first propagation along STRICT edges when no alternative support survives | Only if an LLM judges the new observation to directly update or contradict a matched state; no membership, count or negation mechanism | No | Not applicable | Partly: re-grounded states and NEEDS-RECOMPUTE exist, but no "value unchanged, citations changed" state | Definition 1, Conditional Invalidation Closure (one-way, against a reference edge set); errors of the same LLM may be correlated (Limitations p10) | §3.1–3.3 pp3–4; §4.1 p4; §4.3 pp5–6; §4.4 and Alg. 1 p6; App. B.2 p16 |
+
+**Verdict.** No work compared here derives the dependency from an analysis of the defining query, matches each inserted fact against patterns with constants and local filters, or includes patterns inside negation and aggregation. MemShift's scope key is the closest: it catches records entering a definition's range, but the range is hand-coded per definition, has no per-entity constants, ignores aggregates and thresholds, fires on any field revision in range and is recomputed at checkpoints rather than matched per write. Claim-pattern granularity is therefore finer than every agent-memory key found; the pattern-matching rule itself is the SPARQL cache rule of Martin et al. (next subsection) and is not claimed. The scope key also catches changes caused only by the clock (window exits); plan section 3.3 excludes read-time-relative windows from persisted views, so this case does not arise in this plan.
+
+Note on MemShift Table 9(a), 79.0% is the share of definition item-times re-derived after a deletion, not the share of unchanged items invalidated (52.3%).
+
+### Martin, Unbehauen and Auer (2010)
+
+Bibliographic record: ESWC 2010, LNCS 6089, pp. 304–318, doi 10.1007/978-3-642-13489-0_21.
+
+Paper text: not yet obtained (AKSW server refuses connections; CiteSeerX 404; no archived copy). The questions of the acceptance criteria (OPTIONAL and FILTER, insertions versus deletions, correctness lemma) are answered from the paper once it is read.
+
+Implementation evidence (AKSW Erfurt, branch `develop`, commit `cafb3a4caef01db9cb6dddf97929f7fc34c5477c`; a later version of the system, which may differ from the paper):
+
+- `library/Erfurt/Cache/Frontend/QueryCache.php`, `parseQuery`: every triple pattern of every group graph pattern is stored with its constants; variables are stored as NULL. CONSTRUCT is rewritten to SELECT before parsing.
+- `library/Erfurt/Cache/Backend/QueryCache/Database.php`, `invalidate`: for each changed statement, `(subject = s OR subject IS NULL) AND (predicate = p OR predicate IS NULL) AND (object = o OR object IS NULL)`, with the graph IRI matched the same way; a cached result is cleared if any one of its stored patterns matches. Above 20 changed statements all cached queries of the graph are cleared.
+- OPTIONAL and UNION groups are parsed into separate graph patterns whose triple patterns are indexed like mandatory ones; FILTER constraints (including `!bound`), aggregates and MINUS are not read by the cache.
+- `library/Erfurt/Store.php`: insertions and deletions call the same invalidation.
+- No lemma or proof in the code, the Erfurt wiki or the project page.
+
+Secondary accounts: the abstract ("based on analysing the graph patterns of cached SPARQL queries in order to obtain information about what kind of updates will change the query result"); Ali et al., arXiv 2102.13027, Sect. 6.6 (results "are invalidated when a triple matching a query pattern changes"); Papailiou et al., SIGMOD 2015, related work (a "meta-data relational database" stores information about cached results).
+
+### Search records
+
+Both searches were run on 2026-11-23 with a web search tool; the full query log is in `$PROJECT_ROOT/runs/T011/artifacts/reading/search/query-log.txt`.
+
+**Search A: a change of witnesses or evidence as its own level of staleness (incremental maintenance of provenance, lineage and citations).**
+
+Queries: `Green Karvounarakis Ives Tannen "Update Exchange with Mappings and Provenance" incremental maintenance provenance deletion`; `RDA recommendation dynamic data citation timestamped query result set hash re-execute`; `Wu Alawini Davidson Silvello "Data Citation: Giving Credit where Credit is Due" SIGMOD 2018 citation views`; `incremental maintenance of provenance semirings view maintenance provenance changes answer unchanged`; `Liu Taylor Zhou Ives Loo "absorption provenance" recursive views maintenance ICDE`; `Trio ULDB lineage maintenance under updates Widom "lineage" deletions data modifications`; `citation of evolving data query result citation changes versioned database Buneman Davidson citation views maintenance`; `Buneman Silvello "rule-based citation system for structured and evolving datasets" versioned citation`; `Yinjun Wu Davidson data citation views "covering" rewriting provenance polynomial citation version database update`.
+
+Found:
+
+- Green, Karvounarakis, Ives and Tannen, Update Exchange with Mappings and Provenance, VLDB 2007 (section 4 read): provenance relations are maintained with their own deltas; on deletion a tuple whose derivations shrink is re-checked and can survive, so provenance changes while the tuple stays. This case is implicit and is not named or exposed as a staleness level.
+- Liu, Taylor, Zhou, Ives and Loo, absorption provenance, ICDE 2009 / TKDE 2010 (technical report read in a targeted way): "If the provenance has indeed changed despite absorption, u gets propagated to the next operator, annotated with provenance deltaPv". The closest operational precedent: a provenance-only change is detected and propagated as its own event. Its purpose is cheaper deletion, not current citations.
+- RDA Working Group on Data Citation, Precise, Actionable Reference to Dynamic Data, revision of 2025-04-04 (read in full): timestamped queries, a result-set checksum (R7), re-execution against the current state with a new identifier "if the result set differs" (R4, R11). Direct precedent for read-time re-query with fingerprints, at one level (the result set).
+- Data citation by citation views (Davidson et al., CIDR 2017; Wu et al., SIGMOD 2018; ProvCite, VLDB 2019; Buneman and Silvello, 2010): citations built from why- and where-provenance by query rewriting; abstract level only (Wu et al. 2018 could not be opened); nothing found on maintaining citations under updates.
+- Trio / ULDB: lineage named as a way to propagate updates to derived data (vision slides); no maintenance algorithm found.
+
+Result: partial precedent. Provenance-only changes are maintained as such in Datalog provenance systems, and result-set fingerprints are standard in dynamic data citation, but no work found defines "answers unchanged, witnesses or evidence changed" as a staleness level of a derived artifact or repairs citations from it.
+
+**Search B: database work on materialised views maintained by or computed with LLMs, and semantic operators.**
+
+Queries: `LLM materialized view maintenance incremental semantic operators base data updates invalidation`; `incremental maintenance of LLM query results semantic operators new data arrives reuse previous LLM outputs`; `CacheSense freshness-aware semantic caching selective invalidation LLM`; `"semantic views" OR "LLM-powered views" database materialized LLM UDF refresh cost updates`; `LOTUS Palimpzest DocETL ZenDB semantic operator incremental updates materialization reuse when documents change`; `LLM-generated report summary citations stale when source documents update incremental regeneration provenance-based invalidation`; `ThalamusDB Galois UQE SUQL CAESURA LLM query processing caching results updates freshness`; `incremental LLM-powered data processing pipeline recompute only changed documents DocETL OR Palimpzest OR Aryn "incremental"`.
+
+Found:
+
+- Enzyme, incremental view maintenance at Databricks, arXiv 2603.27775 (read in a targeted way): non-deterministic functions, including AI functions, fall back to complete recomputation.
+- Shankar and Parameswaran, Motion, SIGMOD 2024 demo (abstract): prompts as views over unstructured data under a weak consistency model; no staleness criterion.
+- SemReuse, arXiv 2610.16035 (abstract): reuse of cached natural-language views across related queries; not about base-data updates.
+- FreshCache, arXiv 2607.04281 (search snippet): freshness-aware semantic caching with a learned risk model and content hashes. "CacheSense" was not found under that name.
+- LOTUS, Palimpzest, DocETL, ZenDB, ThalamusDB, Galois, UQE, CAESURA, SUQL (snippets): query optimisation and cost per query; no handling of updates found.
+
+Result: nothing found that maintains or invalidates LLM-derived views under base-data updates at query-pattern granularity or with an answer-versus-citation criterion. Several items were read only at abstract or snippet level, which is weak evidence of absence.
