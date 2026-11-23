@@ -125,23 +125,23 @@ nodes:
     type: task
     title: Novelty check of claim-pattern dependencies
     milestone: M0
-    status: review
+    status: done
     depends_on: [T005]
     issue: 14
     owner: m01-T011
     start: 2026-11-23
-    finish: null
+    finish: 2026-11-23
     file: ../tasks/T011-novelty-check.md
   - id: D005
     type: decision
     title: Wording of the proposition and contribution scope
     milestone: M0
-    status: proposed
+    status: accepted
     depends_on: [T011]
     issue: null
-    owner: null
+    owner: user
     start: 2026-11-23
-    finish: null
+    finish: 2026-11-23
     file: ../decisions/D005-contribution-wording.md
   # ---- M1 · Pilot measurements
   - id: T001
