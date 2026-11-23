@@ -1,6 +1,6 @@
 # Introduction (draft)
 
-Status: draft for discussion. Citations are numbered in order of first appearance. References follow the Springer LNCS style (splncs04), with a DOI or stable URL for every entry; they were checked against publisher, arXiv, W3C and ISO records on 2026-11-21, except [15] and [16], which were added on 2026-11-23 and are still to be completed and checked.
+Status: draft for discussion. Citations are numbered in order of first appearance. References follow the Springer LNCS style (splncs04), with a DOI or stable URL for every entry; they were checked against publisher, arXiv, W3C and ISO records on 2026-11-21; [15] and [16] were added and checked against their arXiv records on 2026-11-23.
 
 ## Context is a scarce resource
 
@@ -110,8 +110,8 @@ We assess each strategy by its misses and over-marking relative to read-time re-
 
 [14] Zhao, Y., Dai, C., Kou, M., Xiu, Y.: MemoRepair: Barrier-first cascade repair in agentic memory. arXiv preprint arXiv:2605.07242 (2026). https://arxiv.org/abs/2605.07242
 
-[15] MemShift. arXiv preprint arXiv:2611.02338 (2026). https://arxiv.org/abs/2611.02338 (authors and full title to be completed from the arXiv record)
+[15] Xu, Z., Zhang, H., Dong, Y., Onizuka, M., Xiao, C.: MemShift: Separating detection from repair in LLM-derived personal memory. arXiv preprint arXiv:2611.02338 (2026). https://arxiv.org/abs/2611.02338
 
-[16] MemDerive. arXiv preprint arXiv:2610.25373 (2026). https://arxiv.org/abs/2610.25373 (authors and full title to be completed from the arXiv record)
+[16] Gao, S., Li, Y., Chen, H., He, B., Wu, M., Zeng, J., Heinrich, M., Sun, S.: MemDerive: A diagnostic benchmark for agent memory over evolving data. arXiv preprint arXiv:2610.25373 (2026). https://arxiv.org/abs/2610.25373
 
 [17] ISO: ISO 24617-2:2020 Language resource management — Semantic annotation framework (SemAF) — Part 2: Dialogue acts. Edition 2. International Organization for Standardization, Geneva (2020). https://www.iso.org/standard/76443.html
