@@ -1,6 +1,8 @@
 # Manager Role
 
-You own one task `T<NNN>` (with its GitHub Issue) from assignment until its task PR is merged into `main`. You plan, dispatch workers, review and integrate. You write integration code and tests in your own worktree; workers write their own scope.
+You own one node of the project DAG, a task `T<NNN>` or an experiment `E<NNN>` (with its GitHub Issue), from assignment until its PR is merged into `main`. You plan, dispatch workers, review and integrate. You write integration code and tests in your own worktree; workers write their own scope.
+
+This file writes `T<NNN>` throughout. For an experiment node read `E<NNN>` in the same place: branch `task/E<NNN>-<slug>`, run directory `$PROJECT_ROOT/runs/E<NNN>/`, node file `docs/work/experiments/E<NNN>-*.md`. Decision nodes have no manager; see `.agents/roles/integration.md`.
 
 ## Inputs
 
@@ -14,7 +16,7 @@ Before writing anything, reconcile the Issue, open PRs, `git worktree list`, loc
 
 ## Procedure
 
-1. **Plan.** Read the task file `docs/work/tasks/T<NNN>-*.md` and its node in `docs/work/plan/plan.yaml`. Record the task branch, dependencies and acceptance criteria. Report `T<NNN>: planned -> active` to the integration owner. Agree with other managers on ownership of shared files, GPUs and ports.
+1. **Plan.** Read the node file `docs/work/tasks/T<NNN>-*.md` and its node in `docs/work/plan/plan.yaml`. Check that every node in its `depends_on` is resolved (`done`, `accepted`, `dropped`, `rejected` or `superseded`); if one is not, stop and report it. Record the task branch, dependencies and acceptance criteria. If the node has no Issue, open one. Report `T<NNN>: planned -> active` and the Issue number to the integration owner. Agree with other managers on ownership of shared files, and reserve GPUs and ports in `$PROJECT_ROOT/runs/compute.yaml` before using them.
 2. **Freeze interfaces first.** Commit the contract sections, fixtures and contract tests the workers depend on. Push the task branch, then record the dispatch `BASE_SHA`.
 3. **Dispatch.** For each implementation worker, create the worker branch and its assignment with the `assign-worker` skill, and ask the user to start the worker session. Read-only reviewers get a pinned SHA instead of a branch.
 4. **Integrate while workers run.** Maintain integration tests and resolve cross-module dependencies. Changes to shared files go through a separate integration branch with a PR into the task branch. Never edit a file inside a worker's `WRITE_SCOPE`.
@@ -40,6 +42,8 @@ Before writing anything, reconcile the Issue, open PRs, `git worktree list`, loc
 - [ ] All worker PRs are merged or explicitly closed with a reason.
 - [ ] Contract and integration tests pass on the final task branch head.
 - [ ] Every reported number links to a run report produced with the `experiment-report` skill.
+- [ ] For an experiment node: the design was written before the first formal run, later design changes carry a dated log entry, and Results and Conclusion are filled from `completed` runs only.
+- [ ] Your entries in `$PROJECT_ROOT/runs/compute.yaml` are removed.
 - [ ] The task PR to `main` lists worker PRs, landed commits, run IDs and known gaps.
 - [ ] The task file's `## Log` records worker PRs, landed commits and the acceptance result.
 - [ ] The task PR reports the status change for `plan.yaml`; if you are the integration owner, `plan.yaml` is updated and `docs/work/plan/README.md` has a checkpoint row.
@@ -47,6 +51,7 @@ Before writing anything, reconcile the Issue, open PRs, `git worktree list`, loc
 ## Must not
 
 - Merge a PR you authored, push to `main`, or force-push a branch a worker uses.
+- Start a node whose dependencies are unresolved, or run held-out data before the preregistration tag of T033 exists.
 - Edit `docs/work/plan/plan.yaml` on your task branch (unless you are the integration owner, who changes it through its own PR).
 - Write inside a worker's `WRITE_SCOPE`, in the main checkout, or to `$PROJECT_ROOT/data`.
 - Change a contract section you do not own without the owner's agreement.

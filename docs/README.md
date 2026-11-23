@@ -12,9 +12,10 @@ File and directory names are lowercase kebab-case, except the conventional `AGEN
 | Task | `docs/work/tasks/T<NNN>-<slug>.md` | `T001-record-contracts.md` |
 | Experiment | `docs/work/experiments/E<NNN>-<slug>.md`; its config is `configs/experiments/E<NNN>-<slug>.yaml` | `E001-pilot-measurements.md` |
 | Decision | `docs/work/decisions/D<NNN>-<slug>.md` | `D001-shared-benchmark-storage.md` |
-| Task branch (manager) | `task/T<NNN>-<slug>`, cut from `main` | `task/T001-record-contracts` |
+| Task branch (manager) | `task/T<NNN>-<slug>`, cut from `main`; an experiment node uses `task/E<NNN>-<slug>` | `task/T001-record-contracts`, `task/E003-ablation-a-gold` |
+| Integration branch | `chore/<slug>`, cut from `main` | `chore/register-T011` |
 | Worker branch | `worker/T<NNN>-<sub>`, cut from the task branch at `BASE_SHA` | `worker/T002-locomo` |
-| Manager session ID | `m<NN>-T<NNN>` | `m01-T001` |
+| Manager session ID | `m<NN>-T<NNN>` or `m<NN>-E<NNN>` | `m01-T001` |
 | Worker session ID | `m<NN>-T<NNN>-<sub>` | `m01-T002-locomo` |
 | Run ID | `<experiment>-<YYYYMMDDTHHMMSSZ>-<4 hex>` (UTC) | `E001-20261121T093000Z-a1b2` |
 | Benchmark slug | lowercase kebab-case, shared by config, fixtures and its section in `benchmarks.md` | `longmemeval-s` |
@@ -69,14 +70,27 @@ Runtime files (main checkout only, git-ignored):
 | Worker assignments | `$PROJECT_ROOT/runs/T<NNN>/assignments/<sub>.yaml` |
 | Worker handoffs | `$PROJECT_ROOT/runs/T<NNN>/handoffs/<sub>.yaml` |
 | Run artifacts (`RUN_DIR`) | `$PROJECT_ROOT/runs/T<NNN>/artifacts/<sub>/<experiment>/<run-id>/` |
+| Compute reservations | `$PROJECT_ROOT/runs/compute.yaml` |
 | Model weights | Hugging Face cache (`HF_HOME`, default `~/.cache/huggingface`), shared by all worktrees; never under `data/` |
+
+For an experiment node the directory is `$PROJECT_ROOT/runs/E<NNN>/` with the same layout; read `T<NNN>` in `docs/research/contracts.md#experiment-run` as the node ID.
+
+`compute.yaml` is the shared ledger of GPUs and ports. Create it if it is missing. Add your entry before starting a model server, check that it does not overlap with an existing one, and remove it when the server stops:
+
+```yaml
+- session: m01-E003        # who holds the reservation
+  gpus: [0, 1]
+  ports: [8000]
+  since: 2026-11-23
+  purpose: Qwen3-8B server for E003
+```
 
 Worktrees: their location is chosen by whoever creates them (Claude Code, the Codex app, or `git worktree add`). `git worktree list` from any worktree shows all of them.
 
 ## Viewing the plan
 
 ```bash
-cd "$PROJECT_ROOT" && python3 -m http.server 8000
+make plan
 # open http://localhost:8000/docs/work/plan/
 ```
 

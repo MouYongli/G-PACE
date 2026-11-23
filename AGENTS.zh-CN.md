@@ -12,19 +12,20 @@ GRACE 是一个研究项目。研究问题、假设和设计见 `docs/research/p
 
 ## 会话身份
 
-每个会话都从一份任务书开始，任务书须声明 `ROLE`、`SESSION_ID`、`TASK`、`WORKDIR` 和 `BRANCH`。
+每个会话都从一份任务书开始，任务书须声明 `ROLE`、`SESSION_ID`、`TASK`、`WORKDIR` 和 `BRANCH`。`TASK` 指项目 DAG 中的一个节点：任务 `T<NNN>` 或实验 `E<NNN>`。流程中凡写 `T<NNN>` 的地方（分支、会话 ID、运行目录），实验节点在同一位置使用 `E<NNN>`。
 
 | ROLE | 行动前阅读 | 任务书来源 |
 | --- | --- | --- |
 | `manager` | `.agents/roles/manager.md` | skill `start-manager` |
 | `worker` | `.agents/roles/worker.md` | skill `assign-worker` |
 | `reviewer` | `.agents/roles/reviewer.md` | 指定 SHA 的审查请求 |
+| `integration` | `.agents/roles/integration.md` | 用户以书面形式指定本轮的集成负责人 |
 
-角色缺失时保持只读，直到发起者以书面形式明确角色和归属。
+角色缺失时保持只读，直到发起者以书面形式明确角色和归属。决策节点 `D<NNN>` 没有会话：由用户做出决策，集成负责人记录。
 
 ## 仓库与 worktree
 
-一个仓库，多个 worktree。主 checkout 始终在 `main` 分支，是人的工作区，agent 不在其中改代码。每个 manager 在一个 worktree 中工作，分支为从 `main` 切出的 `task/T<NNN>-<slug>`；每个 worker 在一个 worktree 中工作，分支为从其 task 分支切出的 `worker/T<NNN>-<sub>`。同一分支只能被一个 worktree 检出，由此保证每个分支只有一个写入者。worktree 放在哪里无关紧要，可以由 Claude Code、Codex app 或 `git worktree add` 创建。命名规范和查找路径见 `docs/README.md`。
+一个仓库，多个 worktree。主 checkout 始终在 `main` 分支，是人的工作区，agent 不在其中修改被追踪的文件，除非用户以书面形式为该会话指明例外。每个 manager 在一个 worktree 中工作，分支为从 `main` 切出的 `task/T<NNN>-<slug>`；每个 worker 在一个 worktree 中工作，分支为从其 task 分支切出的 `worker/T<NNN>-<sub>`；集成负责人在一个 worktree 中工作，分支为从 `main` 切出的 `chore/<slug>`。同一分支只能被一个 worktree 检出，由此保证每个分支只有一个写入者。worktree 放在哪里无关紧要，可以由 Claude Code、Codex app 或 `git worktree add` 创建。命名规范和查找路径见 `docs/README.md`。
 
 ## 项目根目录与路径
 
@@ -85,6 +86,7 @@ make setup-serve                                        # 创建 envs/serve/.ven
 make test                                               # 全部测试
 make test-contracts                                     # 仅契约测试
 make lint                                               # lint（ruff）
+make plan                                               # 启动计划可视化页面：http://localhost:8000/docs/work/plan/
 uv run python <script>                                  # 其他命令都在该环境中运行；不要直接调用 python3 或 pip
 git worktree list                                       # 列出所有 worktree 及其分支
 ```
@@ -94,35 +96,40 @@ git worktree list                                       # 列出所有 worktree 
 必须：
 
 - 任一可写 worktree 同一时间只有一个写入者。只读审查须指定 SHA。
+- 只有当节点 `depends_on` 中的每个节点在 `docs/work/plan/plan.yaml` 中都已解决（`done`、`accepted`、`dropped`、`rejected` 或 `superseded`）时，才能开始该节点。
 - 只从 `$PROJECT_ROOT/data` 读取共享输入，并校验 `configs/benchmarks/` 中写明的版本和 manifest 校验值。
 - 缓存、索引、预测、日志和 checkpoint 只写入 `$PROJECT_ROOT/runs` 下自己独占的 `RUN_DIR`（见 `docs/research/contracts.md#experiment-run`）。
 - 正式运行前提交所有可能影响结果的修改，并记录完整 SHA、解析后的配置、数据校验值、split、seed、命令和计算资源。
+- 启动模型服务前，先在 `$PROJECT_ROOT/runs/compute.yaml` 中登记要占用的 GPU 和端口，服务停止后删除该条目（格式见 `docs/README.md`）。
 - 失败、部分结果和跳过的检查要如实报告，并附实际输出。
 
 禁止：
 
-- 写入 `$PROJECT_ROOT/data`，或在主 checkout 中改代码。
+- 写入 `$PROJECT_ROOT/data`，或在主 checkout 中修改被追踪的文件。
 - 在被追踪的文件中写绝对路径。
 - 修改不归自己负责的 `docs/research/contracts.md` 小节。应把需求交给 owner，同时继续独立部分。
 - 报告无法关联到真实运行证据的分数。合成 fixtures 仅用于 CI。
+- 在 T033 的预注册标签存在之前运行留出集或测试集数据。在此之前只用开发数据。
+- 依据留出集结果调参；或在配置锁定（D012）之后修改已冻结的配置、提示、切分或预算，而不在实验日志和 PR 中记为偏离。
 - 推送到 `main`、对共享分支 force-push，或合并自己的 PR。
 - 非本轮集成负责人修改 `docs/work/plan/plan.yaml` 或 `docs/work/*/README.md` 中的索引表。
 - 在任务、实验或决策文件中写状态或日期；这些只记录在 `plan.yaml` 中。
 
 ## 计划、状态与验收
 
-- 项目以 DAG 规划：里程碑 `M<N>`（对应计划第 9 节的每个阶段，各有一个检查条件）包含任务 `T<NNN>`、实验 `E<NNN>` 和决策 `D<NNN>`。`docs/work/plan/plan.yaml` 是结构、状态和日期的唯一来源；schema 和检查点见 `docs/work/plan/README.md`。
+- 项目规划为由节点构成的 DAG：任务 `T<NNN>`、实验 `E<NNN>` 和决策 `D<NNN>`，以 `depends_on` 相连。边只规定先后；没有未解决依赖的节点可以并行。里程碑 `M<N>`（对应计划第 9 节的每个阶段）只对节点分组；每个里程碑的检查条件由一个决策节点执行。DAG 止于一个结束节点，即论文。`docs/work/plan/plan.yaml` 是结构、状态和日期的唯一来源；schema 和检查点见 `docs/work/plan/README.md`。
+- 决策由用户做出。决策节点的依赖全部解决后，对照它的各个选项整理证据，然后询问。不执行的可选节点标为 `dropped`（决策标为 `rejected`），这对依赖它的节点而言即为已解决。
 - 集成负责人通过向 `main` 提 PR 更新 `plan.yaml`。其他人在 PR 或交接单中报告状态变化（例如 `T003: active -> review`）。
 - 每个任务、实验和决策文件都有 YAML front matter（`id`、`title`、`created`）和按日期记录的 `## Log`；有进展时追加日志。
-- GitHub Issue 用于讨论和关联 PR；每个任务的 Issue 编号记录在 `plan.yaml` 中。验收在 PR 中完成（`.github/pull_request_template.md`）。
+- GitHub Issue 用于讨论和关联 PR。节点转为 `active` 时创建 Issue，编号记录在 `plan.yaml` 中。验收在 PR 中完成（`.github/pull_request_template.md`）。
 - 跨任务的接口变更须先与相关契约小节的 owner 协调。
-- 分支、审查、合并顺序和恢复见 `.agents/roles/manager.md`。
+- 分支、审查、合并顺序和恢复见 `.agents/roles/manager.md`；新增节点、记录状态和决策见 `.agents/roles/integration.md`。
 
 ## Skills
 
 | Skill | 使用时机 |
 | --- | --- |
-| `start-manager` | 为某个 Issue 启动或恢复 manager 会话 |
+| `start-manager` | 为一个任务或实验节点启动或恢复 manager 会话 |
 | `assign-worker` | manager 创建 worker 分支及其任务书 |
 | `worker-handoff` | worker 将 PR 和证据交回 manager |
 | `experiment-report` | 任何正式运行结束时（无论完成还是失败）；填写实验文件的 Runs 和 Results |
@@ -130,13 +137,15 @@ git worktree list                                       # 列出所有 worktree 
 ## 编码约定
 
 - Python 3.12（`.python-version`），优先用标准库；向 `pyproject.toml` 添加依赖须在 PR 中说明理由。
-- 研究代码只用 CPU。GPU 推理在服务环境（`envs/serve`，用 `scripts/serve-model.sh` 启动）中运行，通过其 OpenAI 兼容的 HTTP 接口调用；不要把 GPU 相关的包加进 `pyproject.toml`。本机 GPU 是共享的：启动服务前先在 `COMPUTE_ALLOCATION` 中登记占用的卡。
+- 研究代码只用 CPU。GPU 推理在服务环境（`envs/serve`，用 `scripts/serve-model.sh` 启动）中运行，通过其 OpenAI 兼容的 HTTP 接口调用；不要把 GPU 相关的包加进 `pyproject.toml`。本机 GPU 是共享的：启动服务前先在 `$PROJECT_ROOT/runs/compute.yaml` 中登记，并把登记内容抄入 `COMPUTE_ALLOCATION`。
 - 代码放在 `src/grace/`；测试使用 `unittest`；用 `ruff` 做 lint。
 - 共享路径通过 `PROJECT_ROOT` 和 `configs/paths.yaml` 解析；路径不存在时明确报错。
 
 ## 需要停下来询问的情况
 
 - 启动检查结果与任务书不一致。
+- 自己节点的某个依赖尚未解决，或需要的 GPU、端口已被其他会话登记。
+- 某个决策节点的依赖已全部解决：给出证据，等待用户决策。
 - 所需修改超出 `WRITE_SCOPE`，或涉及不归自己负责的契约小节。
 - 数据版本、manifest 校验值或样本数与配置不符。
 - 结果与假设或先前运行相矛盾，且无法从证据中解释原因。

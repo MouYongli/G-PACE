@@ -1,6 +1,6 @@
 # Environment and checks run through uv; the virtual environment lives in .venv (git-ignored).
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-serve test test-contracts lint clean clean-all
+.PHONY: help setup setup-serve test test-contracts lint plan clean clean-all
 
 help:
 	@echo "make setup           create .venv (Python 3.12) with the package, analysis and test deps (uv sync)"
@@ -8,6 +8,7 @@ help:
 	@echo "make test            run all tests"
 	@echo "make test-contracts  run contract tests only"
 	@echo "make lint            run ruff"
+	@echo "make plan            serve the plan viewer at http://localhost:8000/docs/work/plan/"
 	@echo "make clean           remove caches and build output"
 	@echo "make clean-all       clean, then remove .venv and envs/serve/.venv (lock files are kept)"
 
@@ -27,6 +28,11 @@ test-contracts:
 
 lint:
 	uv run ruff check .
+
+# The viewer fetches plan.yaml and the node files, so it needs an HTTP server.
+plan:
+	@echo "open http://localhost:8000/docs/work/plan/"
+	uv run python -m http.server 8000 --bind 127.0.0.1
 
 # Never descend into the shared stores, other worktrees or the environment.
 clean:

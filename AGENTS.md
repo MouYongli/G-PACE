@@ -10,19 +10,20 @@ GRACE is a research project. The research question, hypotheses and design live i
 
 ## Session identity
 
-Every session starts from an assignment that declares `ROLE`, `SESSION_ID`, `TASK`, `WORKDIR` and `BRANCH`.
+Every session starts from an assignment that declares `ROLE`, `SESSION_ID`, `TASK`, `WORKDIR` and `BRANCH`. `TASK` names one node of the project DAG: a task `T<NNN>` or an experiment `E<NNN>`. Wherever the workflow writes `T<NNN>` (branches, session IDs, run directories), an experiment node uses `E<NNN>` in the same place.
 
 | ROLE | Read before acting | Assignment form |
 | --- | --- | --- |
 | `manager` | `.agents/roles/manager.md` | skill `start-manager` |
 | `worker` | `.agents/roles/worker.md` | skill `assign-worker` |
 | `reviewer` | `.agents/roles/reviewer.md` | review request naming a SHA |
+| `integration` | `.agents/roles/integration.md` | the user names the integration owner of the round in writing |
 
-If the role is missing, stay read-only until the initiator states the role and ownership in writing.
+If the role is missing, stay read-only until the initiator states the role and ownership in writing. Decision nodes `D<NNN>` have no session: the user takes the decision and the integration owner records it.
 
 ## Repository and worktrees
 
-One repository, many worktrees. The main checkout stays on `main` and is the human's workspace; agents do not edit code there. Each manager works in a worktree on `task/T<NNN>-<slug>` cut from `main`; each worker works in a worktree on `worker/T<NNN>-<sub>` cut from its task branch. A branch can be checked out in only one worktree, which enforces one writer per branch. Worktree location does not matter: it may be created by Claude Code, the Codex app or `git worktree add`. Naming conventions and lookup paths: `docs/README.md`.
+One repository, many worktrees. The main checkout stays on `main` and is the human's workspace; agents do not edit tracked files there unless the user states an exception in writing for that session. Each manager works in a worktree on `task/T<NNN>-<slug>` cut from `main`; each worker works in a worktree on `worker/T<NNN>-<sub>` cut from its task branch; the integration owner works in a worktree on `chore/<slug>` cut from `main`. A branch can be checked out in only one worktree, which enforces one writer per branch. Worktree location does not matter: it may be created by Claude Code, the Codex app or `git worktree add`. Naming conventions and lookup paths: `docs/README.md`.
 
 ## Project root and paths
 
@@ -83,6 +84,7 @@ make setup-serve                                        # create envs/serve/.ven
 make test                                               # all tests
 make test-contracts                                     # contract tests only
 make lint                                               # lint (ruff)
+make plan                                               # serve the plan viewer at http://localhost:8000/docs/work/plan/
 uv run python <script>                                  # run anything else inside the environment; do not call python3 or pip directly
 git worktree list                                       # all worktrees and their branches
 ```
@@ -92,35 +94,40 @@ git worktree list                                       # all worktrees and thei
 MUST:
 
 - Keep one writer per writable worktree at any time. Read-only reviews pin an explicit SHA.
+- Start a node only when every node in its `depends_on` is resolved in `docs/work/plan/plan.yaml` (`done`, `accepted`, `dropped`, `rejected` or `superseded`).
 - Read shared inputs only from `$PROJECT_ROOT/data`. Verify the version and manifest checksum named in `configs/benchmarks/`.
 - Write caches, indexes, predictions, logs and checkpoints only to your exclusive `RUN_DIR` under `$PROJECT_ROOT/runs` (see `docs/research/contracts.md#experiment-run`).
 - Commit every change that can affect a result before a formal run, and record the full SHA, resolved config, data checksums, split, seed, command and compute resources.
+- Reserve GPUs and ports in `$PROJECT_ROOT/runs/compute.yaml` before starting a model server, and remove the entry when it stops (format: `docs/README.md`).
 - Report failures, partial results and skipped checks as such, with the actual output.
 
 MUST NOT:
 
-- Write to `$PROJECT_ROOT/data`, or edit code in the main checkout.
+- Write to `$PROJECT_ROOT/data`, or edit tracked files in the main checkout.
 - Put absolute paths in tracked files.
 - Edit a `docs/research/contracts.md` section you do not own. Send the request to the owner and continue with independent work.
 - Report a score that does not link to real run evidence. Synthetic fixtures are for CI only.
+- Run held-out or test data before the preregistration tag of T033 exists. Development data only until then.
+- Tune on held-out results, or change a frozen config, prompt, split or budget after the configuration lock (D012) without recording it as a deviation in the experiment log and the PR.
 - Push to `main`, force-push a shared branch, or merge your own PR.
 - Edit `docs/work/plan/plan.yaml` or the index tables in `docs/work/*/README.md` unless you are the integration owner of the current round.
 - Write status or dates into task, experiment or decision files; they live only in `plan.yaml`.
 
 ## Planning, status and acceptance
 
-- The project is planned as a DAG: milestones `M<N>` (one per phase of plan section 9, each with a gate) contain tasks `T<NNN>`, experiments `E<NNN>` and decisions `D<NNN>`. `docs/work/plan/plan.yaml` is the single source of structure, status and dates; schema and checkpoints are in `docs/work/plan/README.md`.
+- The project is planned as a DAG of nodes: tasks `T<NNN>`, experiments `E<NNN>` and decisions `D<NNN>`, linked by `depends_on`. An edge fixes order only; nodes with no unresolved dependency can run in parallel. Milestones `M<N>` (one per phase of plan section 9) only group nodes; each milestone's gate is applied by a decision node. The DAG ends in one end node, the paper. `docs/work/plan/plan.yaml` is the single source of structure, status and dates; schema and checkpoints are in `docs/work/plan/README.md`.
+- A decision is taken by the user. When all dependencies of a decision node are resolved, summarise the evidence against its options and ask. An optional node that will not be run is set to `dropped` (a decision to `rejected`), which resolves it for its dependents.
 - The integration owner updates `plan.yaml` through PRs to `main`. Everyone else reports status changes (for example `T003: active -> review`) in their PR or handoff.
 - Each task, experiment and decision file has YAML front matter (`id`, `title`, `created`) and a dated `## Log`; append to the log when something happens.
-- GitHub Issues are for discussion and linking PRs; each task records its Issue number in `plan.yaml`. Acceptance happens in PRs (`.github/pull_request_template.md`).
+- GitHub Issues are for discussion and linking PRs. A node gets its Issue when it becomes `active`; the number is recorded in `plan.yaml`. Acceptance happens in PRs (`.github/pull_request_template.md`).
 - Cross-task interface changes go through the owner of the affected contract section first.
-- Branching, review, merge order and recovery are in `.agents/roles/manager.md`.
+- Branching, review, merge order and recovery are in `.agents/roles/manager.md`; adding nodes and recording status and decisions are in `.agents/roles/integration.md`.
 
 ## Skills
 
 | Skill | Use when |
 | --- | --- |
-| `start-manager` | Starting or resuming a manager session for an Issue |
+| `start-manager` | Starting or resuming a manager session for one task or experiment node |
 | `assign-worker` | A manager creates a worker branch and its assignment |
 | `worker-handoff` | A worker hands a PR and evidence back to its manager |
 | `experiment-report` | Any formal run finishes (completed or failed); fills the experiment file's Runs and Results |
@@ -128,13 +135,15 @@ MUST NOT:
 ## Coding conventions
 
 - Python 3.12 (`.python-version`), standard library first; add dependencies to `pyproject.toml` only with a reason in the PR.
-- Research code stays CPU-only. GPU inference runs in the serving environment (`envs/serve`, started with `scripts/serve-model.sh`) and is reached over its OpenAI-compatible HTTP API; never add GPU packages to `pyproject.toml`. The machine's GPUs are shared: reserve them in `COMPUTE_ALLOCATION` before starting a server.
+- Research code stays CPU-only. GPU inference runs in the serving environment (`envs/serve`, started with `scripts/serve-model.sh`) and is reached over its OpenAI-compatible HTTP API; never add GPU packages to `pyproject.toml`. The machine's GPUs are shared: reserve them in `$PROJECT_ROOT/runs/compute.yaml` before starting a server and copy the reservation into `COMPUTE_ALLOCATION`.
 - Code lives in `src/grace/`; tests use `unittest`; lint with `ruff`.
 - Resolve shared paths through `PROJECT_ROOT` and `configs/paths.yaml`; fail loudly when a path is missing.
 
 ## Stop and ask when
 
 - The startup checks disagree with the assignment.
+- A dependency of your node is unresolved, or a GPU or port you need is reserved by another session.
+- All dependencies of a decision node are resolved: present the evidence and wait for the user's decision.
 - A required change falls outside `WRITE_SCOPE` or touches a contract section you do not own.
 - Data version, manifest checksum or sample counts do not match the config.
 - A result contradicts the hypothesis or an earlier run, and you cannot explain why from the evidence.

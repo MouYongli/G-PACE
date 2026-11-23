@@ -1,6 +1,6 @@
 # Delivery and Checks
 
-- Task ID (`T<NNN>`), Issue, manager / worker session, target branch:
+- Node ID (`T<NNN>` or `E<NNN>`), Issue, manager / worker session, target branch:
 - Status change to record in `docs/work/plan/plan.yaml` (for example `T003: active -> review`), or none:
 - Change scope and acceptance criteria:
 - Test commands, actual results, unverified scope:
