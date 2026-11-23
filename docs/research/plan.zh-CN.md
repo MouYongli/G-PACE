@@ -64,15 +64,15 @@ GRACE 取自 Graph Memory–Enhanced Context Engine（**GR**aph memory–enh**A*
 | 时序图记忆 | Zep/Graphiti：边带两条时间线，可回溯到 episode；LLM 判定冲突后使旧边失效；新增节点时更新社区摘要，靠周期性全量刷新纠偏 | 按角色决定是否允许取代；失效对象是派生视图，并有明确的有效性判据 |
 | 追加式存储加查询时解决 | APEX-MEM：以实体为中心的属性图，事实挂在带日期的事件上，读取时处理冲突，不缓存 | 持久化视图并维护其新鲜度；把“不缓存、每次查询时解决”作为成本上最直接的对手 |
 | 程序化状态记忆 | ProgMem：把对话事件编译为状态更新程序并校验证据；用 Qwen3-4B/8B/14B 在 LoCoMo 的 1,540 题上评测 | 由查询定义的视图及其重建；证据召回与成本对照 |
-| 派生记忆的级联失效 | PACMI：依赖边由标注给出，仅同槽位单值替换触发失效，新增集合成员不触发。MemoRepair：事件只有删除、更正、迁移，没有插入。MemTX：沿派生关系图回滚，自述只覆盖已记录的来源。Kumiho：沿依赖边做影响分析，由智能体显式调用。Tether（Dependency-Tethered Memory）：核验结论记录它所依据的对象版本，读取时沿依赖边撤回；同一对象出现更高版本时触发撤回，集合与计数变化没有对应机制。StateMem：状态单元带 `derived_from` 与 `coupled_with` 两类类型化链接，由 LLM 在摄取时记录；确定性的复查器只从状态刚改变的单元出发传播，把依赖它的单元标为待复查，所以新增而不取代任何单元的写入不触发复查。StateGraph：状态带 derived-from 与 depends-on 等依赖边，由 LLM 提出并验证；级联只从被直接修订的状态出发，沿强依赖边传播，所以新增状态可以新增边，但自身不使任何状态失效（读了正文，附录未读） | 这些工作的依赖都指向派生物已经消费的记录或版本。本计划的依赖是定义查询的模式，能捕捉从未被消费过的新记录 |
+| 派生记忆的级联失效 | PACMI：依赖边由标注给出，仅同槽位单值替换触发失效，新增集合成员不触发。MemoRepair：事件只有删除、更正、迁移，没有插入。MemTX：沿派生关系图回滚，自述只覆盖已记录的来源。Kumiho：沿依赖边做影响分析，由智能体显式调用。Tether（Dependency-Tethered Memory）：核验结论记录它所依据的对象版本，读取时沿依赖边撤回；同一对象出现更高版本时触发撤回，集合与计数变化没有对应机制。StateMem：状态单元带 `derived_from` 与 `coupled_with` 两类类型化链接，由 LLM 在摄取时记录；确定性的复查器只从状态刚改变的单元出发传播，把依赖它的单元标为待复查，所以新增而不取代任何单元的写入不触发复查。StateGraph：状态带 derived-from 与 depends-on 等依赖边，由 LLM 提出并验证。失效从直接修订开始：新状态按规范槽位或函数键与已有状态匹配；之后只有新的状态变化才沿强依赖边继续传播。所以不与任何已有槽位匹配的新状态（例如集合的新成员）什么也不触发；计数与聚合没有对应机制 | 这些工作的依赖都指向派生物已经消费的记录或版本。本计划的依赖是定义查询的模式，能捕捉从未被消费过的新记录 |
 | 派生记忆即视图的诊断 | MemShift：实测由引用构成的依赖键在来源修订后漏掉 16.9% 的已变化条目，在重新定义后漏掉 32.4%，并把原因对应到谓词锁的幻读问题；粗粒度的来源键不漏，但让 99% 以上未变化的条目失效；另设定义作用域键、金标键和“不存储、查询时现算”的对照。MemDerive：一个基准，把派生状态表述为数据库表上的视图，金标用带聚合的 Datalog，见证用最小 why-provenance；测得记忆系统刷新了 82.4% 的显式变更，只刷新了 41.1% 的隐式变更 | 两者都在模板合成数据上，都不是 RDF 或 SPARQL。MemShift 的定义作用域键可能与本计划的声明模式级依赖是同一粒度，其确切定义在附录中，尚未读完。若两者相同，本计划不声称粒度上的新意，差别限定为：在只追加双时间 RDF 图上的形式化、答案与引用两级过期、在自然对话和带噪声的抽取图上的评测。这是全计划最大的新颖性风险，排在所有工作之前核对（阶段 0） |
 | 查询缓存失效 | Martin、Unbehauen 与 Auer 的 SPARQL 查询缓存（2010）：与查询模式匹配的三元组发生变化时，使缓存结果失效。Williams 与 Weaver（2011）：按索引的最后更新时间做 HTTP 缓存校验，接近谓词级。Incremunica：SPARQL 结果的增量维护，已支持 FILTER NOT EXISTS、MINUS、GROUP BY 与 ORDER BY | 本计划采用按模式匹配的失效规则，不声称提出它。被缓存的是逐句带证据、有双时间作用域的阅读视图；过期分答案与引用两级；只需要过期判定而不需要增量结果，因为昂贵的是 LLM 重新渲染 |
 | 读时复核 | GroundedCache：读取时重新检索，比较块哈希的重合度是否过阈值 | 它比较的是向量检索的 top-k。本计划对确定性查询比较精确的答案、见证与证据指纹 |
 | RDF 对话记忆 | Leolani/GRaSP：声明、提及、逐说话人的归属（极性、确定性）。An 与 Gentile：RDF 加 PROV-O，由 LLM 直接写 SPARQL | 更新处理、类型化中间表示、带范围说明的空结果、构造时返回证据集 |
-| 角色区分 | TripPy 的 system-inform memory；ParsingDST 的 User/System 分表。MemIR 提出“来源角色坍缩”；一项研究报告多会话共用存储时同名说话人的事实混入率为 0.543 | 已有证据只支持“谁说的很重要”。把交际功能用作“哪条旧声明可以被取代”的守卫条件，其作用须由本计划自己举证 |
+| 角色区分 | TripPy 的 system-inform memory；ParsingDST 的 User/System 分表。MemIR 提出“来源角色坍缩”；一项研究报告多会话共用存储时同名说话人的事实混入率为 0.543。StateGraph 的抽取器记录声称者和声明方式（直接、转述、假设、意图、建议），接近本计划的转述归属轴，但没有提议、接受这类交际功能 | 已有证据只支持“谁说的很重要”。把交际功能用作“哪条旧声明可以被取代”的守卫条件，其作用须由本计划自己举证 |
 | 动态词表 | EDC、AutoSchemaKG、DIAL-KG：关系规范化、schema 归纳与增量演化，均面向文档 | 在对话上、用小模型检验受约束的局部扩展是否值得 |
-| 成本评测 | Pollertlam 与 Kornsuwannawit：带缓存折扣的回本分析。统一评测研究：按题分摊建库与查询 token。APEX-MEM、ProgMem、LightMem、MemTX、MemShift、MemDerive 都报告了写入侧 token | 写入侧成本已常有报告。本计划的增量是：质量对齐的比较、含失败尝试的每正确答案成本、更新之下的维护成本 |
-| 受控修订基准 | StateMemBench 的反更新探针（合成的事件程序，322 个计分探针）；StateGraph 的 StateChangeBench（50 个作者构造的案例，按级联深度分层）；另一项工作的受控修订生成器；STALE 的“前提抵抗”探针 | 这些基准没有双时间成对问题，也没有逐消息的视图失效真值 |
+| 成本评测 | Pollertlam 与 Kornsuwannawit：带缓存折扣的回本分析。统一评测研究：按题分摊建库与查询 token。APEX-MEM、ProgMem、LightMem、MemTX、MemShift、MemDerive 都报告了写入侧 token。StateGraph 只报告每例全部调用的合计 token；StateMem 只报告编码器的调用次数 | 写入侧成本已常有报告。本计划的增量是：质量对齐的比较、含失败尝试的每正确答案成本、更新之下的维护成本 |
+| 受控修订基准 | StateMemBench 的反更新探针（合成的事件程序，322 个计分探针）；StateGraph 的 StateChangeBench（50 个作者构造的案例，按级联深度分层，每例一条新观察，金标按状态给出）；另一项工作的受控修订生成器；STALE 的“前提抵抗”探针 | 这些基准没有双时间成对问题，也没有逐消息的视图失效真值 |
 
 ### 2.2 已知的不利证据
 
@@ -949,7 +949,7 @@ $H$ 是序列化历史的 token 数；$c$ 是缓存命中的输入相对全价�
 - MemShift（预印本，全文；作用域键的确切定义在附录中，尚未读完）。arXiv 2611.02338
 - MemDerive（预印本，全文）。arXiv 2610.25373
 - StateMem 与 StateMemBench：Can Agent Memory Systems Track Evolving State?（预印本，全文）。arXiv 2608.19652
-- StateGraph 与 StateChangeBench：A State Change Is Local, Its Consequences Are Not（预印本，正文全文；附录未读）。arXiv 2611.02912
+- StateGraph 与 StateChangeBench：A State Change Is Local, Its Consequences Are Not（预印本，全文）。arXiv 2611.02912
 - MemIR（预印本）。arXiv 2605.25869
 - 多会话存储中的说话人误归属与受控修订生成器（预印本）。arXiv 2610.10265
 - GroundedCache（预印本，全文）。arXiv 2605.27494
