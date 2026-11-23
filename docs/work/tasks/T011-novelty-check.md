@@ -35,3 +35,4 @@ Comparison notes in `docs/research/literature.md`; revised `docs/research/plan.m
 
 - 2026-11-23: created from plan section 9, phase 0, at the user's request.
 - 2026-11-23: PR #11 (merged as a75a699) read the rest of Tether and StateMem and StateGraph in full, and revised plan sections 2.1, 2.2, 5.4, 11.3 and 11.4 accordingly. Scope narrowed to the remaining reading; the comparison rows for these three works are still owed in `docs/research/literature.md`.
+- 2026-11-23: manager session m01-T011 started on `task/T011-novelty-check` from c76e265; Issue #14 opened.
