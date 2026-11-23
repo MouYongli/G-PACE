@@ -64,7 +64,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `.agents/skills/` | 可复用流程及表单模板（`SKILL.md` 格式） | 集成负责人 |
 | `.claude/` | 仅 Claude Code 使用：`settings.json`、`agents/`；`skills` 是指向 `.agents/skills` 的软链接 | 集成负责人 |
 | `docs/README.md` | 命名规范、文件格式、查找路径 | 集成负责人 |
-| `docs/research/plan.md` | 研究计划（英文，为准）；`plan.zh-CN.v1.md` 是临时源文件，之后删除 | 计划负责人 |
+| `docs/research/plan.md` | 研究计划（英文，为准）；`plan.zh-CN.md` 是它的中文译本 | 计划负责人 |
 | `docs/research/benchmarks.md`、`literature.md` | Benchmark 登记表与说明；文献笔记 | 数据负责人；任务负责人 |
 | `docs/research/contracts.md` | 测量与数据交换规则，每节一个 owner | 该节 owner |
 | `docs/work/plan/` | `plan.yaml`（项目 DAG：里程碑、节点、状态、日期）、`README.md`（schema、检查点）、`index.html`（可视化） | 集成负责人 |

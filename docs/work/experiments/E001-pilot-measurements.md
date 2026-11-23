@@ -15,7 +15,7 @@ On the development histories of each benchmark, how long are the histories, what
 | Item | Value |
 | --- | --- |
 | Benchmarks and splits | Development histories of the six evaluated benchmarks (`docs/research/benchmarks.md`) |
-| Systems and baselines | Full history, text retrieval, rolling summary, role-aware relational state table (T003) |
+| Systems and baselines | Full history, text retrieval, rolling summary, fixed-schema slot table with roles (T003) |
 | Metrics | History length distribution, full-history cost, measured cache ratio, natural update density; cost per `docs/research/contracts.md` (cost ledger, from T001) |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E001-pilot-measurements.yaml` (to be created) |

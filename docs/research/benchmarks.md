@@ -6,12 +6,12 @@ Registry and cards for every benchmark in `docs/research/plan.md` (sections 6.3 
 
 | Slug | Benchmark | Tier | Read protocol | Role in the plan | Status |
 | --- | --- | --- | --- | --- | --- |
-| `change-seq` | Controlled change sequences (built here; design in T008) | Main text | Interleaved | RQ2 primary (per-message staleness ground truth); RQ3 maintenance surface | to build |
-| `multiwoz` | MultiWOZ 2.4 (main); 2.2 and 2.1 score the same predictions | Main text | Per turn | RQ1 primary for roles (offer turns, T006); RQ2 on natural per-turn data | to bind |
-| `locomo` | LoCoMo, categories 1 to 4 | Main text | End of history; evidence-anchored streaming (T007) | RQ1 slices; RQ2 false positives under streaming; RQ3 amortisation | to bind |
+| `change-seq` | Controlled change sequences (built here; design in T008) | Main text (core) | Interleaved | RQ2 primary (per-message staleness ground truth); RQ3 maintenance surface | to build |
+| `multiwoz` | MultiWOZ 2.4 (main); 2.2 and 2.1 score the same predictions | Main text (core) | Per turn | RQ1 primary for roles (turns after an offer, T006); natural over-marking, no cost claims | to bind |
+| `locomo` | LoCoMo, categories 1 to 4 | Main text (core) | End of history; evidence-anchored streaming (T007) | RQ1 slices; RQ2 false positives under streaming; RQ3 amortisation | to bind |
 | `longmemeval-s` | LongMemEval S (cleaned); main text uses the knowledge-update, temporal-reasoning and multi-session strata | Main text | End of history, one question per history | RQ1 adverse setting | to bind |
-| `halumem-medium` | HaluMem-Medium | Summary table | Session by session | Graph quality (write path); RQ2 support | to bind |
-| `memoryagentbench` | MemoryAgentBench: LongMemEval(S\*) and FactConsolidation at 6K and 32K | Summary table | Chunk by chunk, several questions per context | RQ3 multi-read; RQ2 support | to bind |
+| `halumem-medium` | HaluMem-Medium | Summary table (optional) | Session by session | Graph quality (write path); RQ2 support | to bind |
+| `memoryagentbench` | MemoryAgentBench: LongMemEval(S\*) and FactConsolidation at 6K and 32K | Summary table (optional) | Chunk by chunk, several questions per context | RQ3 multi-read; RQ2 support | to bind |
 | `beam`, `memora`, `stale` | BEAM, Memora, STALE | Not evaluated | — | Related work only; may enter the supplementary material after the lock if budget remains | not evaluated |
 
 Status values: `to check` (availability or license unknown), `to bind` / `to build`, `bound` (data, manifest and config in place), `verified` (adapter reproduces the counts below), `not evaluated` (considered and left out of the evaluation; no card is kept).
