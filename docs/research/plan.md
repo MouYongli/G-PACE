@@ -797,7 +797,7 @@ Implementation has eight phases, numbered 0 to 7, each ending with a checkpoint.
 
 ### 9.2 Main text and supplementary material
 
-The paper follows the requirement that the 15-page LNCS main text be self-contained; reviewers are not obliged to read appendices. At the target conference the 15 pages exclude references, acknowledgements and the end-of-paper statements (checked against the call), and an optional appendix of at most 2 pages is allowed. The rows below add up to 14.5 pages; page figures are targets for planning.
+The paper follows the requirement that the 15-page LNCS main text be self-contained; reviewers are not obliged to read appendices. At the target conference the 15 pages exclude references, acknowledgements and the end-of-paper statements (as checked against the call), and an optional appendix of at most 2 pages is allowed. The rows below add up to 14.5 pages; page figures are targets for planning.
 
 | Content | Location | Target pages |
 | --- | --- | --- |
