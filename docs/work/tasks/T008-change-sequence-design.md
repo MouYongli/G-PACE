@@ -12,7 +12,7 @@ A design document for the controlled change-sequence generator, the primary evid
 
 ## Scope
 
-- In scope: event grammar for the six change types (superseding a cited claim, new match, empty to non-empty, count or order change, late correction, irrelevant update) plus unconfirmed alternatives, presupposition questions and paired known-then / seen-from-now questions; template families and the development / held-out family split; the read schedule; controlled variables (change-type mix, revision density, read interval, reads per history, history length) and the sweep for the maintenance surface; outputs per sequence (messages, event log, gold claim graph per version, gold answers and witness sets, per-message per-view staleness); surface rendering by a model outside the evaluated systems; the two-annotator audit protocol; target sizes and a power estimate; how StateMemBench and other generators differ.
+- In scope: event grammar for the seven change types (superseding a cited claim, new match including empty to non-empty, negation hit by an acceptance or rejection, count or order change, late correction, repeated mention, irrelevant update) plus unconfirmed alternatives, presupposition questions and paired known-then / seen-from-now questions; template families and the development / held-out family split; the read schedule; controlled variables (change-type mix, revision density, read interval, reads per history, history length) and the sweep for the maintenance surface; outputs per sequence (messages, event log, gold claim graph per version, gold answers and witness sets, per-message per-view staleness); surface rendering by a model outside the evaluated systems; the two-annotator audit protocol; target sizes and a power estimate; how StateMemBench and other generators differ.
 - Out of scope: implementing the generator (T002 skeleton, later tasks); running any system.
 - Candidate worker subtasks: none; a reviewer reads the design at a pinned SHA.
 
@@ -29,3 +29,4 @@ Design document under `docs/research/` (location agreed with the plan owner), re
 ## Log
 
 - 2026-11-22: created from plan section 9, phase 1 (registered by T005).
+- 2026-11-23: scope updated to the seven change types of plan section 6.4 (negation hit and repeated mention added; empty to non-empty folded into new match).
