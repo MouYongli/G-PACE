@@ -125,11 +125,11 @@ nodes:
     type: task
     title: Novelty check of claim-pattern dependencies
     milestone: M0
-    status: planned
+    status: review
     depends_on: [T005]
-    issue: null
-    owner: null
-    start: null
+    issue: 14
+    owner: m01-T011
+    start: 2026-11-23
     finish: null
     file: ../tasks/T011-novelty-check.md
   - id: D005
