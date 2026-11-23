@@ -10,9 +10,9 @@ The integration owner adds a row here when a task is created. The task's manager
 | --- | --- | --- |
 | [T001](T001-record-contracts.md) | Record contracts | History, message and question records plus the token-cost ledger |
 | [T002](T002-benchmark-adapters.md) | Benchmark adapters | Adapters for the development histories of all benchmarks |
-| [T003](T003-baseline-runners.md) | Baseline runners | Full history, text retrieval, rolling summary and relational state table |
+| [T003](T003-baseline-runners.md) | Baseline runners | Full history, text retrieval, rolling summary and fixed-schema slot table |
 | [T004](T004-prompts-counters-judges.md) | Prompts, counters, judges | Frozen English prompts, token counters, budgets and judges |
-| [T005](T005-plan-v3.md) | Research plan v3 | Self-contained plan with evaluation organised by read protocols |
+| [T005](T005-plan-v3.md) | Research plan | Self-contained plan with evaluation organised by read protocols |
 | [T006](T006-multiwoz-offer-turns.md) | MultiWOZ offer-turn census | Counts of offer-acceptance and rejection turns; 2.2 versus 2.4 convention |
 | [T007](T007-locomo-read-points.md) | LoCoMo evidence-anchored read points | Spread of $v(q)$ for the LoCoMo streaming protocol |
 | [T008](T008-change-sequence-design.md) | Controlled change-sequence generator design | Design of the RQ2 primary benchmark |

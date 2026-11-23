@@ -62,7 +62,7 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 | `.agents/skills/` | Reusable procedures and form templates (`SKILL.md` format) | Integration owner |
 | `.claude/` | Claude Code only: `settings.json`, `agents/`; `skills` is a symlink to `.agents/skills` | Integration owner |
 | `docs/README.md` | Naming conventions, file shapes, lookup paths | Integration owner |
-| `docs/research/plan.md` | Research plan (English, canonical); `plan.zh-CN.v1.md` is a temporary source to be deleted | Plan owner |
+| `docs/research/plan.md` | Research plan (English, canonical); `plan.zh-CN.md` is its Chinese translation | Plan owner |
 | `docs/research/benchmarks.md`, `literature.md` | Benchmark registry and cards; literature notes | Data owner; task owners |
 | `docs/research/contracts.md` | How things are measured and exchanged; one owner per section | Section owner |
 | `docs/work/plan/` | `plan.yaml` (project DAG: milestones, nodes, status, dates), `README.md` (schema, checkpoints), `index.html` (viewer) | Integration owner |

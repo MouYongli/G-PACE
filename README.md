@@ -5,7 +5,7 @@ Research repository for GRACE, worked on by Codex and Claude Code sessions in ma
 ## Getting started
 
 1. Read `AGENTS.md` (Chinese translation: `AGENTS.zh-CN.md`) and `docs/README.md`.
-2. Review the research plan `docs/research/plan.md`, then delete the temporary `docs/research/plan.zh-CN.v1.md`.
+2. Read the research plan `docs/research/plan.md` (Chinese translation: `docs/research/plan.zh-CN.md`).
 3. Bind the benchmarks: fill in `configs/benchmarks/<slug>.yaml` and the cards in `docs/research/benchmarks.md`.
 4. Download the benchmarks into `data/<benchmark>/<version>/` in this checkout with `scripts/data/download.sh` (see [Benchmarks](#benchmarks)), then make them read-only with `chmod -R a-w data`. Create `runs/`. Both are git-ignored; every worktree finds them through `PROJECT_ROOT` (see `AGENTS.md`). CI uses the synthetic fixtures in `tests/fixtures/`.
 5. Install [uv](https://docs.astral.sh/uv/), then run `make setup`, `make test` and `make lint` (Python 3.12, CPU only). On the GPU machine, also run `make setup-serve` and start model servers with `scripts/serve-model.sh` (see decision D004).
