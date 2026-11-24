@@ -159,12 +159,12 @@ nodes:
     type: task
     title: Record contracts
     milestone: M1
-    status: active
+    status: done
     depends_on: []
     issue: 25
     owner: m01-T001
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T001-record-contracts.md
   - id: T002
     type: task
