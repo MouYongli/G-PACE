@@ -4,7 +4,7 @@ This file describes how the code in `src/grace/` is organised: the packages, wha
 
 `structure_full.md` shows the same layout as one tree down to every file.
 
-File names are a starting point and may change as tasks implement them. Once D013 is accepted, the package boundaries and the dependency rules are fixed; changing them needs a new decision.
+File names are a starting point and may change as tasks implement them. The package boundaries and the dependency rules are fixed by D013; changing them needs a new decision.
 
 ## Overview
 

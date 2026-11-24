@@ -58,7 +58,7 @@ The layout, the dependency rules and the responsibility of each file are specifi
 - **`resources/` holds prompts, vocabulary, view templates and schemas** at the repository root, read from the current worktree and frozen as a whole at D012.
 - **`configs/` gains `common/`, `models/` and `engines/`.** `paths.yaml` moves to `configs/common/`.
 
-Proposed, to be confirmed with this decision:
+Two points were proposed separately and confirmed with the decision:
 
 - **The directory name `configs/engines/`.** It matches the interface name `ContextEngine` and the package `eval/engines/`. The alternative considered was `configs/systems/`.
 - **Budget levels under interleaved reading.** Each budget level runs its own pass. Forking the state at every read point would save ingestion cost but needs cheap snapshots; it is not built unless the cost of separate passes proves prohibitive.
@@ -66,7 +66,7 @@ Proposed, to be confirmed with this decision:
 ## Consequences
 
 - An import-check test and a gold-sentinel test in `tests/contracts/` enforce the rules. Tasks cut their `WRITE_SCOPE` along the packages of `structure.md`.
-- The repository map of `AGENTS.md` points to `docs/work/plan/structure.md`. When this decision is accepted, `AGENTS.md` and `AGENTS.zh-CN.md` change in one PR: the `src/grace/` row lists the five packages, and four rules join the hard rules (`context/` does not import `eval/`; `eval/engines/baselines/` does not import `eval/datasets/`; every model call goes through `llm/`; `eval/analysis/` reads only files in run directories).
+- `AGENTS.md` and `AGENTS.zh-CN.md` change with this decision: the repository map points to `docs/work/plan/structure.md`, the `src/grace/` row lists the five packages, and four rules join the hard rules (`context/` does not import `eval/`; `eval/engines/baselines/` does not import `eval/datasets/`; every model call goes through `llm/`; `eval/analysis/` reads only files in run directories).
 - Moving `paths.yaml` changes the path written in `AGENTS.md`, `AGENTS.zh-CN.md`, `src/grace/paths.py`, `docs/research/contracts.md` and `docs/README.md`; all are updated in the PR that moves it. `src/grace/paths.py` moves to `src/grace/config/paths.py`.
 - Three extensions are requested from the owner of the "Experiment run" section of `docs/research/contracts.md`:
   - a run may reference an upstream run by its run ID and read it without writing to it (the precondition for stages);
@@ -87,3 +87,4 @@ Proposed, to be confirmed with this decision:
 ## Log
 
 - 2026-11-24: proposed. Registered in `plan.yaml` as a project-wide decision; T002, T003, T004 and T014, the first nodes that add packages under `src/grace/`, depend on it.
+- 2026-11-24: accepted by the user, including the directory name `configs/engines/` and separate passes per budget level under interleaved reading.

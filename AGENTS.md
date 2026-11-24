@@ -69,7 +69,7 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 | `docs/work/plan/` | `plan.yaml` (project DAG: milestones, nodes, status, dates), `README.md` (schema, checkpoints), `index.html` (viewer), `structure.md` and `structure_full.md` (code structure, decision D013) | Integration owner |
 | `docs/work/tasks/`, `experiments/`, `decisions/` | One file per task `T<NNN>`, experiment `E<NNN>`, decision `D<NNN>` | Task manager; experiment runner; decision owner |
 | `configs/` | `paths.yaml`, benchmark and experiment configs | Task owners |
-| `src/grace/` | Python package | Task owners within `WRITE_SCOPE` |
+| `src/grace/` | Python package: `cli/`, `config/`, `llm/`, `context/` (GRACE itself), `eval/` (experiment apparatus); layout and import rules in `docs/work/plan/structure.md` | Task owners within `WRITE_SCOPE` |
 | `envs/serve/`, `scripts/serve-model.sh` | GPU inference environment (vLLM) and its launcher | Integration owner |
 | `scripts/` | Bash entry points only (`scripts/data/` downloads the benchmarks); any Python they call lives in `src/grace/cli/` | Integration owner |
 | `tests/` | `contracts/` (interface tests), `integration/`, `docs/`, `fixtures/` (synthetic data) | Task owners |
@@ -99,6 +99,7 @@ MUST:
 - Write caches, indexes, predictions, logs and checkpoints only to your exclusive `RUN_DIR` under `$PROJECT_ROOT/runs` (see `docs/research/contracts.md#experiment-run`).
 - Commit every change that can affect a result before a formal run, and record the full SHA, resolved config, data checksums, split, seed, command and compute resources.
 - Reserve GPUs and ports in `$PROJECT_ROOT/runs/compute.yaml` before starting a model server, and remove the entry when it stops (format: `docs/README.md`).
+- Send every model call through `src/grace/llm/`, so that it is recorded and counted.
 - Report failures, partial results and skipped checks as such, with the actual output.
 
 MUST NOT:
@@ -109,6 +110,8 @@ MUST NOT:
 - Report a score that does not link to real run evidence. Synthetic fixtures are for CI only.
 - Run held-out or test data before the preregistration tag of T033 exists. Development data only until then.
 - Tune on held-out results, or change a frozen config, prompt, split or budget after the configuration lock (D012) without recording it as a deviation in the experiment log and the PR.
+- Import `eval/` from `context/`, or `eval/datasets/` from `eval/engines/baselines/`: an engine must not be able to reach gold data (`docs/work/plan/structure.md`).
+- Import engine code into `eval/analysis/`, or read anything there except files in run directories.
 - Push to `main`, force-push a shared branch, or merge your own PR.
 - Edit `docs/work/plan/plan.yaml` or the index tables in `docs/work/*/README.md` unless you are the integration owner of the current round.
 - Write status or dates into task, experiment or decision files; they live only in `plan.yaml`.

@@ -124,12 +124,12 @@ nodes:
     type: decision
     title: Code structure and dependency rules
     milestone: null
-    status: proposed
+    status: accepted
     depends_on: []
     issue: null
     owner: user
     start: 2026-11-24
-    finish: null
+    finish: 2026-11-24
     file: ../decisions/D013-code-structure.md
   # ---- M0 · Novelty check
   - id: T011
