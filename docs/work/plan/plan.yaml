@@ -3,7 +3,7 @@
 # Nodes are the work items; an edge A -> B (B.depends_on contains A) means A must be resolved before
 # B starts. Nodes with no unresolved dependency can run in parallel. Milestones only group nodes.
 project: GRACE
-updated: 2026-11-23
+updated: 2026-11-24
 repo: https://github.com/MouYongli/GRACE   # used to link Issues
 
 end: T036                      # the end node: every milestone node leads to a deliverable
@@ -120,6 +120,17 @@ nodes:
     start: 2026-11-22
     finish: 2026-11-22
     file: ../decisions/D004-python-and-inference-environment.md
+  - id: D013
+    type: decision
+    title: Code structure and dependency rules
+    milestone: null
+    status: accepted
+    depends_on: []
+    issue: null
+    owner: user
+    start: 2026-11-24
+    finish: 2026-11-24
+    file: ../decisions/D013-code-structure.md
   # ---- M0 · Novelty check
   - id: T011
     type: task
@@ -160,7 +171,7 @@ nodes:
     title: Benchmark adapters
     milestone: M1
     status: planned
-    depends_on: [T001]
+    depends_on: [T001, D013]
     issue: null
     owner: null
     start: null
@@ -171,7 +182,7 @@ nodes:
     title: Baseline runners
     milestone: M1
     status: planned
-    depends_on: [T001]
+    depends_on: [T001, D013]
     issue: null
     owner: null
     start: null
@@ -182,7 +193,7 @@ nodes:
     title: Prompts, counters, judges
     milestone: M1
     status: planned
-    depends_on: [T001]
+    depends_on: [T001, D013]
     issue: null
     owner: null
     start: null
@@ -326,7 +337,7 @@ nodes:
     title: Claim model and bitemporal store
     milestone: M2
     status: planned
-    depends_on: [T001]
+    depends_on: [T001, D013]
     issue: null
     owner: null
     start: null
