@@ -20,6 +20,7 @@ A design document for the controlled change-sequence generator, the primary evid
 
 - [ ] The design document covers every item in scope and maps each output to the metric in plan section 6.7 that consumes it.
 - [ ] Gold staleness for template views is derivable from the event log by a deterministic procedure stated in the document.
+- [ ] The document states whether that procedure is independent of the query compiler of the system under test. Decision D013 recommends one small function per template family that reads the event log directly. If the ground truth were computed by running compiled queries on the gold graph, the end-to-end reference would share the compiler with the system, and a compiler error would be invisible in the miss rate. If the design chooses otherwise, it gives the reason.
 - [ ] A read-only review at a pinned SHA finds no open blocking issue.
 
 ## Deliverables
@@ -30,3 +31,4 @@ Design document under `docs/research/` (location agreed with the plan owner), re
 
 - 2026-11-22: created from plan section 9, phase 1 (registered by T005).
 - 2026-11-23: scope updated to the seven change types of plan section 6.4 (negation hit and repeated mention added; empty to non-empty folded into new match).
+- 2026-11-24: acceptance item on the independence of the invalidation ground truth added from decision D013.
