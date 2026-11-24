@@ -88,4 +88,4 @@ Two points were proposed separately and confirmed with the decision:
 
 - 2026-11-24: proposed. Registered in `plan.yaml` as a project-wide decision; T002, T003, T004 and T014, the first nodes that add packages under `src/grace/`, depend on it.
 - 2026-11-24: accepted by the user, including the directory name `configs/engines/` and separate passes per budget level under interleaved reading.
-- 2026-11-24: follow-ups written into the task files: the contract extensions and the import-rule test into T001, layout, the gold-sentinel test and the slot-table question into T003 and T027, the invalidation ground truth into T008 and T015. `tests/unit/` added to the repository map. Not yet assigned: moving `paths.yaml` and `paths.py`.
+- 2026-11-24: follow-ups written into the task files: the contract extensions and the import-rule test into T001, layout, the gold-sentinel test and the slot-table question into T003 and T027, the invalidation ground truth into T008 and T015. `tests/unit/` added to the repository map. The user named the integration owner as owner of the "Experiment run" contract section, and the move of `paths.yaml` and `paths.py` went into T001.

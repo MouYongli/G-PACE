@@ -97,7 +97,7 @@ Required regression tests: empty prediction file, duplicate key, missing key, ex
 
 ## Experiment run
 
-Owner: TBD (integration owner) · Version: 0.1
+Owner: integration owner · Version: 0.1
 
 Every formal run owns one directory, created exclusively (fail if it exists, or use `tempfile.mkdtemp`):
 
