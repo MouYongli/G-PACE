@@ -20,7 +20,7 @@ The gold-staleness procedure is defined per view template, because a view's sema
 
 ## 2. World model
 
-A sequence is a two-party dialogue between `user` and `assistant` (the "system" of the plan's MultiWOZ examples), grouped into dated **episodes** (the generator-defined segment of plan section 6.2). Every message carries an ID, a version $t$, an episode, a speaker and a world timestamp (the episode date).
+A sequence is a two-party dialogue between `user` and `assistant` (the "system" of the plan's MultiWOZ examples), grouped into dated **episodes** (the generator-defined segment of plan section 6.2). Every message carries an ID, a version $t$, an episode, a speaker and a world timestamp (the episode date). The adapter maps the speaker `assistant` to the contract role `agent` and `user` to `user` (`docs/research/contracts.md`, benchmark mapping of `change-seq`).
 
 Each scenario family declares:
 
@@ -52,13 +52,13 @@ Every `NewClaim` is followed in the same message by a `Stance` on it (a claim al
 The generator emits only event logs that satisfy these constraints; T015 checks each one as a unit test.
 
 - **G1 (append-only, unique propositions).** A `NewClaim` never repeats the $(s,p,o,\omega,\tau)$ of an existing claim.
-- **G2 (attribution guard).** `Supersede(c, η)` appears only together with an own-statement stance $a'$ of the message speaker that either (i) introduces a replacing claim $c'$ with the same subject, predicate and scope as $c$, on an exclusive predicate, or (ii) is a negative-polarity stance on $c$ itself (removal); and some attribution on $c$ has the same speaker and function as $a'$. Case (i) is the guard of plan section 3.2. Case (ii), for example "I no longer play the violin", extends the guard to supersession without a replacing claim; T014 must confirm it, otherwise removal macros are disabled (open question 6).
+- **G2 (attribution guard).** `Supersede(c, η)` appears only together with an own-statement stance $a'$ of the message speaker that either (i) introduces a replacing claim $c'$ with the same subject, predicate and scope as $c$, on an exclusive predicate, or (ii) is a negative-polarity stance on $c$ itself (removal); and some attribution on $c$ has the same speaker and function as $a'$. Case (i) is the guard of plan section 3.2. Case (ii), for example "I no longer play the violin", extends the guard to supersession without a replacing claim. Two macros rely on it: `m-remove` and the multi-valued variant of `m-correct`. T014 must confirm it; otherwise both are disabled (open question 6).
 - **G3 (no double supersession).** A claim is superseded at most once. This keeps the exactness conditions of plan section 3.4 checkable.
 - **G4 (introduction).** A state claim is introduced by an own, positive `inform` of its authority speaker, or by a non-endorsing stance (request, offer, question, quote, hypothetical) that a later message may endorse. `confirm` occurs only on claims that already exist.
 - **G5 (offers carry catalogue facts).** An offer of item $o$ introduces, in the same message, the catalogue claims of $o$ used by the current-choice view (for example `(o, scheduledArrival, ·)` informed by the assistant). The inner join of that view then always has a partner for offered items.
 - **G6 (no re-acceptance).** A candidate that the user rejected is not accepted again.
-- **G8 (no fallback of the choice).** The user rejects the current choice only when no earlier accepted and unrejected candidate of the task exists, so the current-choice view never falls back to an earlier choice.
 - **G7 (no state in fillers).** Filler messages have $E_t=\emptyset$ and must not express any proposition about a predicate of the family (audited, section 8).
+- **G8 (no fallback of the choice).** The user rejects the current choice only when no earlier accepted and unrejected candidate of the task exists, so the current-choice view never falls back to an earlier choice.
 
 ### 3.3 Change macros
 
@@ -82,7 +82,7 @@ m-accept     ::= Stance(c,accept,own,+)                                         
 m-reject     ::= Stance(c,reject,own,+)                                                -- user, c offered; C3
 m-correct    ::= NewClaim(c',x,p,o'',τ'') Stance(c',inform,own,+) Supersede(c,correction) -- p exclusive, c from an earlier episode; C5
                | Stance(c,inform,own,−) Supersede(c,correction) [NewClaim(c',x,p,o'') Stance(c',inform,own,+)]
-                                                                                       -- p multi-valued ("I said violin, I meant viola"); C5
+                                                                                       -- p multi-valued ("I said violin, I meant viola"); C5; needs G2(ii)
 m-mention    ::= Stance(c,inform|confirm,own,+) | Stance(c,inform,own,+,derived)        -- c existing; C6
 m-past       ::= NewClaim(c',x,p,o',[τ_s,τ_e)) Stance(c',inform,own,+)                  -- p exclusive, closed past interval; C7a (local filter)
 m-blocked    ::= NewClaim(c',...) Stance(c',f,ρ,π)  with f ∈ {request, offer, question} on a state predicate,
@@ -173,6 +173,13 @@ Reads never write to the history (plan section 6.8), so several schedules can be
 
 An instance of ablation A is a pair (read point $r_j$, binding $b$). Its **interval** is $(r_{j-1}, r_j]$. Instances whose interval contains changes of more than one type with respect to $b$ form a separate "mixed" stratum; the anchored schedule with $d=1$ exists to produce single-type intervals.
 
+**Question-level change-type label.** Every question record in a schedule carries two fields, computed from `labels.jsonl` for its target binding $b$ over the interval $(r_{j-1}, r_j]$ of its read point in that schedule (for the first read point, $(L_0, r_1]$):
+
+- `change_types`: the set of change types C1–C7 of $b$ at the messages of the interval (untouched messages contribute nothing);
+- `change_type`: the single member if the set has one element, `none` if it is empty, and `mixed` otherwise.
+
+Paired questions also carry `pair_id` and `pair_role` (`known-then` or `seen-from-now`). The adapter copies these fields, with the question type, into the `labels` object of the read-task record (`docs/research/contracts.md`). The label depends on the schedule, because the interval does; overlaid schedules therefore have their own question records.
+
 ## 6. Gold staleness from the event log
 
 This section gives the deterministic procedure required by the T008 acceptance. It defines the semantics of the six view templates directly on the event log; the reference functions implement these definitions and nothing else.
@@ -211,10 +218,18 @@ Notes:
 **Historical state** (paired questions, exclusive predicates only). With $\bot$ read as $-\infty$:
 
 $$
-\mathrm{Hist}(x,p,\tau,\kappa)=o(c^*),\quad c^*=\arg\max_{\tau_s}\{c\in C_\kappa: s{=}x, p{=}p, c\text{ endorsed}, \mathrm{NC}_\kappa(c), \tau_s(c)\le\tau, \tau_e(c) \text{ unset or } \tau<\tau_e(c)\}
+\mathrm{Hist}(x,p,\tau,\kappa)=o(c^*),\quad c^*=\arg\max_{(\tau_s,\,\kappa(c))}\{c\in C_\kappa: s{=}x, p{=}p, c\text{ endorsed}, \mathrm{NC}_\kappa(c), \tau_s(c)\le\tau, \tau_e(c) \text{ unset or } \tau<\tau_e(c)\}
 $$
 
-following plan section 3.3: historical queries exclude only corrected claims, and a claim superseded by a change stays visible as past state; an open claim holds until a later-starting claim takes over. $\mathrm{Hist}$ is evaluated twice, once with every undated start at $-\infty$ and once at its message date, and a question is emitted only when both give the same unique answer, so the gold never depends on an invented date.
+following plan section 3.3: historical queries exclude only corrected claims, and a claim superseded by a change stays visible as past state; an open claim holds until a later-starting claim takes over. The maximum is lexicographic: by start, then by introduction version (the latest introduced wins), then by claim ID.
+
+Undated starts make the definition depend on a date the dialogue never states, so the generator applies three rules before emitting a historical question:
+
+1. **Two readings.** $\mathrm{Hist}$ is evaluated twice, once with every undated start at $-\infty$ and once at the date of the message that introduced the claim. The question is emitted only when both readings give the same answer.
+2. **No competing undated claims.** The question is skipped when, under the $-\infty$ reading, more than one undated candidate with different objects qualifies. Under that reading all undated starts are equal, and the tie-break by introduction version would pick the latest stated value even for a $\tau$ before it was stated (for example an undated "I live in Munich" superseded by an undated "I live in Cologne now").
+3. **Mixed dated and undated candidates.** Under the $-\infty$ reading every dated candidate that qualifies beats every undated one; under the message-date reading they compare by date. Rule 1 emits the question only where both orders agree, which happens when the dated start lies after the undated claim's message date (as in section 6.5) or the dated candidate does not qualify at $\tau$.
+
+So the gold never depends on an invented date.
 
 ### 6.3 Procedure
 
@@ -266,7 +281,7 @@ A fictional prefix with six bindings: V2(user, livesIn), V1 and V3(user, playsIn
 | 7 | user | I moved to Cologne on 1 November. | `NewClaim(c7, user, livesIn, Cologne, 1 Nov)`, inform; `Supersede(c1, change)` | C1 ans | – | – | – | – | – |
 | 8 | user | Sorry, I got that wrong: I moved on 20 October. | `NewClaim(c8, user, livesIn, Cologne, 20 Oct)`, inform; `Supersede(c7, correction)` | C5 cit | – | – | – | – | – |
 
-At $t=3$ the offer is relevant to V6 but carries no acceptance (C7a), and the arrival claim matches V6's join pattern without a partner (C7c); a claim-pattern strategy without confirmation marks V6, read-time re-query does not. At $t=4$ one acceptance, which supersedes nothing, empties V5 through its negated pattern and fills V6 through its attribution-constrained positive pattern (plan section 3.5). At $t=6$ the assistant's restatement adds an evidence link but no endorsing attribution: V2 is citation-stale only. At $t=8$ the answer stays Cologne while the witness moves from $c7$ to $c8$. For a trip on 25 October and the anchor "when you booked my train" ($k=4$), with the episode dates before 20 October, $\mathrm{Hist}(\text{user},\text{livesIn},25\text{ Oct},4)=$ Munich and $\mathrm{Hist}(\cdot,8)=$ Cologne: a differing known-then / seen-from-now pair. This table is a required unit-test fixture of T015.
+At $t=3$ the offer is relevant to V6 but carries no acceptance (C7a), and the arrival claim matches V6's join pattern without a partner (C7c); a claim-pattern strategy without confirmation marks V6, read-time re-query does not. At $t=4$ one acceptance, which supersedes nothing, empties V5 through its negated pattern and fills V6 through its attribution-constrained positive pattern (plan section 3.5). At $t=6$ the assistant's restatement adds an evidence link but no endorsing attribution: V2 is citation-stale only. At $t=8$ the answer stays Cologne while the witness moves from $c7$ to $c8$. **Dates of the fixture.** Message 1 is dated before 20 October (for example 15 October), messages 2–6 on 24 October, and messages 7 and 8 after 1 November (for example 3 November), so that both past-tense statements ("moved on 1 November", "on 20 October") refer to dates before they are made. The anchor "when you booked my train" refers to $k=4$, and its world time is the booking date $\tau=$ 24 October. Then $\mathrm{Hist}(\text{user},\text{livesIn},24\text{ Oct},4)=$ Munich (only $c1$ is known) and $\mathrm{Hist}(\cdot,24\text{ Oct},8)=$ Cologne ($c7$ is corrected away and $c8$ starts on 20 October), under both readings of $c1$'s undated start ($-\infty$ and 15 October): a differing known-then / seen-from-now pair. This table, with these dates, is a required unit-test fixture of T015.
 
 ## 7. Surface rendering
 
@@ -289,14 +304,14 @@ A failed message is re-rendered with a new seed, up to three attempts, and then 
 
 T016 runs the audit; this section fixes its protocol.
 
-- **Sample.** Per scenario family, 5 sequences drawn with a fixed seed from the generated pool, stratified over revision-density levels. From each, one window of 30 consecutive messages after the setup episode is audited (random start), together with every question whose read point lies in the window. Windows bound the effort; annotators see the 10 preceding messages as read-only context. The plan asks for "at least 5 sequences per template family, judging per message"; auditing one window per sequence is this document's reading of that requirement (open question 4).
+- **Sample.** Per scenario family, 5 sequences drawn with a fixed seed from the generated pool, stratified over revision-density levels. From each, one window of 30 consecutive messages after the setup episode is audited (random start). Questions come from one schedule only, the sequence's primary schedule: $A(20,d)$ for $\rho=10$ and $U(10)$ for the other density levels. A 30-message window holds about 3 of the 20 read points of $A(20,d)$ and about 11 questions, which would give about 1,100 questions over 100 windows; the audit therefore takes a seeded sample of at most 5 of the window's questions, always including both members of any pair, for at most 500 questions per annotator. Windows bound the effort; annotators see the 10 preceding messages as read-only context. The plan asks for "at least 5 sequences per template family, judging per message"; auditing one window per sequence is this document's reading of that requirement (open question 4).
 - **Annotators.** One author and one person not involved in building the system (chosen in phase 1), working independently. Both see the rendered text, the window's events in a readable form and the gold answers of the questions; neither sees the other's labels.
 - **Labels per message.** Exactly one of: `agree`; `missing` (an event is not expressed); `extra` (the text expresses a state proposition not in the log, including any state content in a filler); `wrong-value`; `wrong-attribution` (speaker, function, report mode or polarity differs, for example an offer rendered as a confirmation); `wrong-time` (valid time wrong, or a change rendered as a correction or the reverse); `unnatural` (meaning right, English unacceptable; reported, not counted as a mismatch). **Per question:** `agree`, `gold-wrong`, `ambiguous`, `anchor-unidentifiable`.
 - **Calibration.** A written guide with ten worked examples, piloted on two development-family windows that are not counted.
 - **Statistics.** Cohen's κ on the binary label (any mismatch vs `agree`) and on the full label set; raw disagreement rate; prevalence of mismatches; all per family and overall, with 95% intervals from a bootstrap over windows. Mismatches are expected to be rare, which depresses κ at high raw agreement (the prevalence effect), so positive and negative specific agreement are reported as well.
 - **Adjudication.** Disagreements are resolved by discussion; the adjudicated label is final.
 - **Decision rule.** A family with an adjudicated mismatch rate above 5% of messages **[assumption]**, or the same mismatch three or more times, is fixed in T015 (lexicon, skeletons, rendering prompt) and re-audited with fresh windows, or excluded with the reason recorded. The overall adjudicated mismatch rate is reported in the paper as the label-noise estimate of the controlled sequences (plan section 6.9, uncertainty by source).
-- **Effort.** 20 families × 5 windows × 30 messages = 3,000 messages and about 450 questions per annotator; at 8 s per message and 20 s per question **[assumption]**, about 9 hours each, 18 person-hours in total, within the annotation estimate of plan section 9.4.
+- **Effort.** 20 families × 5 windows × 30 messages = 3,000 messages and at most 100 windows × 5 = 500 questions per annotator; at 8 s per message and 20 s per question **[assumption]**, about 6.7 + 2.8 ≈ 9.5 hours each, 19 person-hours in total, within the annotation estimate of plan section 9.4.
 
 Reading held-out text in the audit is not a run of any system and does not touch the preregistration rule; fixes it triggers concern data validity, not system results.
 
@@ -311,7 +326,7 @@ One directory per sequence. Only `messages.jsonl` and the question texts, delive
 | `entries.jsonl` and `graph.trig` (gold claim graph) | All entries with version stamps, so $G_t$ is the set of entries stamped $\le t$; RDF serialisation validated against the T014 shapes | Memory layer: claim precision, recall and F1 (full recall is measurable here, unlike the sampled segments of natural data); accuracy of the attribution and time fields; share of restatements counted as independent evidence (`derived` attributions); structural validation pass rate (must be 100% on gold). Injected by `oracles/` for ablation A and C on gold graphs |
 | `bindings.jsonl` and `reference.jsonl` | Every binding; canonical $(\mathrm{ans},\mathrm{wit},\mathrm{ev})$ and fingerprints at each version where they change | Pipeline layer: agreement of views with full recomputation against the event log; view hit rate (which bindings could serve each question); the cross-check with compiled re-query (section 6.4) |
 | `labels.jsonl` (per-message per-binding staleness) | Answer-stale, citation-stale, change type and sub-kind for every (message, binding) | Pipeline layer: precision and recall of staleness decisions against the event-log reference, answer and citation staleness separated; with the graph reference (read-time re-query on the system's own graph), decision misses separated from extraction-induced misses; share of stale content entering the prompt. Stratification of ablation A by change type. Maintenance surface: the necessary rebuilds give the oracle-invalidation cost floor (section 8.3) |
-| `schedules/<name>.jsonl` (read schedule, questions, gold answers) | Read points; per question its text, type, target binding, $(\tau,\kappa)$, gold answer set, outdated values, `premise_outdated`, expected abstention, pair ID | LLM layer: Acc (normalised set match as primary scorer, the blind judge as secondary); stale-value use (outdated values, presupposition questions); correct-abstention rate; paired correctness on late corrections and known-then / seen-from-now pairs (ablation B readout, plan section 7.3); attribution probes for RQ1 support (V4 and V6 after offers, guard-blocked writes) |
+| `schedules/<name>.jsonl` (read schedule, questions, gold answers) | Read points; per question its text, type, target binding, $(\tau,\kappa)$, gold answer set, outdated values, `premise_outdated`, expected abstention, pair ID, and the question-level change-type label `change_types` / `change_type` (section 5) that the adapter writes into the contract's `labels` | LLM layer: Acc (normalised set match as primary scorer, the blind judge as secondary); stale-value use (outdated values, presupposition questions); correct-abstention rate; paired correctness on late corrections and known-then / seen-from-now pairs (ablation B readout, plan section 7.3); attribution probes for RQ1 support (V4 and V6 after offers, guard-blocked writes) |
 | Witness sets and gold evidence (in the schedule records) | Minimal witnesses and evidence message IDs per gold answer | Pipeline layer: evidence recall (strict and lenient) and full hit; LLM layer: ungrounded-answer rate |
 | `meta.json` | Scenario family, split, cell parameters, seeds, generator SHA, renderer snapshot and prompt hash, realised counts per type, checksums | Stratified reporting by revision frequency and reads per history; clustering by scenario family (section 6.9); axes of the maintenance surface (section 8.3) |
 | `render_log.jsonl` | Attempts, check failures, fallbacks | Validity reporting (section 6.4). Not the "rendering-check failure rate" of section 6.7, which concerns GRACE's view rendering |
@@ -360,9 +375,14 @@ Ablation A on extracted graphs needs one ingestion pass per writer configuration
 | --- | --- | --- |
 | Held-out | 15 families × (20 at $\rho=10$ + 5 at each of $\rho\in\{1,3,30\}$) = 525 | 105,000 |
 | Development | 5 families × (8 at $\rho=10$ + 2 at each other level) = 70 | 14,000 |
-| G-L (optional) | 15 families × 4 lengths × 3 | 31,500 |
+| G-L (optional) | 15 families × 4 lengths × 3 = 180 | 15 × 3 × (50 + 100 + 200 + 400) = 33,750 |
 
-On the held-out G-A sequences: about 18 budgeted changes per sequence (3.6 per type), 20 read points and 60 questions, so per family about 70–80 instances of each change type at the read level and 1,200 questions; in total 18,000 questions per answering arm and about 1,200 differing known-then / seen-from-now pairs (with as many controls).
+On the held-out G-A sequences (300 sequences, 20 per family):
+
+- about 18 budgeted changes per sequence (3.6 per type), so per family about 70–80 instances of each change type at the read level;
+- about 15 bindings per sequence **[assumption]**: two entities, each with one multi-valued predicate (V1, V3) and one exclusive predicate (V2), give 6, and three tasks (V4, V5, V6) give 9; with 20 read points this is about 300 (read point, binding) instances per sequence;
+- 20 read points with 3 questions each, plus a fourth question at the read points whose special slot holds a pair: the slot rotates over three kinds, so about $20/3\approx6.7$ pairs per sequence and $60+6.7\approx67$ questions per sequence;
+- per family about 1,333 questions and 133 pairs (about 67 differing and 67 controls); in total about 20,000 questions per answering arm and about 2,000 pairs, of which about 1,000 differ.
 
 Write-side order of magnitude: at about 1,000 logical tokens per message for extraction **[assumption]**, one ingestion pass over the held-out messages is about 105M logical tokens per writer configuration, before prefix-cache reuse. T015 recomputes this with the primary model's tokenizer.
 
@@ -393,17 +413,17 @@ $$
 
 On types C2–C4, citation-based strategies miss by construction on the graph and claim-pattern strategies miss only through extraction, so the expected difference is several times $\delta_{\min}$ unless extraction errors dominate, which is exactly the narrowing condition. As a sensitivity analysis, a two-sided sign test over 15 families needs at least 12 families in one direction ($p=0.035$); 11 gives $p=0.118$.
 
-**(c) Over-marking rate** (claim-pattern against predicate level, the RQ2 overturn condition). The denominator is the fresh instances, about 300 per sequence minus the stale ones, so precision is better than in (a) at equal $\rho_{\text{icc}}$.
+**(c) Over-marking rate** (claim-pattern against predicate level, the RQ2 overturn condition). The denominator is the fresh instances: of the about 300 (read point, binding) instances per sequence (15 bindings × 20 read points, section 12.1), all but the stale ones, so precision is better than in (a) at equal $\rho_{\text{icc}}$.
 
-**(d) Answer accuracy, template serialisation against LLM rendering** (ablation C, the premise of RQ3). The variance of a per-family mean paired difference is $\sigma_b^2+\psi/m_q$ with $m_q=1{,}200$ questions per family: $0.0009+0.000125=0.001025$, a standard deviation of $0.032$, so
+**(d) Answer accuracy, template serialisation against LLM rendering** (ablation C, the premise of RQ3). The variance of a per-family mean paired difference is $\sigma_b^2+\psi/m_q$ with $m_q\approx1{,}333$ questions per family: $0.0009+0.15/1333=0.0009+0.000113=0.001013$, a standard deviation of $0.0318$, so
 
 $$
-\delta_{\min}=3.013\times\frac{0.032}{\sqrt{15}}=0.025,
+\delta_{\min}=3.013\times\frac{0.0318}{\sqrt{15}}=0.025,
 $$
 
 about 2.5 accuracy points. Again $\sigma_b$ dominates and additional questions add little.
 
-**(e) Known-then / seen-from-now pairs.** About 80 differing pairs per family; at 70% paired accuracy, $\mathrm{DE}=4.95$, $n_{\text{eff}}=242$, half-width $\approx0.058$. Reported descriptively, as support for ablation B.
+**(e) Known-then / seen-from-now pairs.** About 67 differing pairs per family (section 12.1), about 1,000 in total; at 70% paired accuracy, $\mathrm{DE}=1+66\times0.05=4.3$, $n_{\text{eff}}=15\times67/4.3=234$, half-width $1.96\sqrt{0.21/234}\approx0.059$. Reported descriptively, as support for ablation B.
 
 **(f) Maintenance surface.** Cost is nearly deterministic given the events; with 75 sequences per $\rho$ level and a per-sequence coefficient of variation of 0.2 **[assumption]**, the relative standard error of a cell mean is about 2.3%.
 
@@ -438,5 +458,6 @@ Cells are taken from plan section 2.1 and `docs/research/literature.md`; "not es
 3. **Renderer.** Which model (outside every evaluated family and different from the judge) renders the text; chosen in phase 1 with the other model choices.
 4. **Audit windows.** Whether auditing one 30-message window per sampled sequence satisfies "at least 5 sequences per template family" in plan section 6.4.
 5. **Held-out vocabulary.** Whether held-out families may use predicates outside the core vocabulary (this design: yes, to test predicate linking), or whether all predicates should come from a shared list.
-6. **Removal macros and the guard.** Whether the attribution guard covers supersession without a replacing claim (section 3.2, G2); otherwise `m-remove` is disabled and C1 on multi-valued predicates is realised only through corrections.
+6. **Supersession without a replacing claim and the guard.** Whether the attribution guard covers supersession without a replacing claim (section 3.2, G2(ii)). If it does not, both `m-remove` and the multi-valued variant of `m-correct` are disabled: no claim on a multi-valued predicate is ever superseded, so V1 and V3 lose their C1 and C5 strata. C1 and C5 are then realised only on exclusive predicates (V2, V4 and the catalogue join of V6), and the change-type stratification of ablation A is reported for V1 and V3 without those two types.
 7. **Local conditions the IR must express.** The fragment's attribution constraint names speaker and function; the views also need own report mode and positive polarity on the attribution, and V2 needs "no valid end" on the claim. T017 must express these as local filters of the pattern; otherwise the view semantics of section 6.2 change and this document is revised before T015.
+8. **Terminology in the plan.** Plan sections 6.4 and 6.9 say "template family" for what this document calls a scenario family (the unit of the split, the audit sample and clustering), while section 5.4 uses the same words for the view templates. Should the plan owner rename the term in sections 6.4 and 6.9 (English and Chinese) to "scenario family", to match this document and D013's "one function per template family", which refers to view templates?
