@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-On gold graphs, how many stale views does each strategy miss and how many does it mark needlessly, by change class? Serves RQ2. This is a correctness check and a measurement of over-marking, not an empirical finding (plan section 6.4).
+On gold graphs, how many stale views does each strategy miss and how many does it mark needlessly, by change type? Serves RQ2. This is a correctness check and a measurement of over-marking, not an empirical finding (plan section 6.4).
 
 ## Design
 

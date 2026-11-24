@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-Does an LLM-rendered view help the reader more than a template serialisation of the same result rows? This is the premise of RQ3. If the template ties, nothing expensive needs caching and the paper becomes 'a staleness criterion plus computing at query time'.
+Does an LLM-rendered view help the answering LLM more than a template serialisation of the same result rows? This is the premise of RQ3. If the template ties, nothing expensive needs caching and the paper becomes 'a staleness criterion plus computing at query time'.
 
 ## Design
 

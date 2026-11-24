@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-With extracted graphs, which source of view content serves the reader best, and how often do standing views serve a read at all? Serves RQ3 and RQ2. A low hit rate means maintenance conclusions rest on the controlled sequences alone.
+With extracted graphs, which source of view content serves the answering LLM best, and how often do standing views serve a read at all? Serves RQ3 and RQ2. A low hit rate means maintenance conclusions rest on the controlled sequences alone.
 
 ## Design
 

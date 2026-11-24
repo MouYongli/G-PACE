@@ -14,13 +14,13 @@ The planner of plan sections 5.3 and 5.6: rule templates map a task to the IR wi
 
 - In scope:
   - At most one compile repair per read.
-  - Relative time is converted to absolute intervals and never persisted as a view.
+  - Relative time is converted to absolute intervals and never stored as a view.
 - Out of scope: Retrieval and fusion (T025).
 - Candidate worker subtasks and write scopes: to be set by the manager.
 
 ## Acceptance
 
-- [ ] On the annotated development subset, role, time filter and execution result of the IR are checked.
+- [ ] On the annotated development subset, attribution, time filter and execution result of the IR are checked.
 - [ ] Parse-failure and fallback rates are logged.
 - [ ] `make test` and `make lint` pass.
 

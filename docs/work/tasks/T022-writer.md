@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Goal
 
-The write path of plan section 5.1: the writer extracts claim patches anchored to message spans; the program validates them and decides, by role and exclusivity rules, whether to append, supersede or keep claims side by side; entity alignment adds versioned equivalence entries.
+The write path of plan section 5.1: the writer extracts claim patches anchored to message spans; the program validates them and decides, by attribution and exclusivity rules, whether to append, supersede or keep claims side by side; entity alignment adds versioned equivalence entries.
 
 ## Scope
 

@@ -8,7 +8,7 @@ created: 2026-11-22
 
 ## Goal
 
-Establish from the data how much evidence MultiWOZ can give the role claim of RQ1 (plan sections 6.5 and 9, phase 1). Count the test-set user turns that accept or reject a system offer, and check whether "2.2 writes system-offered values into the state, 2.4 does not" holds in general. The counts decide whether MultiWOZ offer turns remain the primary evidence for the role claim or become support for the controlled sequences.
+Establish from the data how much evidence MultiWOZ can give the attribution-guard claim of RQ1 (plan sections 6.5 and 9, phase 1). Count the test-set user turns that accept or reject a system offer, and check whether "2.2 writes system-offered values into the state, 2.4 does not" holds in general. The counts decide whether MultiWOZ offer turns remain the primary evidence for the attribution-guard claim or become support for the controlled sequences.
 
 ## Scope
 

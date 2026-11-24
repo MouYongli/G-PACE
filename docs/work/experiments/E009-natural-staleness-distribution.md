@@ -8,15 +8,15 @@ created: 2026-11-23
 
 ## Question
 
-How often do answer and citation staleness occur in natural dialogue, by change class, and how much do the citation-based strategies miss there? This is the empirical answer for RQ2; it repeats E002 with the formal writer and compiler.
+How often do answer and citation staleness occur in natural dialogue, by change type, and how much do the citation-based strategies miss there? This is the empirical answer for RQ2; it repeats E002 with the formal writer and compiler.
 
 ## Design
 
 | Item | Value |
 | --- | --- |
 | Benchmarks and splits | LoCoMo development histories with manually corrected extraction; LongMemEval development histories |
-| Systems and baselines | Template views of plan section 5.4, re-evaluated after every message; no reader |
-| Metrics | Occurrences per thousand messages by change class; ratio of citation to answer staleness; misses of the two citation-based strategies |
+| Systems and baselines | Template views of plan section 5.4, re-evaluated after every message; no answering LLM |
+| Metrics | Occurrences per thousand messages by change type; ratio of citation to answer staleness; misses of the two citation-based strategies |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E009-natural-staleness-distribution.yaml` (to be created) |
 

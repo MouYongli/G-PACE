@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-With extracted graphs, how much stale content reaches the reader under each strategy, and how much of it is due to extraction and not to detection? Serves RQ2.
+With extracted graphs, how much stale content reaches the answering LLM under each strategy, and how much of it is due to extraction and not to detection? Serves RQ2.
 
 ## Design
 

@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Goal
 
-The assembler of plan section 5.5: list the variables a read must fill, filter candidates by version, valid time, scope and role, select greedily by new coverage per token, expand a summary or issue one more bounded query when variables stay open, and serialise the fixed working-context layout.
+The assembler of plan section 5.5: list the variables a read must fill, filter candidates by version, valid time, scope and attribution, select greedily by new coverage per token, expand a summary or issue one more bounded query when variables stay open, and serialise the fixed working-context layout.
 
 ## Scope
 
@@ -22,7 +22,7 @@ The assembler of plan section 5.5: list the variables a read must fill, filter c
 ## Acceptance
 
 - [ ] The assembled context never exceeds the budget; token counts match the ledger.
-- [ ] Every reader answer records the evidence IDs shown.
+- [ ] Every answer of the answering LLM records the evidence IDs shown.
 - [ ] `make test` and `make lint` pass.
 
 ## Deliverables

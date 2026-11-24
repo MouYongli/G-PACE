@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-How much graph and downstream quality does a larger writer or thinking recover, and what do the three extraction granularities cost? Serves RQ3. The granularity result fixes the main configuration (plan section 8.4).
+How much graph quality and answer accuracy does a larger writer or thinking recover, and what do the three extraction granularities cost? Serves RQ3. The granularity result fixes the main configuration (plan section 8.4).
 
 ## Design
 
@@ -16,7 +16,7 @@ How much graph and downstream quality does a larger writer or thinking recover, 
 | --- | --- |
 | Benchmarks and splits | Controlled sequences; LoCoMo development histories |
 | Systems and baselines | Writer: primary versus larger same-family model; thinking off versus on; granularity per message, per segment, per session |
-| Metrics | Writer tokens; graph quality as in E006; downstream accuracy; parse-failure and repair rates |
+| Metrics | Writer tokens; graph quality as in E006; answer accuracy; parse-failure and repair rates |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E007-ablation-g-writer.yaml` (to be created) |
 
