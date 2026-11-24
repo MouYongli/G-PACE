@@ -3,7 +3,7 @@
 # Nodes are the work items; an edge A -> B (B.depends_on contains A) means A must be resolved before
 # B starts. Nodes with no unresolved dependency can run in parallel. Milestones only group nodes.
 project: GRACE
-updated: 2026-11-24
+updated: 2026-11-25
 repo: https://github.com/MouYongli/GRACE   # used to link Issues
 
 end: T036                      # the end node: every milestone node leads to a deliverable
@@ -159,12 +159,12 @@ nodes:
     type: task
     title: Record contracts
     milestone: M1
-    status: planned
+    status: done
     depends_on: []
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 25
+    owner: m01-T001
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T001-record-contracts.md
   - id: T002
     type: task
@@ -247,11 +247,11 @@ nodes:
     type: task
     title: Controlled change-sequence generator design
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T005]
-    issue: null
-    owner: null
-    start: null
+    issue: 24
+    owner: m01-T008
+    start: 2026-11-25
     finish: null
     file: ../tasks/T008-change-sequence-design.md
   - id: T009
