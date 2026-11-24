@@ -19,6 +19,7 @@ dependencies = [
   "jsonschema>=4.21",   # validation of structured LLM output
   "openai>=1.40",       # client for the OpenAI-compatible inference server
   "transformers>=4.51", # tokenizer and chat template only, for token counting (no torch)
+  "pyarrow>=15",        # reads the MemoryAgentBench parquet files (benchmark adapters, T002)
 ]
 
 [project.optional-dependencies]
