@@ -25,7 +25,7 @@ from pathlib import Path, PurePosixPath
 
 import yaml
 
-from grace.paths import REPO_ROOT, shared_dir
+from grace.config.paths import REPO_ROOT, shared_dir
 
 SOURCES = REPO_ROOT / "configs" / "data" / "sources.yaml"
 MANIFEST = "MANIFEST.sha256"

@@ -1,0 +1,14 @@
+{
+  "comment": "Hand-computed totals for calls.jsonl under the Cost ledger section of docs/research/contracts.md; reads at versions 2 and 4.",
+  "categories": {
+    "W": {"logical": 650, "computed": 360, "gpu_seconds": 2.1, "gpu_null": 0},
+    "U": {"logical": 160, "computed": 100, "gpu_seconds": 0.3, "gpu_null": 0},
+    "A": {"logical": 972, "computed": 222, "gpu_seconds": 1.5, "gpu_null": 0},
+    "embedding": {"logical": 40, "computed": 40, "gpu_seconds": 0.1, "gpu_null": 0},
+    "evaluation": {"logical": 203, "computed": 203, "gpu_seconds": 0.0, "gpu_null": 1}
+  },
+  "reads": {
+    "conv-syn-1:q1@2": {"version": 2, "W_before": 425, "U": 95, "A": 310},
+    "conv-syn-1:q1@4": {"version": 4, "W_before": 225, "U": 65, "A": 662}
+  }
+}

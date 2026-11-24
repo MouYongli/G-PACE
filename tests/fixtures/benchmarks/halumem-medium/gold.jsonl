@@ -1,0 +1,2 @@
+{"benchmark": "halumem-medium", "split": "fixture", "history_id": "user-001", "task_id": "user-001:q1", "annotation": "medium", "reference": "nurse", "evidence_ids": ["s1:0"], "evidence_segment_ids": null, "evidence_unresolved": [], "labels": {"question_type": "basic"}}
+{"benchmark": "halumem-medium", "split": "fixture", "history_id": "user-001", "task_id": "user-001:q2", "annotation": "medium", "reference": "biology teacher", "evidence_ids": ["s2:0"], "evidence_segment_ids": null, "evidence_unresolved": [], "labels": {"question_type": "dynamic-update"}}

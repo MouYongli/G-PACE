@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 
 from grace.cli.data import download as dl
-from grace.paths import REPO_ROOT
+from grace.config.paths import REPO_ROOT
 
 
 def sha(data: bytes) -> str:

@@ -1,0 +1,2 @@
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "read_id": "ctx-001:q1@2", "task_id": "ctx-001:q1", "version": 2, "kind": "question", "question": "What is the capital of Velmora?", "state_schema": null, "asked_at": null, "asked_at_raw": null}
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "read_id": "ctx-001:q2@2", "task_id": "ctx-001:q2", "version": 2, "kind": "question", "question": "Which river does the former capital of Velmora lie on?", "state_schema": null, "asked_at": null, "asked_at_raw": null}
