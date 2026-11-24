@@ -578,7 +578,7 @@ On gold graphs, that claim-pattern-level detection misses nothing is guaranteed 
 - Splits are by template family: development and held-out families are disjoint.
 - High scores on synthetic data do not substitute for results on natural benchmarks; the paper states this.
 
-The full design (event grammar, templates, rendering, audit protocol, sizes) is a separate document produced in phase 1 (task T008). Implementing the generator is the first item of phase 2.
+The full design (event grammar, templates, rendering, audit protocol, sizes) is a separate document produced in phase 1 (task T008): `docs/research/change-sequences.md`. Implementing the generator is the first item of phase 2.
 
 ### 6.5 Notes per benchmark
 
