@@ -19,4 +19,6 @@ venv="$root/envs/serve/.venv"
 [[ -x "$venv/bin/vllm" ]] || { echo "serving environment missing; run: make setup-serve" >&2; exit 1; }
 
 export CUDA_VISIBLE_DEVICES="$GPUS"
+# Tools that vLLM calls at run time (ninja for the FlashInfer JIT kernels) live in the serving venv.
+export PATH="$venv/bin:$PATH"
 exec "$venv/bin/vllm" serve "$model" --port "$port" --enable-prefix-caching "$@"
