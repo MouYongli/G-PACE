@@ -258,12 +258,12 @@ nodes:
     type: task
     title: Python and inference environment
     milestone: M1
-    status: active
+    status: done
     depends_on: [D004]
     issue: null
     owner: user
     start: 2026-11-22
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T009-env-setup.md
   - id: T010
     type: task
