@@ -1,0 +1,2 @@
+{"benchmark": "multiwoz", "split": "fixture", "history_id": "SYN0001.json", "read_id": "SYN0001.json:0@1", "task_id": "SYN0001.json:0", "version": 1, "kind": "state", "question": null, "state_schema": "multiwoz-slots", "asked_at": null, "asked_at_raw": null}
+{"benchmark": "multiwoz", "split": "fixture", "history_id": "SYN0001.json", "read_id": "SYN0001.json:2@3", "task_id": "SYN0001.json:2", "version": 3, "kind": "state", "question": null, "state_schema": "multiwoz-slots", "asked_at": null, "asked_at_raw": null}

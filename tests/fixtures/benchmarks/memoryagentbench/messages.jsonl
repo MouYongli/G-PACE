@@ -1,0 +1,2 @@
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "version": 1, "message_id": "chunk_1", "segment_id": "chunk_1", "speaker": null, "role": "document", "text": "Fact 1: The capital of Velmora is Ost. Fact 2: Ost lies on the Rell river.", "timestamp": null, "timestamp_raw": null}
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "version": 2, "message_id": "chunk_2", "segment_id": "chunk_2", "speaker": null, "role": "document", "text": "Fact 3: The capital of Velmora is Brask.", "timestamp": null, "timestamp_raw": null}

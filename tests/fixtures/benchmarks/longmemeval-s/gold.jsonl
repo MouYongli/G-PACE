@@ -1,0 +1,1 @@
+{"benchmark": "longmemeval-s", "split": "fixture", "history_id": "syn_q001", "task_id": "syn_q001", "annotation": "cleaned", "reference": "15 minutes", "evidence_ids": ["sess_b:0"], "evidence_segment_ids": ["sess_b"], "evidence_unresolved": [], "labels": {"question_type": "knowledge-update", "abstention": false}}

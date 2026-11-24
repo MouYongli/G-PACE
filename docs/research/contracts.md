@@ -11,62 +11,198 @@ This file is the single specification of the interfaces between modules and task
 
 Conventions used below: `MUST`, `MUST NOT` and `MAY` are normative. All files are UTF-8 JSON Lines (one JSON object per line) unless stated otherwise.
 
-## Benchmark input
+## Benchmark records
 
-> Placeholder (v0.1): this sample-level record and the prediction record below are replaced by history, message and question records in task T001 (`docs/work/tasks/T001-record-contracts.md`).
+> Replaces the sample-level "Benchmark input" record of v0.1 (task T001). Terms follow plan sections 3.1 and 6.2: a **history** is the unit of memory, a **segment** a dated part of it, a **message** one $h_r$, and a **read task** a question or state request bound to a version.
 
-Owner: TBD (data owner) · Version: 0.1 · Producer: benchmark adapters · Consumers: model runners, evaluator
+Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: benchmark adapters (`eval/datasets/benchmarks/`) · Consumers: harness, probes, oracles, judging, metrics
 
-One record per sample.
+An adapter writes, per benchmark, data version and split:
 
-| Field | Type | Required | Rules |
-| --- | --- | --- | --- |
-| `benchmark` | string | yes | Non-empty; equals the `benchmark` key in `configs/benchmarks/<name>.yaml`. |
-| `split` | string | yes | Non-empty; an official split name listed in the config. |
-| `sample_id` | string | yes | Non-empty; unique within one benchmark version and split. Keep the original string, including leading zeros; never cast to a number. |
-| `input` | string or object | yes | Structure defined on the benchmark card in `docs/research/benchmarks.md`. |
-| `reference` | any JSON value or `null` | yes | `null` only for splits without public labels. |
+| File | One record per | Visible to systems |
+| --- | --- | --- |
+| `histories.jsonl` | history ([History](#history)) | yes |
+| `messages.jsonl` | message ([Message](#message)) | yes |
+| `read_tasks.jsonl` | read of the native schedule ([Read task](#read-task)) | yes |
+| `read_tasks.<schedule>.jsonl` | read of an additional schedule, for example `streaming` for LoCoMo (T007) | yes |
+| `gold.jsonl` | reference of one task under one annotation ([Gold](#gold)) | no: scoring side only |
 
-Additional fields MAY be present and MUST be documented on the benchmark card.
+Rules shared by all record types in this file:
 
-Example:
-
-```json
-{"benchmark": "bench-a", "split": "fixture", "sample_id": "001", "input": "synthetic 001", "reference": "0"}
-```
+- IDs are non-empty strings copied from the source, including leading zeros and suffixes; never cast them to numbers. Where the source has no ID, the adapter builds one by the rule on the benchmark card.
+- `benchmark` equals the `benchmark` key of `configs/benchmarks/<slug>.yaml`; `split` is a split listed there (`fixture` in `tests/fixtures/`). One file holds one benchmark and one split.
+- The fields listed in each table are the only top-level fields. Benchmark-specific fields go into the optional `metadata` object and are documented on the benchmark card.
+- Times are ISO 8601 strings with no invented precision (`2023-05-08T13:56:00`, or `2023-05-08` when the source gives only a date; an offset only when the source gives one). The source string is kept in the matching `*_raw` field. Both are `null` when the source has no time.
+- Visible records never contain a reference answer, an evidence annotation, a category or stratum label, or any field the card marks as masked (plan 6.8). Those live only in `gold.jsonl`, which reaches a system only through `eval/engines/oracles/` in a labelled upper-bound experiment.
+- Write-side gold (HaluMem memory points and update labels; gold claim graphs and per-message invalidation ground truth of `change-seq`) is also scoring side only. Its files are named on the benchmark card and in the T008 design; they are outside these records.
 
 Adapter obligations:
 
-- Fail on duplicate keys, missing required fields and empty strings. The error names the source file, the source line or record index, and the offending key.
-- Compare per-split counts with the manifest; fail on any mismatch.
+- Fail on duplicate keys, missing required fields, unknown top-level fields and empty strings. The error names the source file, the source line or record index, and the offending key.
+- Compare per-split counts of histories, messages and read tasks with the card and the manifest; fail on any mismatch.
+- Exclude what the plan excludes (for example LoCoMo images, image captions and human-written summaries) and write the count per exclusion reason to `exclusions.json` next to the records.
 - Never write into `$PROJECT_ROOT/data`; write converted output to `RUN_DIR`.
 
-## Prediction output
+Synthetic fixtures of all six benchmarks are in `tests/fixtures/benchmarks/<slug>/`; the reference checks the contract tests apply to them are in `tests/contracts/records.py`.
 
-Owner: TBD (evaluation owner) · Version: 0.1 · Producer: model runners · Consumer: evaluator
+## History
 
-One record per sample prediction.
+Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: benchmark adapters · Consumers: harness, probes
 
 | Field | Type | Required | Rules |
 | --- | --- | --- | --- |
-| `benchmark` | string | yes | Same value as in the input record. |
-| `split` | string | yes | Same value as in the input record. |
-| `sample_id` | string | yes | Same value as in the input record. |
-| `prediction` | any JSON value | yes | The parsed prediction used for scoring. |
+| `benchmark`, `split` | string | yes | See [Benchmark records](#benchmark-records). |
+| `history_id` | string | yes | Source ID of the unit of memory (plan 6.2); unique within benchmark and split. |
+| `subset` | string or `null` | yes | Named subset when one benchmark ships histories of different kinds (MemoryAgentBench `factconsolidation-6k`); `null` otherwise. |
+| `n_messages` | integer | yes | $N\ge 1$; equals the number of message records of the history. |
+| `segments` | list of objects | yes | Segments in order; `[]` when the benchmark has none. |
+| `metadata` | object | no | Visible benchmark-specific fields. |
 
-The alignment key is the triple `(benchmark, split, sample_id)` within one data version. Additional fields such as `raw_output` MAY be present and are ignored by the evaluator; keeping the unparsed model output in `raw_output` is recommended so scores can be recomputed.
+Segment object: `segment_id` (string, source ID, unique within the history), `first_version` and `last_version` (integers), `timestamp` and `timestamp_raw` (string or `null`). Segments cover versions 1 to $N$ in order, without gaps or overlaps. Every message of a history with segments names its segment, and its version lies in that segment's range; in a history without segments every message has `segment_id: null`.
 
-Example:
+## Message
 
-```json
-{"benchmark": "bench-a", "split": "fixture", "sample_id": "002", "prediction": "1", "raw_output": "Answer: 1"}
-```
+Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: benchmark adapters · Consumers: harness, probes, oracles
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `benchmark`, `split`, `history_id` | string | yes | `history_id` names an existing history. |
+| `version` | integer | yes | Position $r$ of the message in $\mathcal H$; writing it commits version $r$. Within a history the versions are exactly $1,\dots,N$. |
+| `message_id` | string | yes | Source message ID; unique within the history. This is the evidence ID that evidence annotations, citations and traces use. |
+| `segment_id` | string or `null` | yes | See [History](#history). |
+| `speaker` | string or `null` | yes | Source speaker name or label (`Melanie`, `USER`); `null` when the unit has no speaker. |
+| `role` | string | yes | `user` (the person the memory serves), `agent` (assistant or system side of a task dialogue), `peer` (one of several equal participants), or `document` (text without a speaker). |
+| `text` | string | yes | Non-empty message text after the exclusions of the card. |
+| `timestamp`, `timestamp_raw` | string or `null` | yes | The message's own time. When the source dates only segments both are `null` and readers use the segment's time; adapters do not copy segment times down or invent finer ones. |
+| `metadata` | object | no | Visible benchmark-specific fields. |
+
+Records are written in version order within a history; readers MUST still sort by `version` and fail on a gap or a duplicate. Evidence spans inside a message (`context/memory/history/spans.py`, T014) refine a `message_id`; they do not replace it.
+
+## Read task
+
+Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: benchmark adapters; read-schedule builders (T007 for LoCoMo streaming) · Consumers: harness, judging, metrics
+
+A read task is a question or a state request arriving at version $r$ (plan 3.1). It is the alignment key of predictions.
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `benchmark`, `split`, `history_id` | string | yes | `history_id` names an existing history. |
+| `read_id` | string | yes | `<task_id>@<version>`; unique within the file. Predictions align on it. |
+| `task_id` | string | yes | ID of the question or state target; links to [Gold](#gold). |
+| `version` | integer | yes | Snapshot cut-off, $1\le r\le N$: the read sees exactly the messages with `version` $\le r$. |
+| `kind` | string | yes | `question` or `state`. |
+| `question` | string or `null` | yes | Non-empty for `question`; `null` for `state`. |
+| `state_schema` | string or `null` | yes | For `state`: the slot inventory named on the card (`multiwoz-slots`); `null` for `question`. |
+| `asked_at`, `asked_at_raw` | string or `null` | yes | World time at which the question is asked (LongMemEval `question_date`). It is specified separately from `version` (plan 3.1). |
+| `metadata` | object | no | Visible benchmark-specific fields. |
+
+Schedules:
+
+- The harness writes messages $1..r$, answers every read task with `version` $r$ on that snapshot, each independently, and only then writes message $r+1$. Answering never writes to the history (plan 6).
+- End of history: every read task has `version` $=N$. Per turn: one `state` read at the version of each user turn. Interleaved and streaming: versions set by the schedule.
+- A task read at several versions has one reference valid at all of them (LoCoMo streaming asks the same question at $v(q)$ and $N$). A schedule whose reference changes with the version uses one `task_id` per read point (`change-seq`).
+- Each read-task file is its own key space; a run reads exactly one of them and records which in its resolved config.
+
+## Gold
+
+Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: benchmark adapters; derived-gold builders (T006) · Consumers: oracles, judging, metrics only
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `benchmark`, `split`, `history_id`, `task_id` | string | yes | Same values as the read tasks of this task. |
+| `annotation` | string | yes | Annotation the reference comes from: the data version (`2.4`, `2.2`, `2.1` for MultiWOZ) or a derived gold named on the card (`2.4-current-choice`). The key is `(annotation, task_id)`. |
+| `reference` | any JSON value or `null` | yes | Answer (string or list) or state (object slot → value). `null` only for splits without public labels. |
+| `evidence_ids` | list of strings or `null` | yes | `message_id`s of the annotated evidence; `null` when the benchmark annotates no message evidence for this task. |
+| `evidence_segment_ids` | list of strings or `null` | yes | Segment-level evidence (LongMemEval `answer_session_ids`); `null` when none. |
+| `evidence_unresolved` | list of strings | yes | Source evidence references that name no message (LoCoMo has 13 such questions; plan 11.1); `[]` when all resolve. |
+| `labels` | object | yes | Category and stratum labels (LoCoMo `category`, LongMemEval `question_type`, abstention, change type); `{}` when none. |
+| `metadata` | object | no | Other scoring-side fields, such as MultiWOZ dialogue acts. |
+
+Every evidence ID names a message (or segment) of the history, and every evidence message has a version at most the `version` of every read task of this `task_id` in every schedule. A violation is a snapshot mismatch: the schedule places a read before its evidence.
+
+An annotation MAY cover only some tasks (derived gold exists only for turns after an offer). Scoring against it uses the tasks it covers and reports their number.
+
+## Benchmark mapping
+
+Owner: T001 manager (`m01-T001`) · Version: 0.2
+
+How the six benchmarks of `docs/research/benchmarks.md` map onto the records. Source field names follow the plan and the public releases; T002 confirms them on the data and records any deviation on the card.
+
+| Slug | `history_id` | Segment | `message_id`; `role` | Times | Read tasks | Gold evidence and labels |
+| --- | --- | --- | --- | --- | --- | --- |
+| `change-seq` | Sequence ID | Episode | Generator message ID; `user`, `agent` | Generator world time per message | Interleaved `question` reads at generator-scheduled versions; one `task_id` per read point | Witness messages from the event log; change type and the pair ID of "known then" and "seen from now" questions in `labels` |
+| `multiwoz` | `dialogue_id` | None | Turn index as a string; `USER` → `user`, `SYSTEM` → `agent` | None | Per turn: one `state` read at each user turn | Cumulative state per annotation `2.4`, `2.2`, `2.1` on the same `task_id`; derived "current choice" gold (T006) as its own annotation; dialogue acts in `metadata` |
+| `locomo` | `sample_id` | Session `session_<k>`, dated by `session_<k>_date_time` | `dia_id`; both speakers `peer` | Segment time only | End of history: every question at $N$, `task_id` `<sample_id>:q<index>`; streaming file at $v(q)$ and $N$ (T007) | `evidence` → `evidence_ids`, unresolvable references in `evidence_unresolved`; `category` in `labels` |
+| `longmemeval-s` | `question_id` | Haystack session, dated by `haystack_dates` | `<session_id>:<turn index>`; `user`, `agent` | Segment time; `question_date` → `asked_at` | End of history, one question per history; `task_id` = `question_id` | Turns with `has_answer` → `evidence_ids`, `answer_session_ids` → `evidence_segment_ids` (both masked in messages); `question_type` and abstention in `labels` |
+| `halumem-medium` | User ID | Session | `<session_id>:<turn index>`; `user`, `agent` | Session time where given | Session by session: each question at the last version of its session | Evidence where the files give it; question type in `labels`; memory points and update labels as write-side gold |
+| `memoryagentbench` | Context ID; `subset` names LongMemEval(S\*), FactConsolidation 6K or 32K | Chunk, one message each | `<chunk_id>`; `document`, `speaker: null` | None | Chunk by chunk, then several questions at $N$ | `evidence_ids: null`; competency in `labels` |
+
+Per-turn reading (MultiWOZ) and end-of-history reading (LoCoMo) differ only in the `version` of their read tasks; the same harness drives both.
+
+## Prediction
+
+> Replaces the sample-level "Prediction output" record of v0.1 (task T001).
+
+Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: harness (`eval/runner/harness/outputs.py`) · Consumers: judging, metrics
+
+One record per read task of the schedule the run used.
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `benchmark`, `split`, `history_id` | string | yes | As in the read task. |
+| `read_id` | string | yes | Alignment key. |
+| `task_id`, `version` | string, integer | yes | Copied from the read task; checked against it. |
+| `output` | string | yes | `answer`, `state`, `unknown` (abstention), or `invalid` (no parsable final output). |
+| `prediction` | any JSON value | yes | Parsed answer (string or list) or state (object slot → value); `null` for `unknown` and `invalid`. |
+| `cited_ids` | list of strings | yes | `message_id`s the final answer cites (plan 5.6). |
+| `context_ids` | list of strings | yes | `message_id`s whose source text is in the working context: the set $R$ of plan 3.1, used for strict evidence recall. Lenient recall uses the provenance in the read trace. |
+| `further_retrieval` | boolean | yes | Whether the one permitted further retrieval was used. |
+| `raw_output` | string or `null` | yes | Unparsed final output of the answering LLM; `null` only for systems that make no answering call. |
+| `metadata` | object | no | Ignored by the evaluator. |
 
 Evaluator obligations:
 
-- Match by key; accept any line order.
-- Abort scoring on duplicate keys, missing keys, extra keys, or more than one split in a file. The error reports the count per category and up to five example keys each.
-- A prediction that is present but unparsable is not missing; it is handled by the invalid-output policy in [Evaluation](#evaluation).
+- Align by `read_id` against the read-task file the run used; accept any line order.
+- Abort scoring on duplicate keys, missing keys, extra keys, more than one benchmark or split in a file, or a snapshot mismatch: `history_id`, `task_id` or `version` differs from the read task, a `cited_ids` or `context_ids` entry names a message after `version` or no message at all, or a gold evidence message lies after `version`. The error reports the count per category and up to five example keys each.
+- `unknown` is scored by the abstention rule on the card. `invalid` is not missing; it is handled by the invalid-output policy in [Evaluation](#evaluation).
+
+## Cost ledger
+
+Owner: T001 manager (`m01-T001`) · Version: 0.1 · Producer: `llm/records.py` (T004) and the recording endpoint `llm/proxy.py` · Consumers: `eval/analysis/metrics/cost.py` (T030)
+
+Every model call writes one record to `calls.jsonl` of the run that made it: chat and embedding calls, judge calls, and the requests external systems (Mem0, Graphiti) send through the recording endpoint. Retries and failed attempts are records of their own and are counted in full (plan 8.1).
+
+| Field | Type | Rules |
+| --- | --- | --- |
+| `call_id`, `run_id` | string | `call_id` is unique within the run. |
+| `history_id`, `read_id` | string or `null` | The history and the read the call serves; `read_id` is `null` when `trigger` is `write`. |
+| `version` | integer or `null` | For a write-triggered call, the version being written (the last message of a segment); for a read-triggered call, the read's version. |
+| `call_type` | string | `extract` (writing and entity alignment), `vocabulary`, `render`, `plan`, `repair` (compilation repair), `verify`, `answer`, `summary` (rolling-summary baseline), `external`, `embed`, `judge`. |
+| `trigger` | string | `write`, `read` or `evaluation`: the phase that caused the call. |
+| `category` | string | `W`, `U`, `A`, `embedding` or `evaluation`, set by the caller (table below). |
+| `model` | string | Served model and snapshot. |
+| `attempt` | integer | 1 for the first attempt of a logical call. |
+| `status` | string | `ok`, `failed` or `invalid_output`. |
+| `input_tokens` | integer | Logical input: the whole prompt counted with the model's tokenizer and chat template, including tool and query results inserted into it. |
+| `output_tokens` | integer | Generated tokens; 0 for embeddings. |
+| `cached_input_tokens` | integer | Input tokens served from the prefix cache, as reported by the server; $0\le$ value $\le$ `input_tokens`. |
+| `gpu_seconds` | number or `null` | GPU time of the call under local inference; `null` for remote APIs. |
+| `latency_ms` | number | Wall time of the call. |
+| `prompt_sha256` | string or `null` | Hash of the prompt template (not of the filled prompt). |
+
+Which tokens are counted when:
+
+| Time | Call types | Category | Notes |
+| --- | --- | --- | --- |
+| Write: a message or segment is ingested | `extract`, `vocabulary`, eager `render`, `summary`, `external` on ingestion | `W` | Includes the extraction of a partial segment when a read falls inside it (plan 8.4); that call has `trigger: read` and is still `W`. |
+| Plan: a read starts | `plan`, `repair` | `U` | A rule template makes no call and costs nothing. |
+| Render: a view is materialised | `render` | `W` | At write time and for a lazy rebuild at read time alike (plan 8.2); `trigger` tells them apart. Citation patching makes no call. |
+| Read: the context is checked and retrieved | `verify`, `external` on search | `U` | `external` is `W` when `trigger` is `write` and `U` when it is `read`. |
+| Read: answering | `answer`, including the second call after the one further retrieval | `A` | A full-history baseline has the serialised history in its answer input, so it is `A`. |
+| Any time | `embed` | `embedding` | Reported separately; never part of W, U or A. |
+| After the system stage | `judge` | `evaluation` | `trigger: evaluation`. Evaluation overhead, never system cost. |
+
+The three ledgers (plan 8.1) are sums over the records of a category: logical tokens $=\sum(\text{input}+\text{output})$; computed tokens $=\sum(\text{input}-\text{cached}+\text{output})$; GPU seconds $=\sum$ `gpu_seconds`, reported with the number of calls whose value is `null`. In the notation of plan 8.2, $W(\mathcal H)$ sums the `W` records of a history, and $U_i$ and $A_i$ sum the `U` and `A` records with `read_id` $i$. Under per-turn and interleaved reading the write cost charged before read $i$ is the union of the `W` records with `version` in $(r_{i-1}, r_i]$ and the `W` records with `read_id` $i$. Database CPU, memory, latency percentiles and tool-call counts are not ledger entries; components record them in the write and read traces ([Experiment run](#experiment-run)).
 
 ## Evaluation
 
@@ -97,7 +233,7 @@ Required regression tests: empty prediction file, duplicate key, missing key, ex
 
 ## Experiment run
 
-Owner: integration owner · Version: 0.1
+Owner: integration owner · Version: 0.2 (stages and upstream runs, intermediate artefacts and `resources_sha256` added by decision D013)
 
 Every formal run owns one directory, created exclusively (fail if it exists, or use `tempfile.mkdtemp`):
 
@@ -105,38 +241,85 @@ Every formal run owns one directory, created exclusively (fail if it exists, or 
 <RUN_DIR>/<experiment>/<run-id>/
   run.json              status and provenance (below)
   resolved-config.yaml  the fully resolved config actually used
-  predictions.jsonl     see Prediction output
-  metrics.json          see Evaluation
   run.log               stdout and stderr
   report.yaml           written with the experiment-report skill
   cache/                library caches for this run only
+  calls.jsonl           every model call; see Cost ledger
+  predictions.jsonl     see Prediction
+  contexts.jsonl        working contexts (below)
+  traces/write.jsonl    write traces (below)
+  traces/read.jsonl     read traces (below)
+  changesets.jsonl      change sets (below)
+  snapshot/             engine state per history, with snapshot/manifest.json
+  judgements.jsonl      judgements (below)
+  metrics.json          see Evaluation
 ```
 
-`RUN_DIR` is `$PROJECT_ROOT/<runs_root>/T<NNN>/artifacts/<worker>/`, with `runs_root` from `configs/paths.yaml`. It lives in the main checkout, outside every worktree, so removing a worktree never removes evidence.
+A run writes only the files of its stage (table below); the first five entries are written by every run.
+
+`RUN_DIR` is `$PROJECT_ROOT/<runs_root>/T<NNN>/artifacts/<worker>/`, with `runs_root` from `configs/common/paths.yaml`. It lives in the main checkout, outside every worktree, so removing a worktree never removes evidence.
 
 Run ID format: `<experiment>-<UTC timestamp YYYYMMDDTHHMMSSZ>-<4 hex>`, for example `E001-20261121T093000Z-a1b2`.
 
-`run.json` fields:
+### Stages and upstream runs
+
+A run is one stage. Each stage reads only the files of the stage before it, which it names as upstream runs by run ID.
+
+| Stage | Upstream | Writes |
+| --- | --- | --- |
+| `system` | none | `calls.jsonl`, `predictions.jsonl`, `contexts.jsonl`, `traces/`, `changesets.jsonl` |
+| `ingest` | none | `calls.jsonl`, `traces/write.jsonl`, `changesets.jsonl`, `snapshot/` |
+| `read` | exactly one `ingest` | `calls.jsonl`, `predictions.jsonl`, `contexts.jsonl`, `traces/read.jsonl` |
+| `probe` | none, or one `ingest` or `system` | `calls.jsonl`, `traces/`, `changesets.jsonl`, outputs named in the experiment file |
+| `judge` | one `system` or `read` | `calls.jsonl`, `judgements.jsonl` |
+| `score` | one `system` or `read`, and at most one `judge` of it | `metrics.json` |
+
+- Stages without an upstream run read benchmark records from `$PROJECT_ROOT/data` (through the adapters); `judge` and `score` also read gold.
+- Under end-of-history reading, ingestion and reading are separate stages, and one `ingest` run serves several `read` runs (the four budget levels; the read-side ablations D, E and H). A `read` run restores the snapshot into its own directory; under per-turn and interleaved reading writes and reads alternate on one live state and form one `system` run.
+- An upstream run MUST be `completed`. A run MUST NOT write, rename or delete anything in an upstream directory. Rescoring and judge reruns are new `score` and `judge` runs with new run IDs; they never rerun a system.
+
+### Intermediate artefacts
+
+All are JSON Lines. A field that does not apply to a system (a baseline has no views) holds an empty list or `null`; it is never omitted.
+
+| File | One record per | Fields |
+| --- | --- | --- |
+| `contexts.jsonl` | read | `read_id`, `history_id`, `version`, `budget_tokens` (`null` for the full history), `tokens` (counted with the answering model's tokenizer), `text` (the context exactly as sent), `fragments` (list of `fragment_id`, `kind` = `message`, `view`, `claim`, `summary`, `retrieved` or `other`, `evidence_ids`, `tokens`) |
+| `traces/write.jsonl` | committed write (message or segment) | `history_id`, `version`, `message_ids`, `call_ids`, `stale_marks` (list of `view_id`, `strategy`, `level` = `answer`, `citation` or `unknown`), `timings_ms` (component → milliseconds) |
+| `traces/read.jsonl` | read | `read_id`, `history_id`, `version`, `candidates` (list of `id`, `channel`, `score`), `included_ids` (equal to `context_ids` of the prediction), `provenance` (fragment ID → `message_id`s, for lenient recall), `view_hits`, `staleness_decisions` (list of `view_id`, `strategy`, `decision` = `fresh`, `answer_stale` or `citation_stale`, `action` = `reuse`, `patch` or `rebuild`), `further_retrieval`, `call_ids`, `timings_ms` |
+| `changesets.jsonl` | committed version | `history_id`, `version`, `entries` (added entries grouped as `claims`, `attributions`, `evidence_links`, `supersessions`; the entry format is owned by `context/memory/graph/changeset.py`, T014), `vocabulary_version`, `entity_merges` |
+| `judgements.jsonl` | judged prediction | `read_id`, `task_id`, `annotation`, `judge` (judge config name), `verdict` (`correct`, `incorrect` or `invalid`), `raw_output`, `call_id` |
+
+`snapshot/manifest.json` is one JSON object, `{"histories": [{"history_id", "version", "files": [{"path", "sha256"}]}]}`: per history, the last committed version and every snapshot file (path relative to `snapshot/`) with its SHA-256. The files themselves are in the engine's own format.
+
+Example records of every artefact are in `tests/fixtures/runs/`.
+
+### `run.json`
 
 | Field | Type | Rules |
 | --- | --- | --- |
 | `run_id`, `experiment` | string | As above. |
+| `stage` | string | One of the stages above. |
+| `upstream` | list of objects | One per upstream run: `run_id`, `stage`, resolved absolute `path`, and `run_json_sha256` of its final `run.json`. `[]` when none. |
 | `status` | string | `running`, then exactly one of `completed` or `failed`. |
 | `code_sha` | string | Full 40-character SHA. |
 | `code_dirty` | boolean | MUST be `false` for a `completed` formal run. |
 | `config_path`, `config_sha256` | string | Source config and checksum of `resolved-config.yaml`. |
-| `data` | list of objects | One per benchmark: `benchmark`, `version`, `manifest_sha256`, `split`, and the resolved absolute `path`. |
+| `resources_sha256` | string | Checksum of `resources/` in the worktree (below). After the configuration lock (D012) a test compares it with the value recorded at the lock. |
+| `data` | list of objects | One per benchmark whose records or gold the stage reads: `benchmark`, `version`, `manifest_sha256`, `split`, and the resolved absolute `path`. |
 | `project_root` | string | Absolute `PROJECT_ROOT` resolved at run time. |
 | `seed` | integer | |
 | `command` | string | Exact command line. |
 | `environment` | object | `python`, `lock_sha256`, `host`, `device`. |
 | `started_at`, `finished_at` | string | ISO 8601 UTC; `finished_at` is `null` while running. |
-| `n_samples` | integer | Samples processed. |
+| `n_records` | integer | Records processed: messages for `ingest`, reads for `system` and `read`, judgements for `judge`, scored reads for `score`, as defined in the experiment file for `probe`. |
 | `failure` | string or `null` | Cause when `status` is `failed`. |
 
-Lifecycle:
+`resources_sha256` is computed like `sha256sum`: for every regular file under `resources/`, the line `<SHA-256 of its bytes, lowercase hex>  <path relative to resources/, with />` followed by a newline; the lines sorted by path in UTF-8 byte order and concatenated; the SHA-256 of that text. A missing or empty `resources/` gives the SHA-256 of the empty string. A symbolic link under `resources/` is an error.
 
-1. Create the directory and write `run.json` with `status: running`.
-2. Write all artifacts, then check the sample count, metrics and exit code.
+### Lifecycle
+
+1. Check that every upstream run is `completed`; then create the directory and write `run.json` with `status: running`.
+2. Write all artifacts, then check the record count, metrics and exit code.
 3. Only then set `status: completed` (or `failed` with `failure`) and `finished_at`.
 4. Retries use a new run ID. Never delete or overwrite an earlier run's evidence.

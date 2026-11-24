@@ -1,0 +1,1 @@
+{"benchmark": "longmemeval-s", "split": "fixture", "history_id": "syn_q001", "read_id": "syn_q001@4", "task_id": "syn_q001", "version": 4, "output": "answer", "prediction": "15 minutes", "cited_ids": ["sess_b:0"], "context_ids": ["sess_a:0", "sess_b:0"], "further_retrieval": false, "raw_output": "15 minutes"}
