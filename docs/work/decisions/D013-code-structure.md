@@ -74,7 +74,7 @@ Two points were proposed separately and confirmed with the decision:
   - `run.json` records the checksum of `resources/`.
 - T008 states how the invalidation ground truth of the controlled sequences is computed. The recommendation is one small function per template family that reads the event log directly and does not use the query compiler. Otherwise the end-to-end reference shares the compiler with the system under test, and a compiler error would be invisible. On gold graphs both routes must agree, which also tests the compiler.
 - The owners of T003 and T027 decide whether the fixed slot table is one implementation or two. The phase 1 pilot needs it before GRACE exists; ablation B needs it inside the GRACE assembly, combined with the attribution guard and bitemporality.
-- Pure logic such as the compiler, the attribution guard and the staleness strategies needs unit tests. A `tests/unit/` directory is proposed; it adds a row to the repository map of `AGENTS.md`.
+- Pure logic such as the compiler, the attribution guard and the staleness strategies needs unit tests. They go to `tests/unit/`, which is listed in the repository map of `AGENTS.md`.
 - Baselines and GRACE time themselves, so latency figures may not be measured in exactly the same way. This is accepted, because latency is reported separately and supports no main conclusion.
 
 ## Revisit when
@@ -88,3 +88,4 @@ Two points were proposed separately and confirmed with the decision:
 
 - 2026-11-24: proposed. Registered in `plan.yaml` as a project-wide decision; T002, T003, T004 and T014, the first nodes that add packages under `src/grace/`, depend on it.
 - 2026-11-24: accepted by the user, including the directory name `configs/engines/` and separate passes per budget level under interleaved reading.
+- 2026-11-24: follow-ups written into the task files: the contract extensions and the import-rule test into T001, layout, the gold-sentinel test and the slot-table question into T003 and T027, the invalidation ground truth into T008 and T015. `tests/unit/` added to the repository map. Not yet assigned: moving `paths.yaml` and `paths.py`.

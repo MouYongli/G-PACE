@@ -72,7 +72,7 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 | `src/grace/` | Python package: `cli/`, `config/`, `llm/`, `context/` (GRACE itself), `eval/` (experiment apparatus); layout and import rules in `docs/work/plan/structure.md` | Task owners within `WRITE_SCOPE` |
 | `envs/serve/`, `scripts/serve-model.sh` | GPU inference environment (vLLM) and its launcher | Integration owner |
 | `scripts/` | Bash entry points only (`scripts/data/` downloads the benchmarks); any Python they call lives in `src/grace/cli/` | Integration owner |
-| `tests/` | `contracts/` (interface tests), `integration/`, `docs/`, `fixtures/` (synthetic data) | Task owners |
+| `tests/` | `contracts/` (interface tests), `unit/` (pure logic of one package), `integration/`, `docs/`, `fixtures/` (synthetic data) | Task owners |
 | `paper/` | Manuscript and figure scripts | Paper owner |
 | `data/`, `runs/` | Main checkout only, git-ignored; see "Project root and paths" | Data maintainer / run owners |
 
