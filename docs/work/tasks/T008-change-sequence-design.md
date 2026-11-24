@@ -32,3 +32,5 @@ Design document under `docs/research/` (location agreed with the plan owner), re
 - 2026-11-22: created from plan section 9, phase 1 (registered by T005).
 - 2026-11-23: scope updated to the seven change types of plan section 6.4 (negation hit and repeated mention added; empty to non-empty folded into new match).
 - 2026-11-24: acceptance item on the independence of the invalidation ground truth added from decision D013.
+- 2026-11-25: manager session `m01-T008` started on branch `task/T008-change-sequence-design` from `4a1662616cd5d04c3967615b6ddaa57c8fbebd00`; Issue #24 opened.
+- 2026-11-25: design written in `docs/research/change-sequences.md` and referenced from plan section 6.4 (English and Chinese). Gold staleness is computed by one reference function per view template over the event log, independent of the query compiler, as D013 recommends; compiled re-query on gold graphs is a cross-check. Seven open questions for the plan owner and T014 / T017 are listed in section 14 of the design.
