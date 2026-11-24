@@ -247,12 +247,12 @@ nodes:
     type: task
     title: Controlled change-sequence generator design
     milestone: M1
-    status: active
+    status: done
     depends_on: [T005]
     issue: 24
     owner: m01-T008
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T008-change-sequence-design.md
   - id: T009
     type: task
