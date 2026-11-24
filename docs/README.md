@@ -56,6 +56,7 @@ Tracked files (present in every worktree):
 | Research plan, literature, benchmarks | `docs/research/plan.md`, `literature.md`, `benchmarks.md` |
 | Measurement and interface rules | `docs/research/contracts.md` |
 | Project DAG: milestones, status, dates, checkpoints | `docs/work/plan/plan.yaml`, `docs/work/plan/README.md` |
+| Code structure: packages, dependency rules, files (decision D013) | `docs/work/plan/structure.md`, `docs/work/plan/structure_full.md` |
 | Tasks, experiments, decisions | `docs/work/tasks/`, `docs/work/experiments/`, `docs/work/decisions/` |
 | Shared paths, benchmark and experiment configs | `configs/` |
 | GPU inference environment and launcher | `envs/serve/`, `scripts/serve-model.sh` |

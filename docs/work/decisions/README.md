@@ -18,6 +18,7 @@ A decision records a choice that constrains later work: context, options, the ch
 | [D010](D010-gate-role-claims.md) | Phase 4 gate: role and open-predicate claims | How far the role and open-predicate claims are narrowed |
 | [D011](D011-vocabulary-go-no-go.md) | Whether to run vocabulary evolution | Go or no-go for the optional phase 5 |
 | [D012](D012-configuration-lock.md) | Configuration lock | Freeze of configuration, splits, judging rules, budgets and non-inferiority margins |
+| [D013](D013-code-structure.md) | Code structure and dependency rules | Packages of `src/grace/`, their import rules and how experiments run in stages; layout in `../plan/structure.md` |
 
 
 ## Template

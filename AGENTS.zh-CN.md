@@ -68,7 +68,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `docs/research/plan.md` | 研究计划（英文，为准）；`plan.zh-CN.md` 是它的中文译本 | 计划负责人 |
 | `docs/research/benchmarks.md`、`literature.md` | Benchmark 登记表与说明；文献笔记 | 数据负责人；任务负责人 |
 | `docs/research/contracts.md` | 测量与数据交换规则，每节一个 owner | 该节 owner |
-| `docs/work/plan/` | `plan.yaml`（项目 DAG：里程碑、节点、状态、日期）、`README.md`（schema、检查点）、`index.html`（可视化） | 集成负责人 |
+| `docs/work/plan/` | `plan.yaml`（项目 DAG：里程碑、节点、状态、日期）、`README.md`（schema、检查点）、`index.html`（可视化）、`structure.md` 和 `structure_full.md`（代码结构，决策 D013） | 集成负责人 |
 | `docs/work/tasks/`、`experiments/`、`decisions/` | 每个任务 `T<NNN>`、实验 `E<NNN>`、决策 `D<NNN>` 一个文件 | 任务 manager；实验执行者；决策 owner |
 | `configs/` | `paths.yaml`、benchmark 与实验配置 | 任务负责人 |
 | `src/grace/` | Python 包 | 任务负责人，限 `WRITE_SCOPE` 内 |
