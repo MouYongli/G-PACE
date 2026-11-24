@@ -16,7 +16,7 @@ Does an LLM-rendered view help the answering LLM more than a template serialisat
 | --- | --- |
 | Benchmarks and splits | Controlled change sequences, development template families, gold graphs |
 | Systems and baselines | Template serialisation; LLM rendering; raw-text window as reference; equal display budget |
-| Metrics | Reader accuracy and the paired difference; render-check failure rate; rendering tokens on the write side |
+| Metrics | Answer accuracy and the paired difference; render-check failure rate; rendering tokens on the write side |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E005-ablation-c-gold.yaml` (to be created) |
 

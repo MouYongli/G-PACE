@@ -15,7 +15,7 @@ The assembler of plan section 5.5: list the variables a read must fill, filter c
 - In scope:
   - Budgets of 256, 512 and 1,024 tokens and the full history.
   - Rank truncation as the comparison mode.
-  - Reader output contract: answer, state, one extra retrieval, or unknown.
+  - Output contract of the answering LLM: answer, state, one extra retrieval, or unknown.
 - Out of scope: Baseline systems (T027).
 - Candidate worker subtasks and write scopes: to be set by the manager.
 

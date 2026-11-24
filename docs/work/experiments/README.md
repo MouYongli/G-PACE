@@ -24,7 +24,7 @@ The design is written before the first formal run and is not changed afterwards 
 | [E014](E014-dev-quality-cost.md) | Development quality-versus-cost curves | All systems and baselines on development data with the three ledgers |
 | [E015](E015-ablations-f-h.md) | Ablations F and H; call-type invocation arm of G | Vocabulary evolution, routing and fusion, and how LLM call types are invoked (optional) |
 | [E016](E016-formal-controlled.md) | Formal run: controlled sequences | Ablation A and the maintenance cost surface on held-out template families |
-| [E017](E017-formal-multiwoz.md) | Formal run: MultiWOZ | Role handling on the MultiWOZ test set |
+| [E017](E017-formal-multiwoz.md) | Formal run: MultiWOZ | Attribution-guard handling on the MultiWOZ test set |
 | [E018](E018-formal-locomo.md) | Formal run: LoCoMo | Question answering, amortisation and streaming on the eight held-out histories |
 | [E019](E019-formal-longmemeval.md) | Formal run: LongMemEval-S | Three strata of the adverse single-read setting |
 | [E020](E020-formal-optional.md) | Formal run: optional benchmarks and systems | HaluMem-Medium, MemoryAgentBench, Mem0g and Graphiti (optional) |

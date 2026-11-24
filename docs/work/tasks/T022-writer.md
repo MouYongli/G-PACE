@@ -21,7 +21,7 @@ The write path of plan section 5.1: the writer extracts claim patches anchored t
 
 ## Acceptance
 
-- [ ] Role handling passes the three running examples of plan section 3.5 on fixtures.
+- [ ] Attribution-guard handling passes the three running examples of plan section 3.5 on fixtures.
 - [ ] Every call, retry and failure is in the cost ledger.
 - [ ] `make test` and `make lint` pass.
 
