@@ -45,7 +45,7 @@ created: 2026-11-21
 
 ## Lookup paths
 
-`PROJECT_ROOT` is the main checkout (see `AGENTS.md`). Shared directories are defined in `configs/paths.yaml`, relative to `PROJECT_ROOT`.
+`PROJECT_ROOT` is the main checkout (see `AGENTS.md`). Shared directories are defined in `configs/common/paths.yaml`, relative to `PROJECT_ROOT`.
 
 Tracked files (present in every worktree):
 

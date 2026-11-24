@@ -1,4 +1,7 @@
-"""Resolve PROJECT_ROOT and the shared directories named in configs/paths.yaml (see AGENTS.md)."""
+"""Resolve REPO_ROOT, PROJECT_ROOT and the shared directories of configs/common/paths.yaml.
+
+See AGENTS.md, "Project root and paths".
+"""
 
 from __future__ import annotations
 
@@ -8,7 +11,9 @@ from pathlib import Path
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# src/grace/config/paths.py -> the worktree that holds this file.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PATHS_CONFIG = REPO_ROOT / "configs" / "common" / "paths.yaml"
 
 
 def project_root() -> Path:
@@ -30,7 +35,7 @@ def project_root() -> Path:
 
 def shared_dir(key: str) -> Path:
     """Return a shared directory (for example `data_root`) as an absolute path."""
-    config = yaml.safe_load((REPO_ROOT / "configs" / "paths.yaml").read_text(encoding="utf-8"))
+    config = yaml.safe_load(PATHS_CONFIG.read_text(encoding="utf-8"))
     if key not in config:
-        raise KeyError(f"{key!r} is not defined in configs/paths.yaml")
+        raise KeyError(f"{key!r} is not defined in configs/common/paths.yaml")
     return project_root() / config[key]

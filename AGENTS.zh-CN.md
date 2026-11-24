@@ -36,7 +36,7 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(dirname "$(git rev-parse --path-format=absolute 
 ```
 
 - 已导出的 `PROJECT_ROOT` 环境变量优先；否则取共享 `.git` 目录的上一级。解析路径的代码采用相同顺序。
-- `configs/paths.yaml` 是共享目录（`data_root`、`runs_root`）的唯一来源，路径相对于 `PROJECT_ROOT`。
+- `configs/common/paths.yaml` 是共享目录（`data_root`、`runs_root`）的唯一来源，路径相对于 `PROJECT_ROOT`。
 - `$PROJECT_ROOT/data` 存放只读 benchmark 数据，`$PROJECT_ROOT/runs` 存放所有 `RUN_DIR`。两者都被 git 忽略，只存在于主 checkout，因此删除 worktree 不会删除数据或证据。
 - 被追踪的文件中不得写绝对路径。解析后的绝对路径记录在 `run.json` 中。
 
@@ -70,7 +70,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `docs/research/contracts.md` | 测量与数据交换规则，每节一个 owner | 该节 owner |
 | `docs/work/plan/` | `plan.yaml`（项目 DAG：里程碑、节点、状态、日期）、`README.md`（schema、检查点）、`index.html`（可视化）、`structure.md` 和 `structure_full.md`（代码结构，决策 D013） | 集成负责人 |
 | `docs/work/tasks/`、`experiments/`、`decisions/` | 每个任务 `T<NNN>`、实验 `E<NNN>`、决策 `D<NNN>` 一个文件 | 任务 manager；实验执行者；决策 owner |
-| `configs/` | `paths.yaml`、benchmark 与实验配置 | 任务负责人 |
+| `configs/` | `common/paths.yaml`、benchmark 与实验配置 | 任务负责人 |
 | `src/grace/` | Python 包：`cli/`、`config/`、`llm/`、`context/`（GRACE 本身）、`eval/`（实验装置）；目录结构和导入规则见 `docs/work/plan/structure.md` | 任务负责人，限 `WRITE_SCOPE` 内 |
 | `envs/serve/`、`scripts/serve-model.sh` | GPU 推理环境（vLLM）及其启动脚本 | 集成负责人 |
 | `scripts/` | 只放 bash 入口脚本（`scripts/data/` 负责下载基准数据）；它们调用的 Python 代码放在 `src/grace/cli/` | 集成负责人 |
@@ -142,7 +142,7 @@ git worktree list                                       # 列出所有 worktree 
 - Python 3.12（`.python-version`），优先用标准库；向 `pyproject.toml` 添加依赖须在 PR 中说明理由。
 - 研究代码只用 CPU。GPU 推理在服务环境（`envs/serve`，用 `scripts/serve-model.sh` 启动）中运行，通过其 OpenAI 兼容的 HTTP 接口调用；不要把 GPU 相关的包加进 `pyproject.toml`。本机 GPU 是共享的：启动服务前先在 `$PROJECT_ROOT/runs/compute.yaml` 中登记，并把登记内容抄入 `COMPUTE_ALLOCATION`。
 - 代码放在 `src/grace/`；测试使用 `unittest`；用 `ruff` 做 lint。
-- 共享路径通过 `PROJECT_ROOT` 和 `configs/paths.yaml` 解析；路径不存在时明确报错。
+- 共享路径通过 `PROJECT_ROOT` 和 `configs/common/paths.yaml` 解析；路径不存在时明确报错。
 
 ## 需要停下来询问的情况
 

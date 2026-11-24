@@ -299,7 +299,7 @@ cli/
     └── report.py           tidy tables from a list of run IDs
 
 config/                     (T009)
-├── paths.py                REPO_ROOT, PROJECT_ROOT, shared directories, resources (moved from grace/paths.py)
+├── paths.py                REPO_ROOT, PROJECT_ROOT, shared directories, resources
 ├── schema.py               structure and validation of the four config kinds: experiment, engine, model, benchmark
 ├── loader.py               read YAML, resolve references between configs, write the resolved config and its checksum
 ├── registry.py             component name → import path, loaded lazily

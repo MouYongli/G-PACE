@@ -34,7 +34,7 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(dirname "$(git rev-parse --path-format=absolute 
 ```
 
 - An exported `PROJECT_ROOT` environment variable takes precedence; otherwise it is the parent of the shared `.git` directory. Code that resolves paths uses the same order.
-- `configs/paths.yaml` is the only source of shared directories (`data_root`, `runs_root`), written relative to `PROJECT_ROOT`.
+- `configs/common/paths.yaml` is the only source of shared directories (`data_root`, `runs_root`), written relative to `PROJECT_ROOT`.
 - `$PROJECT_ROOT/data` holds the read-only benchmark store and `$PROJECT_ROOT/runs` holds every `RUN_DIR`. Both are git-ignored and exist only in the main checkout, so removing a worktree never removes data or evidence.
 - Never write absolute paths into tracked files. Record resolved absolute paths in `run.json` instead.
 
@@ -68,7 +68,7 @@ Preserve any existing uncommitted changes; never reset or discard them without a
 | `docs/research/contracts.md` | How things are measured and exchanged; one owner per section | Section owner |
 | `docs/work/plan/` | `plan.yaml` (project DAG: milestones, nodes, status, dates), `README.md` (schema, checkpoints), `index.html` (viewer), `structure.md` and `structure_full.md` (code structure, decision D013) | Integration owner |
 | `docs/work/tasks/`, `experiments/`, `decisions/` | One file per task `T<NNN>`, experiment `E<NNN>`, decision `D<NNN>` | Task manager; experiment runner; decision owner |
-| `configs/` | `paths.yaml`, benchmark and experiment configs | Task owners |
+| `configs/` | `common/paths.yaml`, benchmark and experiment configs | Task owners |
 | `src/grace/` | Python package: `cli/`, `config/`, `llm/`, `context/` (GRACE itself), `eval/` (experiment apparatus); layout and import rules in `docs/work/plan/structure.md` | Task owners within `WRITE_SCOPE` |
 | `envs/serve/`, `scripts/serve-model.sh` | GPU inference environment (vLLM) and its launcher | Integration owner |
 | `scripts/` | Bash entry points only (`scripts/data/` downloads the benchmarks); any Python they call lives in `src/grace/cli/` | Integration owner |
@@ -140,7 +140,7 @@ MUST NOT:
 - Python 3.12 (`.python-version`), standard library first; add dependencies to `pyproject.toml` only with a reason in the PR.
 - Research code stays CPU-only. GPU inference runs in the serving environment (`envs/serve`, started with `scripts/serve-model.sh`) and is reached over its OpenAI-compatible HTTP API; never add GPU packages to `pyproject.toml`. The machine's GPUs are shared: reserve them in `$PROJECT_ROOT/runs/compute.yaml` before starting a server and copy the reservation into `COMPUTE_ALLOCATION`.
 - Code lives in `src/grace/`; tests use `unittest`; lint with `ruff`.
-- Resolve shared paths through `PROJECT_ROOT` and `configs/paths.yaml`; fail loudly when a path is missing.
+- Resolve shared paths through `PROJECT_ROOT` and `configs/common/paths.yaml`; fail loudly when a path is missing.
 
 ## Stop and ask when
 
