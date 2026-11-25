@@ -1,0 +1,59 @@
+# Prompt registry (T004). Every prompt the code sends lives in resources/prompts/<name>/ and is
+# pinned here by its template hash (grace.llm.prompts.tree_sha256 of the directory), which every
+# call record carries as prompt_sha256. tests/contracts/test_pins.py recomputes all hashes.
+# Prompts of GRACE's own call types (writer, vocabulary, planner, verifier, renderer) are added by
+# the tasks that implement them; tuning prompts for GRACE is out of T004's scope.
+version: 1
+prompts:
+  answer:
+    call_type: answer
+    sha256: 9f35fa285533a3d502476bf622f2cbb6331a32688220e3e238e41eb956f4a58b
+    schema: llm/answer        # resources/schemas/llm/answer.json
+    schema_sha256: 1180564c05861a3cf2d39d47656287371a1ca7235ef10276cc8b5810135af36d
+    note: >-
+      Shared by every system (plan 7, "the same answer prompt"). Variables: context (the working
+      context, each fragment prefixed with its message IDs in square brackets), asked_at (the
+      read's asked_at, or the time of the last visible message), request ("Question: ..." or a
+      state request naming the slot inventory). Stable content first, the request last.
+  summary:
+    call_type: summary
+    sha256: 3781d77ba6d50207b3e3187c4aad5c4bc69e4ccbee9df6655a8ba8643506f84c
+    schema: null              # plain-text output
+    schema_sha256: null
+    note: Rolling-summary baseline of the pilot (E001); max_tokens comes from configs/common/budgets.yaml.
+  judge:
+    call_type: judge
+    sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2
+    schema: null              # one word, CORRECT or INCORRECT
+    schema_sha256: null
+    note: Blind judge (configs/judges/blind.yaml).
+  judge-longmemeval-default:
+    call_type: judge
+    sha256: f225aa30921d3c778de1581712f4dbc99aa8c600f566a691f4e86e8b923ee267
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, single-session-user, single-session-assistant, multi-session.
+  judge-longmemeval-temporal-reasoning:
+    call_type: judge
+    sha256: e138fb098b15ed51fbf268b6000bbb848a2f97053165301ec0ba101453787ff8
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, temporal-reasoning.
+  judge-longmemeval-knowledge-update:
+    call_type: judge
+    sha256: 85a7addabfe5fd7bf4b09fcbabdc6ae8bdd52e9447f10d1679e180780f1c2e92
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, knowledge-update.
+  judge-longmemeval-single-session-preference:
+    call_type: judge
+    sha256: 81d481dee43ef97c304befbbd3387bf85f3ac5c7f38c9c320ccc6d9f57e3e862
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, single-session-preference (the reference is a rubric).
+  judge-longmemeval-abstention:
+    call_type: judge
+    sha256: 3802acec6c18e3095a6223b6855e25aa2a3c2761b9f79a65e75783e9175bf0c2
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, abstention questions (question ID ending in _abs).

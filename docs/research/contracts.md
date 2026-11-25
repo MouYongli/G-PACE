@@ -204,32 +204,118 @@ Which tokens are counted when:
 
 The three ledgers (plan 8.1) are sums over the records of a category: logical tokens $=\sum(\text{input}+\text{output})$; computed tokens $=\sum(\text{input}-\text{cached}+\text{output})$; GPU seconds $=\sum$ `gpu_seconds`, reported with the number of calls whose value is `null`. In the notation of plan 8.2, $W(\mathcal H)$ sums the `W` records of a history, and $U_i$ and $A_i$ sum the `U` and `A` records with `read_id` $i$. Under per-turn and interleaved reading the write cost charged before read $i$ is the union of the `W` records with `version` in $(r_{i-1}, r_i]$ and the `W` records with `read_id` $i$. Database CPU, memory, latency percentiles and tool-call counts are not ledger entries; components record them in the write and read traces ([Experiment run](#experiment-run)).
 
+## Claim graph
+
+> Terms follow plan sections 3.2 and 5.2. Code: `context/memory/graph/` (entries, change sets, RDF mapping, store, SHACL) and `context/memory/history/` (message log, spans). Vocabulary and shapes: `resources/rdf/`.
+
+Owner: T014 manager (`m01-T014`) · Version: 0.1 · Producer: `context/memory/` (commit called by `pipeline/update/`, T022) · Consumers: update, query compilation (T017), views and staleness (T018, T019), the change-sequence generator and oracles (T015), graph metrics
+
+**Entries.** Each is a frozen data class in `graph/entries.py`; its JSON record has exactly the fields below. Entry IDs are non-empty strings, unique across all kinds within a history (witness sets mix claim and attribution IDs). `version` is the version stamp, an integer $\ge 1$.
+
+| Kind | Fields |
+| --- | --- |
+| Claim | `claim_id`, `subject` (entity ID), `predicate` (vocabulary name), `object` (`{"entity": id}` or `{"value": lexical, "datatype": d}` with `d` in `string`, `integer`, `boolean`, `date`, `dateTime`, `time`, canonical lexical form), `scope` (string or `null` for the default scope), `valid_time` (`start`, `end`, `expression`), `version` |
+| Attribution | `attribution_id`, `claim_id`, `speaker`, `function` (`request`, `offer`, `accept`, `reject`, `confirm`, `inform`, `commit`, `question`), `report_mode` (`own`, `quote`, `hypothetical`), `polarity` (`positive`, `negative`), `certainty` (`certain`, `probable`, `possible`, `underspecified`), `derived` (assistant restatement; not independent support), `message_id` (where the stance was expressed), `version` |
+| Evidence link | `evidence_id`, `claim_id`, `message_id`, `span` (`{"start", "end"}` or `null`), `version` |
+| Supersession | `supersession_id`, `claim_id`, `kind` (`change`, `correction`), `valid_end` (see below), `replacing_claim_id` (or `null` for a removal), `attribution_id` (the stance that licensed it), `version` (the supersession version $\sigma$) |
+| Entity equivalence | `equivalence_id`, `entity_a`, `entity_b`, `version`; not one of the four kinds (plan 5.2) |
+
+- Valid time is $[\texttt{start},\texttt{end})$ in canonical `xsd:date` or `xsd:dateTime` form, both bounds of one datatype; `null` start is unknown and `null` end is open. No date is invented; `expression` keeps the source phrase.
+- Spans are $[\texttt{start},\texttt{end})$ over the message text in code points. A unified evidence ID is the `message_id`, or `<message_id>#char=<start>,<end>` for a span (`history/spans.py`); `message_of` maps it back to the message.
+
+**Change set.** One record per committed version, the `changesets.jsonl` record of [Experiment run](#experiment-run): `history_id`, `version`, `entries` (exactly the keys `claims`, `attributions`, `evidence_links`, `supersessions`, each a list of full entry records sorted by ID), `vocabulary_version` (label of `resources/rdf/predicates.yaml` in force, or `null`), `entity_merges` (entity-equivalence records). Every entry in it carries the change set's `version`. A version that produced nothing MAY be committed as an empty change set. The fixture is `tests/fixtures/graph/worked-example/` (the worked example of `docs/research/change-sequences.md` section 6.5, plus a removal, a hypothetical stance and an entity merge).
+
+**Store rules** (`graph/store.py`, one store per history):
+
+- Append-only: `commit` adds the triples of one change set in one transaction and never changes or removes a triple; $G_r\subseteq G_{r+1}$. A failed commit writes nothing.
+- Versions strictly increase (gaps are allowed for segment extraction). A commit at or below the head is accepted only as a retry of the identical change set (entry order ignored) and is then a no-op; anything else is a `CommitConflict`.
+- References name an entry of the right kind in the store or the same change set. A new claim MUST NOT repeat the proposition (s, p, o, scope, valid time) of a currently accepted claim: a repeated mention adds an attribution and an evidence link. A superseded proposition may be stated again as a new claim.
+- A replacing claim has the subject, predicate and scope of the claim it replaces; the licensing attribution is on the superseded or the replacing claim. The attribution guard itself and the exclusivity rules are not store rules: they decide whether to supersede (`pipeline/update/guard.py`, T022), so a variant without the guard can still write.
+- Reads are bound to a cut-off: `state(r)` returns the entries stamped $\le r$; `query(sparql, r)` replaces the placeholder `%r%` by the integer $r$ (plan 5.3). Both are stable under later commits (time-travel stability, plan 3.3).
+- Save writes `store.json`, `changesets.jsonl` (source of truth) and `graph.nt`; restore replays the change sets and fails if the graph differs.
+
+**RDF mapping** (`graph/rdf.py`; vocabulary `resources/rdf/core.ttl`, functions `resources/rdf/functions.ttl`). Every entry is a named node `gx:<kind>/<id>` typed `g:Claim`, `g:Attribution`, `g:EvidenceLink`, `g:Supersession` or `g:EntityEquivalence`, with `g:knownFrom` = its version stamp. Claims: `rdf:subject`/`rdf:predicate`/`rdf:object` and type `rdf:Statement` under RDF 1.1 standard reification (main configuration, `rdf11`), or `rdf:reifies <<( s p o )>>` under RDF 1.2 (`rdf12`); all other triples are identical in both, and the reified triple is never asserted. Further properties: `g:scope`, `g:validFrom`, `g:validUntil`, `g:validTimeExpression` (claim); `g:about`, `prov:wasAttributedTo`, `g:function` (`gf:` SKOS concepts with ISO 24617-2 notes), `g:reportMode`, `g:polarity`, `g:certainty`, `g:derived`, `prov:wasDerivedFrom` (attribution); `g:supports`, `prov:wasDerivedFrom`, `oa:hasSelector` → `oa:TextPositionSelector` (evidence); `g:supersedes`, `g:kind`, `g:licensedBy`, `g:replacedBy`, `g:validEnd` (supersession). "Currently accepted" at cut-off $r$ is `FILTER NOT EXISTS { ?s g:supersedes ?c ; g:knownFrom ?v . FILTER(?v <= %r%) }`; the historical form adds `?s g:kind g:Correction`. The `https://example.org/grace/` namespace is a placeholder until release. The mapping is exact both ways: parsing rejects any triple it would not produce.
+
+**Structural validation** (`graph/shacl.py`, shapes `resources/rdf/shapes.ttl`). Only the claims a change set touches (new claims, claims that receive an entry, replacing claims) are validated, together with the change set's own entries, on the RDF 1.1 serialisation of those claims and all their entries. Shapes require one version stamp per entry, at least one attribution and one evidence link per claim, closed value lists, ordered valid-time and span bounds, no entry older than the entries it names, no valid end on a correction, and a licence on the superseded or replacing claim. Domain exclusivity rules are not shapes.
+
+**Supersession semantics** (answers to `docs/research/change-sequences.md` open questions 2 and 6):
+
+- *Valid end (question 2).* A supersession of kind `change` MAY carry `valid_end`, the world time from which the superseded claim no longer holds: stated by the source ("I sold it in March"), or the start of the replacing claim when that is dated. `null` means ended at an unknown time no later than the world time of message $\sigma$. A `correction` never carries one: the claim leaves the past state entirely and the replacing claim carries its own interval. The effective valid end of a claim at cut-off $r$ is its own `end`, else the `valid_end` of the earliest change supersession stamped $\le r$ that states one (`GraphState.valid_end`). Reason: a claim's interval is fixed when it is written, so the end of a state learned later can only be recorded by a later entry, and the supersession is the entry that says the state ended; being stamped $\sigma$, it keeps reads at $k<\sigma$ stable. Without it the past membership of a multi-valued predicate is undetermined, because no successor claim exists. The matching unit is unchanged (the event still points to one claim), so the proposition of plan 3.4 is unaffected.
+- *Guard without a replacing claim (question 6, G2(ii)).* The attribution guard covers it. A supersession with `replacing_claim_id: null` is licensed only by an attribution $a'$ on the superseded claim $c$ itself with report mode `own` and polarity `negative`, whose speaker and communicative function equal those of some earlier attribution on $c$; no exclusivity rule is needed. Reason: plan 5.2 states a denial as a new attribution on the same claim, never a second claim, so a negative own stance is the only way a removal ("I no longer play the violin") can be written; without it a multi-valued predicate could never shrink. The same speaker and function conditions keep what the guard protects: another speaker's denial, a quote or a hypothetical leaves both stances in place and the conflict marked. The kind may be `change` (removal) or `correction` (the multi-valued variant of `m-correct`).
+
 ## Evaluation
 
-Owner: TBD (evaluation owner) · Version: 0.1
+> Replaces the sample-level v0.1. Scoring is keyed by `read_id` and scored against one gold `annotation` at a time, following the T001 records.
 
-Before any formal comparison, register for each benchmark on its card: official metric, metric direction, evaluation code and version, denominator, and invalid-output policy (count as wrong, or exclude and report).
+Owner: T004 manager (`m01-T004`; assigned by the user's dispatch of the 2026-11-25 round) · Version: 0.2 · Producer: `judge` and `score` stages (`eval/analysis/judging/`, `eval/analysis/metrics/`) · Consumers: reporting (T035, T036)
 
-Each scoring call writes one `metrics.json` object:
+### Registration
+
+Before any formal comparison every metric is registered in `configs/common/scorers.yaml`; the benchmark card's Evaluation field points there. Per benchmark and metric:
+
+| Key | Rules |
+| --- | --- |
+| `name`, `direction` | Registered metric name; `higher` or `lower`. |
+| `code` | `module:function` of the scorer. Official scorers name `upstream` (`repo`, `file`, `revision`, `verified`); `verified` stays `false` until the scorer reproduces upstream's numbers on upstream's published examples. |
+| `annotation` or `annotations` | The gold annotation(s) scored ([Gold](#gold)). One set of predictions is scored against each annotation separately (MultiWOZ 2.4, 2.2, 2.1). |
+| `population` | The denominator: all reads of the read-task file, or those whose gold `labels` match `include` (LoCoMo categories 1 to 4). |
+| `judge` | For judged metrics, the judge config in `configs/judges/`. |
+| `abstention` | The gold label that marks a task as unanswerable. |
+| `invalid_policy` | `count_as_wrong` or `exclude_and_report`. |
+| `strata` | Gold labels by which the metric is also reported. Stratum labels are used on the scoring side only (plan 6.7). |
+
+### Scoring rules
+
+- Alignment follows the evaluator obligations of [Prediction](#prediction); scoring aborts on any of them, and on an unparsable line or an empty prediction file. Gold is indexed by `(annotation, task_id)`; a read whose task the annotation does not cover is outside that annotation's population, and the covered count is reported as `n_total`.
+- Each read gets a value in $[0, 1]$. `answer` and `state` predictions are scored by the registered scorer. `unknown` is correct exactly on tasks the `abstention` label marks, and wrong otherwise; for a state read it is the empty state. `invalid` scores 0 under `count_as_wrong` and leaves the denominator under `exclude_and_report`; it is counted in `n_invalid` either way.
+- Judged metrics judge only `answer` predictions; `unknown` and `invalid` are scored by the rules above without a judge call. A judgement whose own output is unparsable (`verdict: invalid`) leaves the denominator and is counted in `n_judge_invalid`.
+
+### Judges
+
+- A judge config (`configs/judges/<judge>.yaml`) pins the prompt by its hash in `configs/common/prompts.yaml`, the parsing rule, decoding (temperature 0) and the judge model snapshot. The snapshot is decision D006; until it is taken `model` is `null` and no judge run is formal.
+- The judge is blind: its input is exactly the question, the reference of the scored annotation and the prediction as text (lists joined with `; `). It never receives run, engine or config names, the working context, citations, `raw_output` or `metadata`.
+- Judge calls are call records with `call_type: judge`, `trigger: evaluation` ([Cost ledger](#cost-ledger)); each judgement is one `judgements.jsonl` record ([Experiment run](#experiment-run)) naming its judge config. One `judge` run MAY run several judges over the same predictions (LongMemEval: the blind and the official judge); `(read_id, judge)` is unique.
+- Judge reruns are new `judge` runs and are reported as their own source of uncertainty (plan 6.9).
+
+### Judge calibration against human labels
+
+Measured on development data only, before the blind judge's numbers are used in a comparison:
+
+1. Draw a sample of judged development reads, stratified by benchmark and by the judge's verdict (size in `configs/judges/blind.yaml`).
+2. Two annotators label each read `correct` or `incorrect`, seeing only what the judge sees; disagreements are adjudicated into a third label set.
+3. Labels are JSON Lines, one record per read and annotator: `read_id`, `task_id`, `annotation`, `annotator` (`adjudicated` for the merged set), `verdict`.
+4. Report, with `eval/analysis/judging/human.py`: Cohen's $\kappa$ and observed agreement of the judge against the adjudicated labels, $\kappa$ between the two annotators, the number of reads, and the number of judge outputs that were `invalid`.
+
+Negative controls (deliberately wrong and vague answers), judge reruns and agreement between the blind and the official judge are calibration of T035.
+
+### `metrics.json`
+
+One JSON object `{"metrics": [...]}`, written exclusively by a `score` run, with one record per benchmark, split, annotation, metric and stratum:
 
 | Field | Type | Rules |
 | --- | --- | --- |
-| `benchmark`, `split` | string | As in the input. |
+| `benchmark`, `split` | string | As in the predictions. |
+| `schedule` | string | The read-task file the scored run used (`read_tasks.jsonl`, `read_tasks.streaming.jsonl`). |
+| `annotation` | string | Gold annotation scored against. |
+| `metric`, `direction` | string | Registered name and direction. |
+| `stratum` | string or `null` | `<label>=<value>`; `null` for the whole population. |
 | `seed` | integer | Seed of the run that produced the predictions. |
-| `metric` | string | Registered metric name. |
-| `value` | number | Metric value on the registered denominator. |
-| `n_total` | integer | Samples in the split. |
-| `n_scored` | integer | Samples that entered the denominator. |
-| `n_invalid` | integer | Present but unparsable predictions. |
-| `evaluator_version` | string | Evaluator code SHA or package version. |
+| `value` | number or `null` | Mean over the denominator; `null` exactly when `n_scored` is 0. |
+| `n_total` | integer | Reads in the registered population. |
+| `n_scored` | integer | Reads that entered the denominator. |
+| `n_invalid`, `n_unknown` | integer | `invalid` and `unknown` predictions in the population. |
+| `n_judge_invalid` | integer | Reads left out because the judge output was unparsable; 0 for unjudged metrics. |
+| `invalid_policy` | string | As registered. |
+| `scorer` | string | `<benchmark>/<metric>` in the registry. |
+| `evaluator_version` | string | Full code SHA of the `score` run. |
 
-Reporting rules:
+### Reporting rules
 
-- Report every benchmark, split and seed separately, with counts.
+- Report every benchmark, split, annotation and seed separately, with counts.
 - Multi-seed summaries give the mean, the sample standard deviation and the number of runs.
 - Cross-benchmark averages follow `docs/work/decisions/D002-evaluation-aggregation.md`; never average without a recorded normalization and weighting.
 
-Required regression tests: empty prediction file, duplicate key, missing key, extra key, mixed splits, shuffled order, unparsable prediction.
+Required regression tests (`tests/contracts/test_evaluation.py`): empty prediction file, duplicate key, missing key, extra key, mixed splits, shuffled order, unparsable prediction; also snapshot mismatches, both invalid-output policies, the abstention rule and the `metrics.json` record.
 
 ## Experiment run
 

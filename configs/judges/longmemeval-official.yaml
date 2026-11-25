@@ -1,0 +1,25 @@
+# Official LongMemEval judge (T004; plan 7.1: "LongMemEval additionally uses its official judge").
+# Code: grace.eval.analysis.judging.official (longmemeval_judge). Templates are transcriptions of
+# get_anscheck_prompt in src/evaluation/evaluate_qa.py of the LongMemEval repository; they have not
+# yet been compared byte for byte with upstream (no offline copy), see `upstream.verified`.
+judge: longmemeval-official
+version: 1
+prompts:                          # template -> prompt name and pin (configs/common/prompts.yaml)
+  default: {prompt: judge-longmemeval-default, sha256: f225aa30921d3c778de1581712f4dbc99aa8c600f566a691f4e86e8b923ee267}
+  temporal-reasoning: {prompt: judge-longmemeval-temporal-reasoning, sha256: e138fb098b15ed51fbf268b6000bbb848a2f97053165301ec0ba101453787ff8}
+  knowledge-update: {prompt: judge-longmemeval-knowledge-update, sha256: 85a7addabfe5fd7bf4b09fcbabdc6ae8bdd52e9447f10d1679e180780f1c2e92}
+  single-session-preference: {prompt: judge-longmemeval-single-session-preference, sha256: 81d481dee43ef97c304befbbd3387bf85f3ac5c7f38c9c320ccc6d9f57e3e862}
+  abstention: {prompt: judge-longmemeval-abstention, sha256: 3802acec6c18e3095a6223b6855e25aa2a3c2761b9f79a65e75783e9175bf0c2}
+parse: contains_yes               # upstream: 'yes' in reply.lower() (official.parse_yes)
+upstream:
+  repo: xiaowu0162/LongMemEval
+  file: src/evaluation/evaluate_qa.py
+  revision: null                  # to pin when the file is compared with upstream
+  verified: false
+  judge_model: gpt-4o-2024-08-06  # upstream's judge; whether GRACE uses it is decision D006
+model: null                       # decision D006 (proposed)
+decoding:
+  temperature: 0.0
+  max_tokens: 10
+  seed: 0
+judged_outputs: [answer]          # deviation: upstream judges free text; unknown is scored by rule

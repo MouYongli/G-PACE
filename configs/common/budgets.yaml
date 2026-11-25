@@ -1,0 +1,34 @@
+# Budgets shared by every experiment (T004; plan 5.6 "Constraints", 8.1, 8.4).
+# Token counts are counted with the answering model's tokenizer and chat template
+# (configs/models/<model>.yaml, grace.llm.tokens). Values marked "pending" are fixed on development
+# data in the pilot (E001) and frozen at the configuration lock (D012); until then they are null.
+version: 1
+
+answer:
+  # Memory budget of the answer prompt: the tokens of the working context (contexts.jsonl
+  # `budget_tokens`). `full` is the whole visible history (`budget_tokens: null`).
+  memory_levels: [256, 512, 1024, full]
+  # Fixed parts, identical for every system and level: the answer prompt's system message, the
+  # current request and this output reserve. The real total input of every call is in calls.jsonl.
+  output_reserve_tokens: 256      # max_tokens of the answering call
+  further_retrieval_per_read: 1   # plan 5.6: one request for further retrieval per read
+
+pipeline:
+  # Hard limits of plan 5.6; exact retry counts are frozen on development data.
+  repairs_per_read: 1             # compilation repairs
+  vocabulary_proposals_per_message: 1
+  transport_attempts: 3           # grace.llm.client max_attempts; failed attempts are counted
+
+baselines:
+  summary:
+    # Rolling summary: the summary is the working context, so its length limit is the memory
+    # level of the read; the summary call's max_tokens is the level plus this margin.
+    max_tokens_margin: 64
+
+write:
+  # Writer token budget per history (plan 8.4: on the order of 100K tokens for LoCoMo, fixed after
+  # recounting with the primary model's tokenizer). Pending E001 and the go/no-go of plan 9 phase 1.
+  per_history_tokens: null
+
+judge:
+  max_tokens: 10                  # blind judge replies with one word; LongMemEval upstream uses 10
