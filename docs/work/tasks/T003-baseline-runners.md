@@ -20,9 +20,9 @@ Runnable baselines needed by the pilot: full history with the same answering LLM
 
 ## Acceptance
 
-- [ ] Each baseline runs end to end on fixtures and on one development history per benchmark.
-- [ ] Every run writes `run.json`, predictions and cost-ledger entries that pass the contract tests.
-- [ ] A test in `tests/contracts/` plants a sentinel string in the gold data of a fixture and asserts that it appears in no input any baseline receives from the harness.
+- [x] Each baseline runs end to end on fixtures and on one development history per benchmark.
+- [x] Every run writes `run.json`, predictions and cost-ledger entries that pass the contract tests.
+- [x] A test in `tests/contracts/` plants a sentinel string in the gold data of a fixture and asserts that it appears in no input any baseline receives from the harness.
 
 ## Deliverables
 
@@ -46,3 +46,4 @@ Baseline modules under `src/grace/eval/engines/baselines/`, the harness under `s
 - 2026-11-25: expected outcome, recorded and not worked around: full-history prompts that exceed Qwen3-8B's 32,768-token window are rejected by the server (HTTP 400, three recorded `failed` attempts) and the read becomes `invalid`: the longmemeval-s read, and 111 of 137 halumem-medium reads. The raw-text engine's `window_tokens` bounds the context only, not context plus answer prompt and output reserve, so its overflow disclosure does not prevent the rejection; whether to subtract the fixed prompt parts is open for the pilot.
 - 2026-11-25: partial run: halumem-medium `summary-rewrite` (`T003-20261125T010335Z-d8fb`) rewrites the summary on nearly every write (about 2,650 sequential summary calls) and was stopped by the manager to close the session after 2,235 of 2,658 messages and 114 of 137 reads; its run.json says `failed` with the cause. The other 44 engine x benchmark runs (with the two longmemeval-s reruns) completed. Servers stopped and the `compute.yaml` entry removed.
 - 2026-11-25: outcome: 44 of 45 benchmark x engine runs completed (plus the two longmemeval-s dense/rrf reruns). The halumem-medium summary-rewrite run `T003-20261125T010335Z-d8fb` (one summary call per write, about 26 calls per minute) was stopped by the manager after 2,235 of 2,658 messages and 114 of 137 reads to close the session; its run.json is marked `failed` with the reason (partial run). Servers stopped and the compute reservation removed.
+- 2026-11-25: closed by the user (`T003: active -> done`) on the evidence of PRs #39 and #61. Known gaps passed on: change-seq had no data at the smoke run (T015 now generates it; E001 runs the baselines on it); the halumem-medium `summary-rewrite` run `T003-20261125T010335Z-d8fb` is partial (stopped, marked `failed`); whether the raw-text engine's `window_tokens` subtracts the fixed prompt parts and output reserve is decided in E001.

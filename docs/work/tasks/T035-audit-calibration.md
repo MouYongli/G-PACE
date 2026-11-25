@@ -20,6 +20,7 @@ The checks that make the formal numbers reportable (plan sections 6.7 to 6.9): j
 
 ## Acceptance
 
+- [ ] The blind judge's agreement with human labels on a calibration sample is reported (moved from T004, user decision 2026-11-25).
 - [ ] Each table in the paper is regenerated from run reports by a committed script.
 - [ ] `make test` and `make lint` pass.
 
@@ -30,3 +31,4 @@ Analysis scripts under `src/grace/cli/`; tables under `paper/`.
 ## Log
 
 - 2026-11-23: created from the full project DAG.
+- 2026-11-25: acceptance item on the blind judge's agreement with human labels moved here from T004 (user decision). T004 delivered the protocol and code path (`src/grace/eval/analysis/judging/`).

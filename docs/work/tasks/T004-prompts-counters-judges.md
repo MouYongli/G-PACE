@@ -17,9 +17,9 @@ Freeze what phase 1 must hold fixed: English prompts, the token counter and chat
 
 ## Acceptance
 
-- [ ] Prompts, tokenizer, chat template and judge versions are pinned in configs with checksums.
+- [x] Prompts, tokenizer, chat template and judge versions are pinned in configs with checksums.
 - [x] Official scorers reproduce the reference numbers on their published examples.
-- [ ] The blind judge's agreement with human labels on a calibration sample is reported.
+- Moved to T035 (user decision 2026-11-25): the blind judge's agreement with human labels on a calibration sample is reported.
 
 ## Deliverables
 
@@ -36,3 +36,6 @@ Freeze what phase 1 must hold fixed: English prompts, the token counter and chat
 - 2026-11-25: manager session `m01-T004b` resumed on `task/T004-scorer-upstream` from `main` at 9fdde49 for acceptance item 2. Upstream code downloaded at pinned commits into `$PROJECT_ROOT/runs/T004/artifacts/upstream/` and run in isolated `uv run --no-project` environments with upstream's pinned versions; inputs from development splits (LoCoMo conv-26/conv-49, LongMemEval-S dev, MultiWOZ dev) plus synthetic strings; no model called. Evidence: `runs/T004/artifacts/scorer-upstream/`.
 - 2026-11-25: LoCoMo F1 (snap-research/locomo 3eb6f2c): two bugs found and fixed, then 0 of 8,228 rows differ (exact float equality, under nltk 3.8.1 and 3.10.4): the multi-answer mean now uses `numpy.mean` like upstream (6 last-bit differences with `sum()`), and article removal uses the `regex` module like upstream (`re` treats combining marks differently; 36 probe rows). `verified: true` for `f1` and `f1-adversarial`. LongMemEval official judge (xiaowu0162/LongMemEval 9e0b455): template choice and rendered messages identical to `get_anscheck_prompt` on 588 prompts (98 dev questions x 6 responses); the reply rule now counts an empty reply as incorrect like upstream (was `invalid`); `verified: true` with deviations listed in the judge config. MultiWOZ JGA and slot F1: no upstream implements the registered definition (MultiWOZ 2.4 repo has no evaluator; Tomiinek/MultiWOZ_Evaluation cd3f0ee is 2.2-only, fuzzy-matched, pooled slot F1); deviation recorded, `verified: false`. HaluMem and MemoryAgentBench have no registered metric yet. Regression test `tests/analysis/test_upstream_scorers.py` with synthetic fixtures in `tests/fixtures/upstream/`. Item 2 met for the registered official scorers; item 3 still waits for E001.
 - 2026-11-25: PR #52 merged. No upstream publishes examples with reference scores, so the user accepted exact equality with upstream's code at a pinned commit, on development-split and synthetic inputs, as meeting acceptance item 2. MultiWOZ JGA and slot F1 keep their recorded deviation.
+- 2026-11-25: acceptance item 1 met: D006 is accepted and `configs/judges/blind.yaml` pins the primary judge (DeepSeek-V4-Flash-0731 at `7872f01b1d1fe23eabc4c98b48bffcef5a386062`) and the secondary judge (gpt-4.1-mini, version 2025-04-14) next to the judge prompt checksum.
+- 2026-11-25: user decision: acceptance item 3 (blind-judge agreement with human labels) moves to T035, which owns judge calibration (plan 6.7). This removes the circular wait between this task and E001, which depends on it. The protocol and code path (`eval/analysis/judging/`) stay as delivered here. Still open for E001: the token counting and thinking mode of DeepSeek-V4-Flash (D006 consequences).
+- 2026-11-25: closed by the user (`T004: active -> done`). Acceptance items 1 and 2 met; item 3 moved to T035.
