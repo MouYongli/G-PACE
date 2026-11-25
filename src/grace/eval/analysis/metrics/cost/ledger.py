@@ -156,7 +156,7 @@ def allocate(records: Sequence[CallRecord], reads: Sequence[Read]) -> Allocation
             by_read[r.read_id][r.category].append(r)
         else:
             loose_w[r.history_id].append(r)
-    taken: set[str] = set()
+    taken: set[int] = set()  # id() of records: call IDs repeat across a run and its upstream
     per_history: dict[str, list[Read]] = defaultdict(list)
     for read in reads:
         per_history[read.history_id].append(read)
@@ -167,16 +167,15 @@ def allocate(records: Sequence[CallRecord], reads: Sequence[Read]) -> Allocation
             writes = [r for r in loose_w.get(history_id, [])
                       if r.version is not None and r.version <= read.version
                       and (previous is None or r.version > previous)]
-            taken.update(r.call_id for r in writes)
+            taken.update(id(r) for r in writes)
             mine = by_read[read.read_id]
             w = sorted(writes + mine["W"], key=lambda r: position[id(r)])
-            charged[read.read_id] = {"W": w,
-                                     "U": mine["U"], "A": mine["A"]}
+            charged[read.read_id] = {"W": w, "U": mine["U"], "A": mine["A"]}
             previous = read.version
     out = [ReadCost(read, *(ledger_of(charged[read.read_id][c]) for c in SYSTEM))
            for read in reads]
-    rest = [r for rows in loose_w.values() for r in rows if r.call_id not in taken]
-    return Allocation(out, ledger_of(rest), [r.call_id for r in rest],
+    rest = [r for rows in loose_w.values() for r in rows if id(r) not in taken]
+    return Allocation(out, ledger_of(rest), [f"{r.run_id}/{r.call_id}" for r in rest],
                       {read.read_id: charged[read.read_id] for read in reads})
 
 

@@ -124,7 +124,7 @@ class AllocationTest(unittest.TestCase):
         allocation = allocate(records, reads)
         self.assertEqual([c.w_before.logical for c in allocation.reads], [30, 35])
         self.assertEqual(allocation.unassigned_w.logical, 40)
-        self.assertEqual(allocation.unassigned_w_ids, ["w4"])
+        self.assertEqual(allocation.unassigned_w_ids, ["R-1/w4"])
         reconcile(records, allocation)
 
     def test_reads_at_one_version_charge_the_ingestion_once(self):
@@ -369,17 +369,22 @@ class AmortisationTest(HandBuiltRuns, unittest.TestCase):
             am.success_from_judgements(rows)
 
     def test_read_stage_carries_its_ingestion(self):
-        ingest = [record("w1", category="W", trigger="write", version=10, inp=300, out=0,
+        ingest = [record("c1", category="W", trigger="write", version=10, inp=300, out=0,
+                         run_id="I-1"),
+                  record("c2", category="W", trigger="write", version=11, inp=7, out=0,
                          run_id="I-1")]
         ingest_dir = write_run(self.tmp / "ingest", "I-1", ingest, [], stage="ingest")
         reads = [Read("q0", "h", 10)]
         read_dir = write_run(self.tmp / "read", "R-9",
-                             [record("a", read="q0", version=10, run_id="R-9")], reads,
+                             [record("c1", read="q0", version=10, run_id="R-9")], reads,
                              stage="read", upstream=[{"run_id": "I-1", "stage": "ingest",
                                                       "path": str(ingest_dir)}])
         run = load_run(read_dir)
-        self.assertEqual(run.allocation().reads[0].w_before.logical, 300)
-        self.assertEqual(am.mean_cost_per_read(run)["logical"], 410)
+        allocation = run.allocation()  # call IDs repeat across the two runs
+        self.assertEqual(allocation.reads[0].w_before.logical, 300)
+        self.assertEqual(allocation.unassigned_w_ids, ["I-1/c2"])
+        reconcile(run.records, allocation)
+        self.assertEqual(am.mean_cost_per_read(run)["logical"], 417)
 
     def test_percentile(self):
         self.assertIsNone(percentile([], 50))
