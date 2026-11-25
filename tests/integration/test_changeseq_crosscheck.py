@@ -3,8 +3,9 @@
 `grace.cli.data.changeseq_crosscheck` compiles the six view templates to the T017 IR and executes
 them on the gold graph at every version. These tests run it on the hand-written worked example of
 design section 6.5, on a generated development sequence, and on two small extensions of the worked
-example that pin down the two known compiler-side gaps (`expectedFailure`: when T017 closes a gap
-the test reports an unexpected success and must be updated). Negative controls show that a broken
+example that pin down the known compiler-side gaps (an open gap is marked `expectedFailure`: when
+T017 closes it the test reports an unexpected success and must be updated; the LATEST witness gap
+F2 is closed). Negative controls show that a broken
 IR template is caught.
 """
 
@@ -103,11 +104,9 @@ class KnownGapTest(unittest.TestCase):
                                  Stance("a11", "c9", "inform", report_mode="quote")]))
         self.assertEqual(checks(log, WORLD, BINDINGS)[0].mismatches, [])
 
-    @unittest.expectedFailure
-    def test_gap_latest_keeps_only_the_latest_confirmation(self):
-        """LATEST keys each row on max(claim, attribution) version, so a restatement of the
-        selected claim drops its earlier witness; plan 3.4 and design 6.2 (V2) keep every
-        witness of the selected claim."""
+    def test_latest_keeps_every_witness_of_the_selected_claim(self):
+        """A restatement of the selected claim keeps its earlier witness (F2, fixed in T017):
+        plan 3.4 and design 6.2 (V2) keep every witness of the selected claim."""
         log = extended(("user", [Stance("a11", "c8", "inform")]))   # "Yes, Cologne."
         full, projected = checks(log, WORLD, BINDINGS)
         self.assertEqual(projected.mismatches, [])
