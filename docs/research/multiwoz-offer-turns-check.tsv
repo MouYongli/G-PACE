@@ -1,0 +1,61 @@
+n	task_id	label	offer_kinds	verdict	note	checked_by
+1	MUL0915.json:2	accept	"{""restaurant"": [""booking-inform"", ""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+2	PMUL4826.json:8	accept	"{""train"": [""inform-entity"", ""offerbook""]}"	incorrect	system offers to book TR6914; user declines the booking implicitly ('i just need the price and arrival time') - not an acceptance of the offer	checked by the agent session m01-T006, pending human confirmation
+3	PMUL0874.json:8	accept	"{""restaurant"": [""booking-inform"", ""inform-entity""]}"	incorrect	user explicitly declines the booking offer ('No but I would like the phone number'); rule counts the phone request as implicit acceptance of the entity	checked by the agent session m01-T006, pending human confirmation
+4	MUL0337.json:4	accept	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+5	MUL0012.json:12	accept	"{""restaurant"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+6	MUL1655.json:4	accept	"{""restaurant"": [""booking-inform"", ""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+7	PMUL4554.json:2	accept	"{""attraction"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+8	PMUL2970.json:12	accept	"{""hotel"": [""booking-inform"", ""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+9	PMUL2021.json:8	accept	"{""attraction"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+10	MUL0187.json:2	accept	"{""restaurant"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+11	PMUL1071.json:12	accept	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+12	PMUL4864.json:14	accept	"{""train"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+13	MUL2309.json:2	accept	"{""restaurant"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+14	PMUL3607.json:6	accept	"{""train"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+15	SNG1106.json:2	accept	"{""attraction"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+16	SNG1119.json:4	accept	"{""attraction"": [""inform-entity""]}"	correct	user asked the system to pick one; asking the fee of the picked entity counted as acceptance	checked by the agent session m01-T006, pending human confirmation
+17	MUL1128.json:12	accept	"{""attraction"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+18	MUL2263.json:6	accept	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+19	PMUL0963.json:6	accept	"{""restaurant"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+20	MUL1003.json:18	accept	"{""hotel"": [""booking-inform"", ""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+21	PMUL3766.json:8	accept	"{""train"": [""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+22	PMUL2320.json:4	accept	"{""attraction"": [""inform-entity""]}"	correct	user declines the other three options but asks about the offered gallery: accept of the offered entity	checked by the agent session m01-T006, pending human confirmation
+23	MUL1126.json:2	accept	"{""attraction"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+24	PMUL2762.json:14	accept	"{""hotel"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+25	PMUL3537.json:20	accept	"{""hotel"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+26	PMUL0697.json:12	accept	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+27	PMUL4029.json:8	accept	"{""hotel"": [""booking-inform"", ""inform-entity""]}"	correct	entity was named by the user in the previous turn (not in its acts); the booking offer is what is accepted	checked by the agent session m01-T006, pending human confirmation
+28	MUL2307.json:12	accept	"{""restaurant"": [""booking-inform""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+29	PMUL1402.json:10	accept	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+30	MUL1160.json:6	accept	"{""hotel"": [""booking-inform"", ""inform-entity""]}"	correct	entity named by the user earlier (not in its acts); the booking offer is what is accepted	checked by the agent session m01-T006, pending human confirmation
+31	MUL0206.json:2	reject	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+32	PMUL2711.json:2	reject	"{""hotel"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+33	MUL1808.json:8	reject	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+34	PMUL3434.json:2	reject	"{""hotel"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+35	MUL2251.json:2	reject	"{""hotel"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+36	PMUL1133.json:2	reject	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+37	PMUL4719.json:2	reject	"{""restaurant"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+38	PMUL1464.json:10	reject	"{""attraction"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+39	PMUL2464.json:4	reject	"{""attraction"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+40	PMUL4612.json:14	reject	"{""attraction"": [""select""]}"	incorrect	system offers to look for a different kind of attraction; user agrees ('Sure let's try a college'); rule reads type=college as a counter-value to the offered type	checked by the agent session m01-T006, pending human confirmation
+41	PMUL4109.json:8	reject	"{""hotel"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+42	MUL0142.json:10	reject	"{""hotel"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+43	PMUL4522.json:4	reject	"{""hotel"": [""select""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+44	MUL1888.json:4	reject	"{""train"": [""inform-entity"", ""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+45	PMUL0740.json:2	reject	"{""restaurant"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+46	MUL1975.json:2	reject	"{""attraction"": [""inform-entity""]}"	correct	only one concert hall offered; user switches to a nightclub in the south: counted as rejection of the offer	checked by the agent session m01-T006, pending human confirmation
+47	MUL2223.json:14	reject	"{""train"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+48	MUL1318.json:8	reject	"{""hotel"": [""inform-entity""]}"	correct	system spells 'Lenfield' vs user 'Lensfield', so the entity looks new; user turns away from it (2 stars): rejection is correct	checked by the agent session m01-T006, pending human confirmation
+49	MUL1221.json:2	reject	"{""restaurant"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+50	PMUL4198.json:2	reject	"{""attraction"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+51	MUL0425.json:2	reject	"{""train"": [""offerbook""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+52	PMUL1828.json:20	reject	"{""hotel"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+53	MUL2039.json:4	reject	"{""hotel"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+54	MUL1556.json:2	reject	"{""restaurant"": [""recommend""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+55	MUL1590.json:10	reject	"{""restaurant"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+56	PMUL2902.json:2	reject	"{""attraction"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+57	MUL1288.json:2	reject	"{""hotel"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+58	PMUL4471.json:14	reject	"{""attraction"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+59	SNG01196.json:4	reject	"{""restaurant"": [""inform-entity""]}"	correct		checked by the agent session m01-T006, pending human confirmation
+60	PMUL1594.json:4	reject	"{""hotel"": [""booking-inform""]}"	incorrect	system confirms '6 days and five nights' (act value bookday=6 is an annotation slip); user confirms; rule reads bookday=monday as a counter-value	checked by the agent session m01-T006, pending human confirmation
