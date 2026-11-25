@@ -37,6 +37,7 @@ Taken by the user.
 | Long-context second answering models | Qwen3.5-27B and Gemma 4 31B IT | `configs/models/qwen3.5-27b.yaml`, `configs/models/gemma-4-31b-it.yaml` |
 | Writer scale (ablation G) | Qwen3-32B | `configs/models/qwen3-32b.yaml` |
 | Embedding (unchanged, plan 7.1) | Qwen3-Embedding-0.6B at `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3` | to be pinned with `llm/embedding.py` |
+| Change-sequence renderer (T015) | Mistral-Small-3.2-24B-Instruct-2506 (`mistralai/Mistral-Small-3.2-24B-Instruct-2506`, Apache 2.0), served locally; revision pinned when downloaded | to be pinned by T015 in `configs/models/` |
 | Primary judge | DeepSeek-V4-Flash-0731 at `7872f01b1d1fe23eabc4c98b48bffcef5a386062`, served locally | `configs/judges/blind.yaml` (`model`) |
 | Secondary judge | Azure OpenAI gpt-4.1-mini, version 2025-04-14, budget EUR 50 for the project | `configs/judges/blind.yaml` (`comparison_model`, E001 only); `configs/judges/longmemeval-official.yaml` (`model`) |
 
@@ -69,3 +70,4 @@ Every model is served with thinking disabled and temperature 0. Azure keys and e
 
 - 2026-11-23: proposed as part of the full project DAG.
 - 2026-11-25: evidence summarised: model cards, `config.json`, judge prices and the Azure lifecycle. The user chose the line-up and the judge plan with a EUR 50 GPT budget. Models downloaded at the pinned revisions; Gemma 4 12B was removed from the cache.
+- 2026-11-25: the user chose the change-sequence renderer: Mistral-Small-3.2-24B-Instruct-2506, an open-weight model outside the evaluated families (Qwen, Gemma) and different from the primary judge (DeepSeek), served locally for reproducibility (change-sequences design section 7). It was preferred over Azure gpt-4.1-mini, which retires on 2027-04-14 and is also the native backbone of the Graphiti row.
