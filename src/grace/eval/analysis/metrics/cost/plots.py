@@ -87,7 +87,7 @@ def payback_figure(series: Mapping[str, Sequence[PaybackPoint]], marks: Mapping[
     ax.set_xlabel("cache ratio c (cost of a cache-hit input token)")
     ax.set_ylabel("payback read count M*")
     ax.set_yscale("log")
-    ax.legend(loc="lower right", fontsize=8)
+    ax.legend(loc="center right", fontsize=8)
     fig.tight_layout()
     fig.savefig(out, dpi=150)
     plt.close(fig)
