@@ -1,48 +1,47 @@
 """The answering step shared by every engine (plan 5.6).
 
-The answering LLM sees only the working context and the task, under one fixed answer prompt. It
-has four permitted outputs: an answer, a state, one request for further retrieval, or "unknown".
-A further-retrieval request is served once through `ContextEngine.further_retrieval`, followed by
-a second answering call in which the request is no longer allowed. Output that cannot be parsed is
-`invalid` (after the retries of the model wrapper).
+The answering LLM sees only the working context and the task, under the one pinned answer prompt
+(`resources/prompts/answer/`, registered in `configs/common/prompts.yaml`); its output is checked
+against `resources/schemas/llm/answer.json`. It has four permitted outputs: an answer, a state,
+one request for further retrieval, or "unknown". A further-retrieval request is served once through
+`ContextEngine.further_retrieval`, followed by a second answering call in which the request is no
+longer allowed. Output that cannot be parsed is `invalid` (after the retries of the model wrapper).
 
-Interim prompt: the shared answer prompt belongs to `resources/prompts/answer/` and is loaded by
-`llm/prompts.py` (T004). This placeholder keeps the layout the plan requires: fixed instructions
-and output contract first, the context and the task last.
+Second call: the prompt's `context` holds the fragments of the new working context that were
+already in the first one, then a section headed "Further retrieval results" with the fragments the
+further retrieval added (or a note that it added none). The fragments are those of the recorded
+working context; only their arrangement under the heading differs from its `text`.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass
 from typing import Any
 
 from grace.context import api
-from grace.eval.engines.baselines.base import CallTag, ModelPort
+from grace.eval.datasets.benchmarks import multiwoz
+from grace.eval.engines.baselines.base import EMPTY_CONTEXT, CallTag, ModelPort, pinned_prompt
+from grace.llm import structured
 
-ANSWER_INSTRUCTIONS = """\
-You answer a task about a conversation history using only the context below. Each context line \
-starts with the ID of the message it comes from in square brackets.
-
-OUTPUT CONTRACT. Reply with one JSON object and nothing else, in one of these forms:
-{"output": "answer", "answer": "<short answer>", "cited_ids": ["<message ID>", ...]}
-{"output": "state", "state": {"<slot>": "<value>", ...}, "cited_ids": ["<message ID>", ...]}
-{"output": "retrieve", "request": "<what to search for>"}
-{"output": "unknown"}
-Use "answer" for a question and "state" for a state request. Cite the IDs of the messages your \
-reply relies on. Use "retrieve" at most once, when the context lacks something a search could \
-find. Use "unknown" when the context does not support a reply."""
-FINAL_NOTE = "Further retrieval is no longer available: reply with answer, state or unknown."
-ANSWER_SHA256 = hashlib.sha256(ANSWER_INSTRUCTIONS.encode("utf-8")).hexdigest()
+PROMPT = pinned_prompt("answer")
+SCHEMA = structured.load_schema("answer")
+FURTHER_HEADING = "Further retrieval results"
+NOTHING_NEW = "[the further retrieval found nothing that is not already in the context above]"
+UNKNOWN_TIME = "unknown"
+# Slot inventories named by `ReadTask.state_schema` (contracts.md, "Read task"). The inventory is
+# part of the task, not of the gold data.
+STATE_SCHEMAS = {multiwoz.STATE_SCHEMA: tuple(sorted(multiwoz.SLOTS))}
 
 
-def task_text(task: api.ReadTask) -> str:
-    when = f" (asked at {task.asked_at})" if task.asked_at else ""
+def request_text(task: api.ReadTask) -> str:
+    """The `request` variable of the answer prompt: the question, or a state request with slots."""
     if task.kind == "question":
-        return f"Question{when}: {task.question}"
-    return f"Task{when}: state request; output the current dialogue state over the slot " \
-           f"inventory {task.state_schema}."
+        return f"Question: {task.question}"
+    slots = STATE_SCHEMAS.get(task.state_schema)
+    if slots is None:
+        raise ValueError(f"unknown state_schema {task.state_schema!r}")
+    return ("State request: output the current dialogue state. Slot names: "
+            + ", ".join(slots) + ".")
 
 
 @dataclass(frozen=True)
@@ -55,42 +54,34 @@ class Reply:
 
 def parse_reply(text: str, task: api.ReadTask, *, allow_retrieve: bool) -> Reply:
     """Parse one answering output; raise ValueError when it breaks the output contract."""
-    start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end < start:
-        raise ValueError("no JSON object")
-    data = json.loads(text[start: end + 1])
-    if not isinstance(data, dict):
-        raise ValueError("not an object")
-    output = data.get("output")
-    cited = data.get("cited_ids", [])
-    if not isinstance(cited, list) or not all(isinstance(c, str) for c in cited):
-        raise ValueError("cited_ids must be a list of strings")
+    parsed = structured.parse(text, SCHEMA)
+    if not parsed.ok:
+        raise ValueError(parsed.error)
+    data = parsed.value
+    output = data["output"]
     if output == "unknown":
         return Reply("unknown")
     if output == "retrieve" and allow_retrieve:
-        request = data.get("request")
-        if not isinstance(request, str) or not request.strip():
-            raise ValueError("retrieve needs a request")
-        return Reply("retrieve", request=request)
+        return Reply("retrieve", request=data["query"])
     if output == "answer" and task.kind == "question":
-        value = data.get("answer")
-        ok = (isinstance(value, str) and value.strip()) or (
-            isinstance(value, list) and value and all(isinstance(v, str) for v in value))
-        if not ok:
-            raise ValueError("answer must be a non-empty string or list of strings")
-        return Reply("answer", value, tuple(cited))
+        return Reply("answer", data["answer"], tuple(data["cited_ids"]))
     if output == "state" and task.kind == "state":
-        value = data.get("state")
-        if not isinstance(value, dict):
-            raise ValueError("state must be an object")
-        return Reply("state", value, tuple(cited))
+        return Reply("state", data["state"], tuple(data["cited_ids"]))
     raise ValueError(f"output {output!r} not permitted here")
 
 
-def messages_for(context: api.WorkingContext, task: api.ReadTask, final: bool):
-    system = ANSWER_INSTRUCTIONS + ("\n" + FINAL_NOTE if final else "")
-    return [{"role": "system", "content": system},
-            {"role": "user", "content": f"Context:\n{context.text}\n\n{task_text(task)}"}]
+def final_context_text(first: api.WorkingContext, second: api.WorkingContext) -> str:
+    """The `context` of the second call: earlier fragments, then the further-retrieval section."""
+    before = {f.fragment_id for f in first.fragments}
+    kept = [f.text for f in second.fragments if f.fragment_id in before]
+    added = [f.text for f in second.fragments if f.fragment_id not in before]
+    return ("\n".join(kept) or EMPTY_CONTEXT) + f"\n\n{FURTHER_HEADING}:\n" + (
+        "\n".join(added) or NOTHING_NEW)
+
+
+def messages_for(context_text: str, task: api.ReadTask, asked_at: str | None):
+    return PROMPT.render(context=context_text, asked_at=task.asked_at or asked_at or UNKNOWN_TIME,
+                         request=request_text(task))
 
 
 @dataclass(frozen=True)
@@ -107,27 +98,32 @@ class Answered:
 
 
 def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
-           model: ModelPort, visible_ids: set[str]) -> Answered:
-    """Read, answer, serve at most one further retrieval, and answer again."""
+           model: ModelPort, visible_ids: set[str], *, asked_at: str | None = None,
+           max_tokens: int | None = None) -> Answered:
+    """Read, answer, serve at most one further retrieval, and answer again.
+
+    `asked_at` is the current date when the task has none (the time of the last visible message);
+    `max_tokens` caps each answering call (budgets.yaml, `answer.output_reserve_tokens`)."""
     result = engine.read(task, budget)
     context, trace = result.context, result.trace
     tag = CallTag("answer", "read", task.history_id, task.version, task.read_id)
     call_ids = list(trace.call_ids)
 
-    def ask(final: bool):
+    def ask(context_text: str, final: bool):
         def parse(text):
             return parse_reply(text, task, allow_retrieve=not final)
-        reply = model.chat(messages_for(context, task, final), tag,
-                           prompt_sha256=ANSWER_SHA256, parse=parse)
+        reply = model.chat(messages_for(context_text, task, asked_at), tag,
+                           prompt_sha256=PROMPT.sha256, parse=parse, max_tokens=max_tokens)
         call_ids.extend(reply.call_ids)
         return reply
 
-    reply = ask(final=False)
+    reply = ask(context.text, final=False)
     if reply.ok and reply.parsed.output == "retrieve":
         second = engine.further_retrieval(task, reply.parsed.request, budget)
+        first_context = context
         context, trace = second.context, second.trace
         call_ids.extend(trace.call_ids)
-        reply = ask(final=True)
+        reply = ask(final_context_text(first_context, context), final=True)
     trace = api.ReadTrace(**{**trace.__dict__, "call_ids": tuple(call_ids)})
     if not reply.ok:
         return Answered("invalid", None, [], reply.text, context, trace, [])
@@ -137,3 +133,13 @@ def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
     value = parsed.value if parsed.output in ("answer", "state") else None
     return Answered(parsed.output, value, cited if value is not None else [], reply.text,
                     context, trace, dropped)
+
+
+def is_answer_call(messages) -> bool:
+    """Whether chat messages are an answering call (for fake responders in tests)."""
+    return messages[0]["content"] == PROMPT.system
+
+
+def is_final_call(messages) -> bool:
+    """Whether an answering call is the second one, after the further retrieval."""
+    return is_answer_call(messages) and f"\n\n{FURTHER_HEADING}:\n" in messages[-1]["content"]

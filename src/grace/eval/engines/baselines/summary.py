@@ -11,24 +11,32 @@ The recent window holds the messages after the last summarised one: exactly `rec
 `rewrite`; between `recent_k` and `recent_k + block_size - 1` under `reuse`. When a summary call
 fails, nothing is marked summarised and the next write retries with the larger set.
 
-Summary calls are `summary` / trigger `write` / ledger `W`. The prompt is a placeholder in code
-until T004's prompt loader exists; it moves to `resources/prompts/summary/` then.
+Summary calls are `summary` / trigger `write` / ledger `W`, with the pinned prompt
+`resources/prompts/summary/`. Its length limit is `max_summary_tokens`; the call's `max_tokens` is
+that limit plus `baselines.summary.max_tokens_margin` of `configs/common/budgets.yaml`, and the
+returned text is cut to the limit.
 """
 
 from __future__ import annotations
 
-import hashlib
+import yaml
 
-from grace.eval.engines.baselines.base import BaselineEngine, CallTag, render_message, truncate_to
-
-SUMMARY_INSTRUCTIONS = (
-    "You maintain a running summary of a conversation for a memory system. Write a concise "
-    "summary in plain text that keeps every fact a later question may need: names, dates, "
-    "numbers, preferences, decisions, plans and who said what. When new messages correct or "
-    "update an earlier fact, state the current value and mention the earlier one. Cite message "
-    "IDs in square brackets after each fact. Output only the summary."
+from grace.config.paths import REPO_ROOT
+from grace.eval.engines.baselines.base import (
+    BaselineEngine,
+    CallTag,
+    pinned_prompt,
+    render_message,
+    truncate_to,
 )
-SUMMARY_SHA256 = hashlib.sha256(SUMMARY_INSTRUCTIONS.encode("utf-8")).hexdigest()
+
+BUDGETS = REPO_ROOT / "configs" / "common" / "budgets.yaml"
+NO_SUMMARY = "(none yet)"
+
+
+def max_tokens_margin() -> int:
+    budgets = yaml.safe_load(BUDGETS.read_text(encoding="utf-8"))
+    return int(budgets["baselines"]["summary"]["max_tokens_margin"])
 
 
 def _parse_summary(text: str) -> str:
@@ -50,6 +58,8 @@ class RollingSummary(BaselineEngine):
             raise ValueError("recent_k >= 0, block_size >= 1 and max_summary_tokens >= 1")
         self.mode, self.recent_k, self.block_size = mode, recent_k, block_size
         self.max_summary_tokens = max_summary_tokens
+        self.prompt = pinned_prompt("summary")
+        self.max_tokens = max_summary_tokens + max_tokens_margin()
         self.blocks: list[dict] = []  # {"text", "evidence_ids", "version"}
         self.summarised_upto = 0  # last version covered by the summary
 
@@ -59,12 +69,12 @@ class RollingSummary(BaselineEngine):
             return []
         previous = self.blocks[-1] if self.mode == "rewrite" and self.blocks else None
         new_text = "\n".join(render_message(m, self._history()) for m in leaving)
-        user = (f"Current summary:\n{previous['text']}\n\nNew messages:\n{new_text}"
-                if previous else f"Messages:\n{new_text}")
+        messages = self.prompt.render(max_tokens=str(self.max_summary_tokens),
+                                      summary=previous["text"] if previous else NO_SUMMARY,
+                                      messages=new_text)
         tag = CallTag("summary", "write", message.history_id, message.version)
-        result = self.model.chat([{"role": "system", "content": SUMMARY_INSTRUCTIONS},
-                                  {"role": "user", "content": user}], tag,
-                                 prompt_sha256=SUMMARY_SHA256, parse=_parse_summary)
+        result = self.model.chat(messages, tag, prompt_sha256=self.prompt.sha256,
+                                 parse=_parse_summary, max_tokens=self.max_tokens)
         if result.ok:
             text = truncate_to(result.parsed, self.max_summary_tokens, self.model.count_tokens)
             evidence = [*(previous["evidence_ids"] if previous else []),

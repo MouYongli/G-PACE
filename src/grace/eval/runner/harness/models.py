@@ -1,15 +1,19 @@
-"""Model access for engines and the answering step: a recording wrapper around a backend.
+"""Model access for engines and the answering step: the `ModelPort` implementations.
 
-`RecordingModel` implements the `ModelPort` of the baselines. It sends each call to a `Backend`,
-retries invalid output up to `max_attempts`, and writes one cost-ledger record per attempt.
+Both implementations write one Cost-ledger record per attempt into the run's `calls.jsonl`
+through `grace.llm.records.CallLedger`, and retry output the caller's parser rejects up to
+`max_attempts` logical calls.
 
-Backends:
-
-- `FakeBackend`: deterministic, CPU-only, no network. It counts whitespace tokens, simulates prefix
-  caching by the longest common prefix with earlier prompts, and answers through a responder
-  function. For tests and dry runs only; its model name says so, and no score from it is real.
-- A backend for the OpenAI-compatible serving endpoint comes from `llm/client.py` (T004). Model
-  client libraries may be imported only by `llm/` (import rules), so it is not written here.
+- `ClientModel`: the real path. Chat calls go through `grace.llm.client.ChatClient` (the
+  OpenAI-compatible serving endpoint, local token counting with the model's pinned tokenizer and
+  chat template), embedding calls through `grace.llm.embeddings.EmbeddingClient`. Transport
+  failures are retried inside the client; a call whose transport attempts all fail returns
+  `ok=False` (chat) or fails the run (embedding, since the index cannot be built without vectors).
+  A retry after invalid output is a new logical call of the client, so its `attempt` restarts at 1.
+- `RecordingModel` with `FakeBackend`: deterministic, CPU-only, no network, for tests and CI. It
+  counts whitespace tokens, simulates prefix caching by the longest common prefix with earlier
+  prompts, and answers through a responder function. Its model name says so; no score from it is
+  real.
 """
 
 from __future__ import annotations
@@ -18,12 +22,91 @@ import hashlib
 import json
 import re
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
 from grace.eval.engines.baselines.base import CallTag, ChatResult, EmbedResult
-from grace.eval.runner.harness.ledger import CallLedger, CallRecord, category
+from grace.eval.runner.harness.answer import FURTHER_HEADING, is_answer_call
+from grace.llm.client import ChatClient, LLMCallFailed
+from grace.llm.embeddings import EmbeddingClient
+from grace.llm.records import CallContext, CallLedger, CallRecord, category_for
+from grace.llm.tokens import TokenCounter
+
+PARSE_ERRORS = (ValueError, KeyError, TypeError)
+
+
+def call_context(tag: CallTag) -> CallContext:
+    return CallContext(tag.call_type, tag.trigger, tag.history_id, tag.read_id, tag.version)
+
+
+# ---------------------------------------------------------------------------------------------
+# Real model client
+
+
+class ClientModel:
+    """`ModelPort` over `grace.llm` clients (see the module docstring)."""
+
+    def __init__(self, client: ChatClient, counter: TokenCounter, *,
+                 decoding: Mapping[str, Any] | None = None,
+                 embedder: EmbeddingClient | None = None, max_attempts: int = 2):
+        if max_attempts < 1:
+            raise ValueError("max_attempts >= 1")
+        self.client, self.counter, self.embedder = client, counter, embedder
+        self.decoding = dict(decoding or {})
+        self.max_attempts = max_attempts
+        self.observed: list[str] = []  # every text sent to a model (inputs seen by models)
+
+    @property
+    def model(self) -> str:
+        return self.client.endpoint.model_label
+
+    def count_tokens(self, text: str) -> int:
+        return self.counter.count_text(text)
+
+    def chat(self, messages, tag: CallTag, *, prompt_sha256: str | None = None,
+             parse: Callable[[str], Any] | None = None,
+             max_tokens: int | None = None) -> ChatResult:
+        self.observed.extend(m["content"] for m in messages)
+        context = call_context(tag)
+        decoding = {**self.decoding, **({"max_tokens": max_tokens} if max_tokens else {})}
+        parsed: dict[str, Any] = {}
+
+        def validate(text: str) -> str | None:
+            try:
+                parsed["value"] = parse(text) if parse else text
+            except PARSE_ERRORS as exc:
+                return f"{type(exc).__name__}: {exc}"
+            return None
+
+        call_ids: list[str] = []
+        text, input_tokens = None, 0
+        for _ in range(self.max_attempts):
+            parsed.clear()
+            try:
+                result = self.client.chat(messages, context, prompt_sha256=prompt_sha256,
+                                          decoding=decoding, validate=validate)
+            except LLMCallFailed as exc:
+                call_ids += [r.call_id for r in exc.records]
+                input_tokens = exc.records[-1].input_tokens if exc.records else input_tokens
+                break
+            call_ids += [r.call_id for r in result.records]
+            text, input_tokens = result.text, result.records[-1].input_tokens
+            if result.status == "ok":
+                return ChatResult(text, parsed["value"], True, tuple(call_ids), input_tokens)
+        return ChatResult(text, None, False, tuple(call_ids), input_tokens)
+
+    def embed(self, texts, tag: CallTag) -> EmbedResult:
+        if self.embedder is None:
+            raise RuntimeError("this engine embeds, but no embedding endpoint was configured")
+        self.observed.extend(texts)
+        result = self.embedder.embed(texts, call_context(tag))
+        return EmbedResult(tuple(tuple(v) for v in result.vectors),
+                           tuple(r.call_id for r in result.records))
+
+
+# ---------------------------------------------------------------------------------------------
+# Deterministic fake backend
 
 
 @dataclass(frozen=True)
@@ -52,13 +135,17 @@ def prompt_text(messages: Sequence[dict[str, str]]) -> str:
 
 
 class RecordingModel:
-    """`ModelPort` that records every attempt in the run's cost ledger."""
+    """`ModelPort` over a `Backend` that records every attempt in the run's cost ledger."""
 
     def __init__(self, backend: Backend, ledger: CallLedger, *, max_attempts: int = 2):
         if max_attempts < 1:
             raise ValueError("max_attempts >= 1")
         self.backend, self.ledger, self.max_attempts = backend, ledger, max_attempts
         self.observed: list[str] = []  # every text sent to the backend (inputs seen by models)
+
+    @property
+    def model(self) -> str:
+        return self.backend.model
 
     def count_tokens(self, text: str) -> int:
         return self.backend.count_tokens(text)
@@ -69,7 +156,7 @@ class RecordingModel:
         self.ledger.append(CallRecord(
             call_id=call_id, run_id=self.ledger.run_id, history_id=tag.history_id,
             read_id=tag.read_id, version=tag.version, call_type=tag.call_type,
-            trigger=tag.trigger, category=category(tag.call_type, tag.trigger),
+            trigger=tag.trigger, category=category_for(tag.call_type, tag.trigger),
             model=self.backend.model, attempt=attempt, status=status,
             input_tokens=completion.input_tokens if completion else input_tokens,
             output_tokens=completion.output_tokens if completion else 0,
@@ -79,7 +166,9 @@ class RecordingModel:
         return call_id
 
     def chat(self, messages, tag: CallTag, *, prompt_sha256: str | None = None,
-             parse: Callable[[str], Any] | None = None) -> ChatResult:
+             parse: Callable[[str], Any] | None = None,
+             max_tokens: int | None = None) -> ChatResult:
+        category_for(tag.call_type, tag.trigger)  # refuse a bad tag before any attempt
         self.observed.extend(m["content"] for m in messages)
         call_ids: list[str] = []
         text, input_tokens = None, self.backend.count_tokens(prompt_text(messages))
@@ -96,7 +185,7 @@ class RecordingModel:
             text = completion.text
             try:
                 parsed = parse(text) if parse else text
-            except (ValueError, KeyError, TypeError):
+            except PARSE_ERRORS:
                 call_ids.append(self._record(tag, attempt, "invalid_output", completion,
                                              input_tokens, latency, prompt_sha256))
                 continue
@@ -115,9 +204,6 @@ class RecordingModel:
         return EmbedResult(tuple(tuple(v) for v in vectors), (call_id,))
 
 
-# ---------------------------------------------------------------------------------------------
-# Deterministic fake backend
-
 _WORD = re.compile(r"\S+")
 _ID = re.compile(r"^\[([^\]]+)\]")
 
@@ -126,19 +212,21 @@ def fake_responder(messages: Sequence[dict[str, str]]) -> str:
     """Deterministic stand-in outputs for the call types of T003, recognised by their prompts."""
     system, user = messages[0]["content"], messages[-1]["content"]
     if "running summary" in system:
-        words = _WORD.findall(user.split("\n", 1)[-1])
+        words = _WORD.findall(user.split("New messages:\n", 1)[-1])
         return " ".join(words[:40]) or "nothing"
     if "slot table" in system:
         return '{"entries": []}'
-    if "OUTPUT CONTRACT" in system:
-        context = user.split("Context:\n", 1)[-1].split("\n\nTask:", 1)[0]
+    if is_answer_call(messages):
+        context = user.split("Context:\n", 1)[-1].split("\n\nCurrent date:", 1)[0]
+        context = context.split(f"\n\n{FURTHER_HEADING}:\n", 1)[0]
         first = next((line for line in context.splitlines() if _ID.match(line)), None)
-        if "state request" in user:
+        if "State request" in user:
             return json.dumps({"output": "state", "state": {}, "cited_ids": []})
         if first is None:
-            return json.dumps({"output": "unknown"})
+            return json.dumps({"output": "unknown", "cited_ids": []})
+        cited = _ID.match(first).group(1).split(", ")[0]
         return json.dumps({"output": "answer", "answer": first.split(": ", 1)[-1],
-                           "cited_ids": [_ID.match(first).group(1)]})
+                           "cited_ids": [cited]})
     return "ok"
 
 

@@ -21,6 +21,15 @@ prompts:
     schema: null              # plain-text output
     schema_sha256: null
     note: Rolling-summary baseline of the pilot (E001); max_tokens comes from configs/common/budgets.yaml.
+  extract-slots:
+    call_type: extract
+    sha256: 6b140b4499c702a3f3aa402cf6fe9839c168cbc658533fdba06c82a60d3f1ded
+    schema: null              # {"entries": [...]}; checked against the configured slot inventory
+    schema_sha256: null       # and function list by the engine (eval/engines/baselines/slots.py)
+    note: >-
+      Fixed-schema slot-table baseline of the pilot (T003, plan 7.2), one call per message. Added by
+      T003. Variables: slots and functions (from configs/engines/slot-table.yaml, stable, first),
+      earlier (preceding messages for reference resolution), message (the new message, last).
   judge:
     call_type: judge
     sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2

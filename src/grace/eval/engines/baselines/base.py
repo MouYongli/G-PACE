@@ -15,7 +15,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
+from grace.config.paths import REPO_ROOT
 from grace.context import api
+from grace.llm.prompts import Prompt, load_pinned
 
 # ---------------------------------------------------------------------------------------------
 # Model port
@@ -51,11 +53,14 @@ class EmbedResult:
 
 
 class ModelPort(Protocol):
-    """The model access a baseline needs. Implemented by the harness (`harness/models.py`)."""
+    """The model access a baseline needs. Implemented by the harness (`harness/models.py`).
+
+    `max_tokens` caps the generated tokens of the call (None: the backend's default)."""
 
     def chat(self, messages: Sequence[dict[str, str]], tag: CallTag, *,
              prompt_sha256: str | None = None,
-             parse: Callable[[str], Any] | None = None) -> ChatResult: ...
+             parse: Callable[[str], Any] | None = None,
+             max_tokens: int | None = None) -> ChatResult: ...
 
     def embed(self, texts: Sequence[str], tag: CallTag) -> EmbedResult: ...
 
@@ -140,6 +145,14 @@ def truncate_to(text: str, budget: int, count: Callable[[str], int]) -> str:
         else:
             high = mid - 1
     return " ".join(words[:low])
+
+
+PROMPT_REGISTRY = REPO_ROOT / "configs" / "common" / "prompts.yaml"
+
+
+def pinned_prompt(name: str) -> Prompt:
+    """A prompt of `resources/prompts/`, checked against its pin in the prompt registry."""
+    return load_pinned(name, PROMPT_REGISTRY)
 
 
 def query_text(task: api.ReadTask, messages: Sequence[api.Message]) -> str:

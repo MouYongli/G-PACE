@@ -14,9 +14,9 @@ from grace.eval.engines.baselines.retrieval import Retrieval, rrf
 from grace.eval.engines.baselines.slots import SlotTable
 from grace.eval.engines.baselines.summary import RollingSummary
 from grace.eval.runner.harness.answer import answer, parse_reply
-from grace.eval.runner.harness.inputs import load
-from grace.eval.runner.harness.ledger import CallLedger
+from grace.eval.runner.harness.inputs import load_fixture as load
 from grace.eval.runner.harness.models import FakeBackend, RecordingModel, fake_responder
+from grace.llm.records import CallLedger
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCOMO = ROOT / "tests" / "fixtures" / "benchmarks" / "locomo"
@@ -191,19 +191,26 @@ class RecorderTest(Base):
 class AnswerTest(Base):
     def test_parse_reply(self):
         state = load(MULTIWOZ).histories[0].reads[0]
-        self.assertEqual(parse_reply('{"output": "unknown"}', self.task,
+        self.assertEqual(parse_reply('{"output": "unknown", "cited_ids": []}', self.task,
                                      allow_retrieve=False).output, "unknown")
-        self.assertEqual(parse_reply('x {"output": "state", "state": {"a": "b"}} y', state,
-                                     allow_retrieve=False).value, {"a": "b"})
-        bad = ['{"output": "state", "state": {}}', '{"output": "answer", "answer": ""}',
-               '{"output": "retrieve", "request": "x"}', "no json", '{"output": "maybe"}']
+        reply = parse_reply('```json\n{"output": "state", "state": {"a": "b"}, "cited_ids": []}'
+                            '\n```', state, allow_retrieve=False)
+        self.assertEqual(reply.value, {"a": "b"})
+        retrieve = parse_reply('{"output": "retrieve", "query": "x"}', self.task,
+                               allow_retrieve=True)
+        self.assertEqual(retrieve.request, "x")
+        bad = ['{"output": "state", "state": {}, "cited_ids": []}',
+               '{"output": "answer", "answer": "", "cited_ids": ["D1:1"]}',
+               '{"output": "answer", "answer": "Pip", "cited_ids": []}',
+               '{"output": "retrieve", "query": "x"}', "no json", '{"output": "maybe"}',
+               'x {"output": "unknown", "cited_ids": []} y']
         for text in bad:
             with self.subTest(text=text), self.assertRaises(ValueError):
                 parse_reply(text, self.task, allow_retrieve=False)
 
     def test_one_further_retrieval_then_final(self):
         def always_retrieve(messages):
-            return json.dumps({"output": "retrieve", "request": "clarinet"})
+            return json.dumps({"output": "retrieve", "query": "clarinet"})
         engine = self.ingest(Retrieval(self.model(), channel="bm25", top_k=1))
         result = answer(engine, self.task, None, self.model(always_retrieve),
                         {m.message_id for m in self.item.messages})

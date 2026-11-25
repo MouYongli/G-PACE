@@ -12,9 +12,9 @@ from pathlib import Path
 
 from grace.context import api
 from grace.eval.runner.harness.drive import build_engine, load_engine_config
-from grace.eval.runner.harness.inputs import load
-from grace.eval.runner.harness.ledger import CallLedger
+from grace.eval.runner.harness.inputs import load_fixture as load
 from grace.eval.runner.harness.models import FakeBackend, RecordingModel
+from grace.llm.records import CallLedger
 
 ROOT = Path(__file__).resolve().parents[2]
 BENCHMARKS = ROOT / "tests" / "fixtures" / "benchmarks"
@@ -41,7 +41,8 @@ class EngineSuite(unittest.TestCase):
 
     def engine(self, config):
         """The configured engine; summary windows shrunk so the five fixture messages summarise."""
-        ledger = CallLedger(self.dir / "calls.jsonl", "T003-20261125T000000Z-0000")
+        ledger = CallLedger(self.dir / f"calls-{config.stem}.jsonl",
+                            "T003-20261125T000000Z-0000")
         model = RecordingModel(FakeBackend(slot_responder), ledger)
         settings = load_engine_config(config)
         if settings["engine"] == "summary":

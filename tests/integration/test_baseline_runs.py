@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 from grace.eval.runner.harness import drive
-from grace.eval.runner.harness.answer import FINAL_NOTE
+from grace.eval.runner.harness.answer import is_answer_call, is_final_call
 from grace.eval.runner.harness.models import FakeBackend, fake_responder
 from grace.eval.runner.harness.rundir import CodeState
 from tests.contracts.records import check_fields, load_benchmark, read_jsonl
@@ -26,9 +26,8 @@ CODE = CodeState("0123456789abcdef0123456789abcdef01234567", False)
 
 
 def retrieving(messages):
-    system = messages[0]["content"]
-    if "OUTPUT CONTRACT" in system and FINAL_NOTE not in system:
-        return json.dumps({"output": "retrieve", "request": "instruments cat"})
+    if is_answer_call(messages) and not is_final_call(messages):
+        return json.dumps({"output": "retrieve", "query": "instruments cat"})
     return fake_responder(messages)
 
 
