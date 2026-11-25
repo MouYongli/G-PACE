@@ -438,12 +438,12 @@ nodes:
     type: experiment
     title: "Scale experiment: push, pull, hybrid"
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T015, T019]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 94
+    owner: m01-E004
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../experiments/E004-scale-experiment.md
   - id: E005
     type: experiment
