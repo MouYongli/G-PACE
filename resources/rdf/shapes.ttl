@@ -1,0 +1,141 @@
+# SHACL shapes of the claim graph (plan 5.2, "Structural validation"; contracts.md, "Claim graph").
+# Applied by src/grace/context/memory/graph/shacl.py to the RDF 1.1 serialisation of the claims a
+# change set touches, never to the whole store. Structural constraints only: no domain/range
+# inference, and no exclusivity rules (those belong to the attribution guard).
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix oa:   <http://www.w3.org/ns/oa#> .
+@prefix g:    <https://example.org/grace/ns#> .
+@prefix gf:   <https://example.org/grace/function#> .
+@prefix gs:   <https://example.org/grace/shapes#> .
+
+gs: sh:declare [ sh:prefix "g" ; sh:namespace "https://example.org/grace/ns#"^^xsd:anyURI ] ,
+               [ sh:prefix "rdf" ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] .
+
+gs:VersionStamp
+    sh:path g:knownFrom ;
+    sh:minCount 1 ; sh:maxCount 1 ;
+    sh:datatype xsd:integer ;
+    sh:minInclusive 1 .
+
+gs:TimeBound
+    sh:or ( [ sh:datatype xsd:date ] [ sh:datatype xsd:dateTime ] ) .
+
+# ---- Claim ---------------------------------------------------------------------------------
+
+gs:ClaimShape a sh:NodeShape ;
+    sh:targetClass g:Claim ;
+    sh:nodeKind sh:IRI ;
+    sh:class rdf:Statement ;
+    sh:property gs:VersionStamp ,
+        [ sh:path rdf:subject ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ,
+        [ sh:path rdf:predicate ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ,
+        [ sh:path rdf:object ; sh:minCount 1 ; sh:maxCount 1 ] ,
+        [ sh:path g:scope ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        [ sh:path g:validFrom ; sh:maxCount 1 ; sh:node gs:TimeBound ;
+          sh:lessThan g:validUntil ] ,
+        [ sh:path g:validUntil ; sh:maxCount 1 ; sh:node gs:TimeBound ] ,
+        [ sh:path g:validTimeExpression ; sh:maxCount 1 ; sh:datatype xsd:string ] ,
+        # A claim always has an attributed source and evidence (plan 3.2, 5.2).
+        [ sh:path [ sh:inversePath g:about ] ; sh:minCount 1 ;
+          sh:message "A claim needs at least one attribution." ] ,
+        [ sh:path [ sh:inversePath g:supports ] ; sh:minCount 1 ;
+          sh:message "A claim needs at least one evidence link." ] .
+
+# ---- Attribution ---------------------------------------------------------------------------
+
+gs:AttributionShape a sh:NodeShape ;
+    sh:targetClass g:Attribution ;
+    sh:nodeKind sh:IRI ;
+    sh:property gs:VersionStamp ,
+        [ sh:path g:about ; sh:minCount 1 ; sh:maxCount 1 ; sh:class g:Claim ] ,
+        [ sh:path prov:wasAttributedTo ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ,
+        [ sh:path g:function ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( gf:request gf:offer gf:accept gf:reject gf:confirm gf:inform gf:commit
+                  gf:question ) ] ,
+        [ sh:path g:reportMode ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( g:OwnStatement g:Quote g:Hypothetical ) ] ,
+        [ sh:path g:polarity ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ( g:Positive g:Negative ) ] ,
+        [ sh:path g:certainty ; sh:minCount 1 ; sh:maxCount 1 ;
+          sh:in ( g:Certain g:Probable g:Possible g:Underspecified ) ] ,
+        [ sh:path g:derived ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:sparql [
+        sh:message "An attribution cannot be older than its claim." ;
+        sh:prefixes gs: ;
+        sh:select """
+            SELECT $this WHERE {
+                $this g:about ?c ; g:knownFrom ?v . ?c g:knownFrom ?cv . FILTER(?v < ?cv)
+            }""" ] .
+
+# ---- Evidence link -------------------------------------------------------------------------
+
+gs:EvidenceShape a sh:NodeShape ;
+    sh:targetClass g:EvidenceLink ;
+    sh:nodeKind sh:IRI ;
+    sh:property gs:VersionStamp ,
+        [ sh:path g:supports ; sh:minCount 1 ; sh:maxCount 1 ; sh:class g:Claim ] ,
+        [ sh:path prov:wasDerivedFrom ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ,
+        [ sh:path oa:hasSelector ; sh:maxCount 1 ; sh:node gs:SelectorShape ] ;
+    sh:sparql [
+        sh:message "An evidence link cannot be older than its claim." ;
+        sh:prefixes gs: ;
+        sh:select """
+            SELECT $this WHERE {
+                $this g:supports ?c ; g:knownFrom ?v . ?c g:knownFrom ?cv . FILTER(?v < ?cv)
+            }""" ] .
+
+gs:SelectorShape a sh:NodeShape ;
+    sh:class oa:TextPositionSelector ;
+    sh:property
+        [ sh:path oa:start ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
+          sh:minInclusive 0 ; sh:lessThan oa:end ] ,
+        [ sh:path oa:end ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] .
+
+# ---- Supersession event --------------------------------------------------------------------
+
+gs:SupersessionShape a sh:NodeShape ;
+    sh:targetClass g:Supersession ;
+    sh:nodeKind sh:IRI ;
+    sh:property gs:VersionStamp ,
+        [ sh:path g:supersedes ; sh:minCount 1 ; sh:maxCount 1 ; sh:class g:Claim ] ,
+        [ sh:path g:kind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ( g:Change g:Correction ) ] ,
+        [ sh:path g:licensedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class g:Attribution ] ,
+        [ sh:path g:replacedBy ; sh:maxCount 1 ; sh:class g:Claim ] ,
+        [ sh:path g:validEnd ; sh:maxCount 1 ; sh:node gs:TimeBound ] ;
+    # A correction removes the claim from the past state; it carries no valid end.
+    sh:or ( [ sh:path g:kind ; sh:hasValue g:Change ]
+            [ sh:path g:validEnd ; sh:maxCount 0 ] ) ;
+    sh:sparql [
+        sh:message "A supersession cannot be older than the claims or attribution it names." ;
+        sh:prefixes gs: ;
+        sh:select """
+            SELECT $this WHERE {
+                $this g:knownFrom ?v .
+                { $this g:supersedes ?x } UNION { $this g:replacedBy ?x }
+                UNION { $this g:licensedBy ?x }
+                ?x g:knownFrom ?xv . FILTER(?v < ?xv)
+            }""" ] ,
+      [
+        sh:message "The licensing attribution must be on the superseded or the replacing claim." ;
+        sh:prefixes gs: ;
+        sh:select """
+            SELECT $this WHERE {
+                $this g:licensedBy ?a . ?a g:about ?c .
+                FILTER NOT EXISTS { $this g:supersedes ?c }
+                FILTER NOT EXISTS { $this g:replacedBy ?c }
+            }""" ] .
+
+# ---- Entity equivalence --------------------------------------------------------------------
+
+gs:EquivalenceShape a sh:NodeShape ;
+    sh:targetClass g:EntityEquivalence ;
+    sh:nodeKind sh:IRI ;
+    sh:property gs:VersionStamp ,
+        [ sh:path g:entityA ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+          sh:disjoint g:entityB ] ,
+        [ sh:path g:entityB ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .

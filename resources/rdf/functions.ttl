@@ -1,0 +1,52 @@
+# SKOS concept scheme of communicative functions (plan 5.2, "Attributions have two axes").
+# No official RDF version of ISO 24617-2 was found, so the correspondences are documented as
+# scope notes naming the ISO 24617-2 communicative functions; they are not IRIs.
+
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix gf:   <https://example.org/grace/function#> .
+
+gf:scheme a skos:ConceptScheme ;
+    skos:prefLabel "Communicative functions" ;
+    skos:hasTopConcept gf:request, gf:offer, gf:accept, gf:reject, gf:confirm, gf:inform,
+        gf:commit, gf:question .
+
+gf:request a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "request" ;
+    skos:definition "The speaker asks the addressee to bring about the proposition." ;
+    skos:scopeNote "ISO 24617-2: directive functions request, instruct; also suggest when the user states a constraint." .
+
+gf:offer a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "offer" ;
+    skos:definition "The speaker proposes the proposition as a candidate the addressee may accept." ;
+    skos:scopeNote "ISO 24617-2: commissive function offer; also suggest when the system proposes an item." .
+
+gf:accept a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "accept" ;
+    skos:definition "The speaker accepts a proposition earlier offered, requested or suggested." ;
+    skos:scopeNote "ISO 24617-2: acceptOffer, acceptRequest, acceptSuggest." .
+
+gf:reject a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "reject" ;
+    skos:definition "The speaker declines a proposition earlier offered, requested or suggested." ;
+    skos:scopeNote "ISO 24617-2: declineOffer, declineRequest, declineSuggest." .
+
+gf:confirm a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "confirm" ;
+    skos:definition "The speaker affirms a proposition that is already in the dialogue." ;
+    skos:scopeNote "ISO 24617-2: information-providing function confirm (answer to a check question); agreement." .
+
+gf:inform a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "inform" ;
+    skos:definition "The speaker states the proposition as information." ;
+    skos:scopeNote "ISO 24617-2: inform and its specialisations answer, agreement, disagreement, correction." .
+
+gf:commit a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "commit" ;
+    skos:definition "The speaker commits to bringing about the proposition." ;
+    skos:scopeNote "ISO 24617-2: commissive functions promise, addressRequest." .
+
+gf:question a skos:Concept ; skos:inScheme gf:scheme ; skos:topConceptOf gf:scheme ;
+    skos:prefLabel "question" ;
+    skos:definition "The speaker asks whether, or which value makes, the proposition hold." ;
+    skos:scopeNote "ISO 24617-2: information-seeking functions propositionalQuestion, setQuestion, choiceQuestion, checkQuestion." .
