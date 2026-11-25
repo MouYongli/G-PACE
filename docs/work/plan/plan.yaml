@@ -394,12 +394,12 @@ nodes:
     type: task
     title: Staleness strategies
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T018]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 78
+    owner: m01-T019
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T019-staleness-strategies.md
   - id: T020
     type: task
@@ -483,12 +483,12 @@ nodes:
     type: task
     title: Query planner
     milestone: M3
-    status: planned
+    status: done
     depends_on: [T017, T004]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 67
+    owner: m01-T023
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T023-query-planner.md
   - id: T024
     type: task
