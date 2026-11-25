@@ -9,8 +9,19 @@
 # upstream.verified: false until the implementation has reproduced upstream's numbers on upstream's
 #   published examples (T004 acceptance item 2; see the T004 PR for the gap).
 version: 1
+aggregation:                      # decision D002 (Evaluation section, "Aggregation")
+  cross_benchmark: none           # no overall score across benchmarks, in the main text or elsewhere
+  point_estimate: micro           # mean over the reads (questions or turns) of the population
+  sensitivity: macro              # mean of cluster means, supplementary, where clusters differ in size
+  overall_vs_strata: pooled       # the overall value pools all reads; it is not a mean of strata
+  descriptive_below: 100          # strata with fewer reads get no test (plan 6.9: 96, about 62, 30)
+  interval: cluster-bootstrap-95  # percentile bootstrap over clusters, paired for differences
+  bootstrap_resamples: 10000
+  invalid_policy: count_as_wrong  # every registered metric
+  failed_runs: missing            # no imputation; the cell is empty and the reason is reported
 benchmarks:
   locomo:
+    cluster_unit: conversation (sample_id)   # plan 6.9
     metrics:
       - name: f1
         code: grace.eval.analysis.metrics.answer:locomo_score
@@ -41,6 +52,7 @@ benchmarks:
         abstention: {label: category, value: 5}
         invalid_policy: count_as_wrong
   longmemeval-s:
+    cluster_unit: instance (question_id)   # plan 6.9
     metrics:
       - name: official-judge-accuracy
         code: grace.eval.analysis.metrics.answer:judged_values
@@ -61,6 +73,7 @@ benchmarks:
         abstention: {label: abstention, value: true}
         invalid_policy: count_as_wrong
   multiwoz:
+    cluster_unit: dialogue (dialogue_id)   # plan 6.9
     # One set of predictions scored against each annotation (plan 6.5).
     metrics:
       - name: jga
@@ -81,8 +94,11 @@ benchmarks:
         invalid_policy: count_as_wrong
         upstream: {repo: null, file: null, revision: null, verified: false}
   change-seq:
+    cluster_unit: scenario family   # plan 6.9
     metrics: []   # pending: scoring follows the generator design (T008) and its gold builder
   halumem-medium:
+    cluster_unit: user   # plan 6.9
     metrics: []   # pending: official QA and memory-point scoring use an LLM judge; register before E001 uses it
   memoryagentbench:
+    cluster_unit: context   # plan 6.9
     metrics: []   # pending: register per subset before E001 uses it
