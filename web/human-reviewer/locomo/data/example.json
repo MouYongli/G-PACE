@@ -1,0 +1,502 @@
+[
+ {
+  "source": {
+   "benchmark": "locomo",
+   "synthetic": true,
+   "note": "Invented for this page. It holds no text or annotation of the benchmark."
+  },
+  "history_id": "example-1",
+  "speakers": [
+   "Ana",
+   "Ben"
+  ],
+  "excluded": {
+   "category_5_questions": 0,
+   "fields": []
+  },
+  "sessions": [
+   {
+    "id": "session_1",
+    "index": 1,
+    "date_time": "2024-03-04T10:15",
+    "turns": [
+     {
+      "id": "D1:1",
+      "speaker": "Ana",
+      "text": "Hi Ben! I started a pottery class yesterday, right after my shift at the bakery.",
+      "image": null
+     },
+     {
+      "id": "D1:2",
+      "speaker": "Ben",
+      "text": "Good for you! I play the cello in a community orchestra these days.",
+      "image": null
+     },
+     {
+      "id": "D1:3",
+      "speaker": "Ana",
+      "text": "I didn't know that. I used to play the flute, but I don't play it anymore.",
+      "image": null
+     },
+     {
+      "id": "D1:4",
+      "speaker": "Ben",
+      "text": "Something else is new: I moved to Lisbon two years ago and never told you.",
+      "image": null
+     },
+     {
+      "id": "D1:5",
+      "speaker": "Ana",
+      "text": "Lisbon, wow. Anyway, look what I made in class.",
+      "image": {
+       "caption": "a photo of a blue ceramic bowl with a fish painted inside",
+       "query": "handmade ceramic bowl"
+      }
+     },
+     {
+      "id": "D1:6",
+      "speaker": "Ben",
+      "text": "That is lovely. I have two dogs now, Miso and Pepper.",
+      "image": null
+     }
+    ]
+   },
+   {
+    "id": "session_2",
+    "index": 2,
+    "date_time": "2024-04-10T18:30",
+    "turns": [
+     {
+      "id": "D2:1",
+      "speaker": "Ben",
+      "text": "News from my side: I adopted a third dog last week. Her name is Olive.",
+      "image": null
+     },
+     {
+      "id": "D2:2",
+      "speaker": "Ana",
+      "text": "Three dogs! I changed jobs, by the way. I work at the city library now.",
+      "image": null
+     },
+     {
+      "id": "D2:3",
+      "speaker": "Ben",
+      "text": "Congratulations. Before Lisbon I lived in Porto, and the library there was my favourite place.",
+      "image": null
+     },
+     {
+      "id": "D2:4",
+      "speaker": "Ana",
+      "text": "I also ran my first 10k race on 6 April.",
+      "image": null
+     },
+     {
+      "id": "D2:5",
+      "speaker": "Ben",
+      "text": "Well done! I don't eat meat anymore, but I still eat fish.",
+      "image": null
+     },
+     {
+      "id": "D2:6",
+      "speaker": "Ana",
+      "text": "They gave everyone one of these at the finish.",
+      "image": {
+       "caption": "a photo of a finisher medal with the number 10 on it",
+       "query": "race finisher medal"
+      }
+     }
+    ]
+   },
+   {
+    "id": "session_3",
+    "index": 3,
+    "date_time": "2024-06-01T09:00",
+    "turns": [
+     {
+      "id": "D3:1",
+      "speaker": "Ana",
+      "text": "I ran a half marathon on 25 May!",
+      "image": null
+     },
+     {
+      "id": "D3:2",
+      "speaker": "Ben",
+      "text": "Amazing. This spring I went to concerts in Madrid, in Seville, and in Madrid again.",
+      "image": null
+     },
+     {
+      "id": "D3:3",
+      "speaker": "Ana",
+      "text": "I have felt much calmer since I started pottery.",
+      "image": null
+     },
+     {
+      "id": "D3:4",
+      "speaker": "Ben",
+      "text": "Olive has been ill, so I skipped two orchestra rehearsals to stay with her.",
+      "image": null
+     }
+    ]
+   }
+  ],
+  "questions": [
+   {
+    "id": "example-1:q0",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "What instrument does Ben play?",
+    "gold_answer": "cello",
+    "evidence_ids": [
+     "D1:2"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q1",
+    "category": 2,
+    "category_name": "temporal",
+    "overlap": false,
+    "question": "When did Ana start the pottery class?",
+    "gold_answer": "3 March 2024",
+    "evidence_ids": [
+     "D1:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q2",
+    "category": 1,
+    "category_name": "multi-hop",
+    "overlap": true,
+    "question": "In which city did Ben live before he moved to Lisbon?",
+    "gold_answer": "Porto",
+    "evidence_ids": [
+     "D1:4",
+     "D2:3"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q3",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "Where does Ana work now?",
+    "gold_answer": "at the city library",
+    "evidence_ids": [
+     "D1:1",
+     "D2:2"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q4",
+    "category": 1,
+    "category_name": "multi-hop",
+    "overlap": true,
+    "question": "How many dogs does Ben have?",
+    "gold_answer": "3",
+    "evidence_ids": [
+     "D1:6",
+     "D2:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q5",
+    "category": 2,
+    "category_name": "temporal",
+    "overlap": false,
+    "question": "Which of Ben's dogs was adopted in April 2024?",
+    "gold_answer": "Olive",
+    "evidence_ids": [
+     "D1:6",
+     "D2:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q6",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "Which instrument does Ana no longer play?",
+    "gold_answer": "flute",
+    "evidence_ids": [
+     "D1:3"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q7",
+    "category": 1,
+    "category_name": "multi-hop",
+    "overlap": true,
+    "question": "What race did Ana run on 6 April, and what did she get at the finish?",
+    "gold_answer": "a 10k race; a finisher medal",
+    "evidence_ids": [
+     "D2:4",
+     "D2:6"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q8",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": true,
+    "question": "What did Ana make in her pottery class?",
+    "gold_answer": "a blue bowl with a fish painted inside",
+    "evidence_ids": [
+     "D1:5"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q9",
+    "category": 2,
+    "category_name": "temporal",
+    "overlap": true,
+    "question": "How many days passed between Ana's 10k race and her half marathon?",
+    "gold_answer": "49 days",
+    "evidence_ids": [
+     "D2:4",
+     "D3:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q10",
+    "category": 3,
+    "category_name": "open-domain",
+    "overlap": true,
+    "question": "Would Ana be likely to recommend pottery to a stressed friend?",
+    "gold_answer": "Likely yes",
+    "evidence_ids": [
+     "D3:3"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q11",
+    "category": 3,
+    "category_name": "open-domain",
+    "overlap": false,
+    "question": "Would Ben eat a salmon dish?",
+    "gold_answer": "Yes",
+    "evidence_ids": [
+     "D2:5"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q12",
+    "category": 1,
+    "category_name": "multi-hop",
+    "overlap": false,
+    "question": "Which city did Ben visit more often for concerts this spring, Madrid or Seville?",
+    "gold_answer": "Madrid",
+    "evidence_ids": [
+     "D3:2"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q13",
+    "category": 2,
+    "category_name": "temporal",
+    "overlap": true,
+    "question": "When did Ben adopt Olive?",
+    "gold_answer": "10 April 2024",
+    "evidence_ids": [
+     "D2:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "WRONG_ANSWER",
+    "audit_correct_answer": "the week before 10 April 2024"
+   },
+   {
+    "id": "example-1:q14",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "What are Ben's first two dogs called?",
+    "gold_answer": "Miso and Pepper",
+    "evidence_ids": [],
+    "evidence_status": "missing",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-1:q15",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "What does Ben still eat although he gave up meat?",
+    "gold_answer": "fish",
+    "evidence_ids": [
+     "D2:5",
+     "D9:2"
+    ],
+    "evidence_status": "unresolved",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   }
+  ]
+ },
+ {
+  "source": {
+   "benchmark": "locomo",
+   "synthetic": true,
+   "note": "Invented for this page. It holds no text or annotation of the benchmark."
+  },
+  "history_id": "example-2",
+  "speakers": [
+   "Dara",
+   "Eli"
+  ],
+  "excluded": {
+   "category_5_questions": 0,
+   "fields": []
+  },
+  "sessions": [
+   {
+    "id": "session_1",
+    "index": 1,
+    "date_time": "2024-09-02T08:05",
+    "turns": [
+     {
+      "id": "D1:1",
+      "speaker": "Dara",
+      "text": "Morning Eli. I bought a second-hand bike last Saturday.",
+      "image": null
+     },
+     {
+      "id": "D1:2",
+      "speaker": "Eli",
+      "text": "Nice. I am learning Portuguese for a trip in November.",
+      "image": null
+     },
+     {
+      "id": "D1:3",
+      "speaker": "Dara",
+      "text": "Where are you going?",
+      "image": null
+     },
+     {
+      "id": "D1:4",
+      "speaker": "Eli",
+      "text": "To Recife, to see my sister.",
+      "image": null
+     }
+    ]
+   },
+   {
+    "id": "session_2",
+    "index": 2,
+    "date_time": "2024-11-20T21:40",
+    "turns": [
+     {
+      "id": "D2:1",
+      "speaker": "Eli",
+      "text": "I am back from Recife. Two weeks went by so fast.",
+      "image": null
+     },
+     {
+      "id": "D2:2",
+      "speaker": "Dara",
+      "text": "Welcome back! I sold the bike and bought a kayak instead.",
+      "image": null
+     }
+    ]
+   }
+  ],
+  "questions": [
+   {
+    "id": "example-2:q0",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "Who did Eli visit in Recife?",
+    "gold_answer": "his sister",
+    "evidence_ids": [
+     "D1:4"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-2:q1",
+    "category": 2,
+    "category_name": "temporal",
+    "overlap": false,
+    "question": "When did Dara buy the bike?",
+    "gold_answer": "31 August 2024",
+    "evidence_ids": [
+     "D1:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-2:q2",
+    "category": 4,
+    "category_name": "single-hop",
+    "overlap": false,
+    "question": "What does Dara own now, a bike or a kayak?",
+    "gold_answer": "a kayak",
+    "evidence_ids": [
+     "D1:1",
+     "D2:2"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   },
+   {
+    "id": "example-2:q3",
+    "category": 3,
+    "category_name": "open-domain",
+    "overlap": false,
+    "question": "Did learning Portuguese probably help Eli on his trip?",
+    "gold_answer": "Likely yes",
+    "evidence_ids": [
+     "D1:2",
+     "D2:1"
+    ],
+    "evidence_status": "complete",
+    "audit_error_type": "",
+    "audit_correct_answer": ""
+   }
+  ]
+ }
+]
