@@ -2,7 +2,9 @@
 
 Chunks are messages (`context/memory/index/chunking.py`), so every retrieved fragment cites one
 `message_id`. Messages are embedded at write time (`embed`, trigger `write`) and the query at read
-time (trigger `read`); both go to the `embedding` ledger. Candidates are ranked, the top `top_k`
+time (trigger `read`); both go to the `embedding` ledger. A query is embedded with the configured
+`query_instruction` in front (Qwen3-Embedding's `Instruct: ...\nQuery: ...` form); messages are
+embedded as they are. Candidates are ranked, the top `top_k`
 are packed into the budget in rank order, and the kept fragments are shown in chronological order
 (`order: chronological`) or rank order (`order: rank`).
 
@@ -39,13 +41,15 @@ class Retrieval(BaselineEngine):
     kind = "retrieval"
 
     def __init__(self, model, *, channel: str, top_k: int = 20, rrf_k: int = 60,
-                 bm25_k1: float = 1.5, bm25_b: float = 0.75, order: str = "chronological"):
+                 bm25_k1: float = 1.5, bm25_b: float = 0.75, order: str = "chronological",
+                 query_instruction: str | None = None):
         super().__init__(model)
         if channel not in CHANNELS:
             raise ValueError(f"channel {channel!r} not in {CHANNELS}")
         if order not in ("chronological", "rank"):
             raise ValueError(f"order {order!r} must be chronological or rank")
         self.channel, self.top_k, self.rrf_k, self.order = channel, top_k, rrf_k, order
+        self.query_instruction = query_instruction
         self.bm25 = BM25Index(bm25_k1, bm25_b) if channel in ("bm25", "rrf") else None
         self.dense = DenseIndex() if channel in ("dense", "rrf") else None
 
@@ -74,7 +78,9 @@ class Retrieval(BaselineEngine):
             rankings.append([c for c, _ in hits])
         if self.dense:
             tag = CallTag("embed", "read", task.history_id, task.version, task.read_id)
-            result = self.model.embed([query], tag)
+            text = (f"Instruct: {self.query_instruction}\nQuery: {query}"
+                    if self.query_instruction else query)
+            result = self.model.embed([text], tag)
             call_ids += result.call_ids
             hits = self.dense.search(result.vectors[0], task.version, self.top_k)
             candidates += [api.Candidate(c.chunk_id, "dense", s) for c, s in hits]

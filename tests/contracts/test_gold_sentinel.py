@@ -15,7 +15,7 @@ from pathlib import Path
 
 from grace.context import api
 from grace.eval.runner.harness import drive
-from grace.eval.runner.harness.answer import FINAL_NOTE
+from grace.eval.runner.harness.answer import is_answer_call, is_final_call
 from grace.eval.runner.harness.models import FakeBackend, fake_responder
 from grace.eval.runner.harness.rundir import CodeState
 
@@ -35,9 +35,8 @@ def plant_in_gold(row: dict) -> dict:
 
 def retrieving_responder(messages):
     """Ask for further retrieval whenever it is allowed, so that path is covered too."""
-    system = messages[0]["content"]
-    if "OUTPUT CONTRACT" in system and FINAL_NOTE not in system:
-        return json.dumps({"output": "retrieve", "request": "more about the question"})
+    if is_answer_call(messages) and not is_final_call(messages):
+        return json.dumps({"output": "retrieve", "query": "more about the question"})
     return fake_responder(messages)
 
 
