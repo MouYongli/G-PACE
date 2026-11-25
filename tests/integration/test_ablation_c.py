@@ -79,7 +79,8 @@ class AblationCTest(unittest.TestCase):
             "raw": ac.run_raw(cls.config, 1024, served, command="test")}
         cls.scores = {arm: ac.run_score(cls.config, CONFIG_PATH, r.run_dir, command="test")
                       for arm, r in cls.systems.items()}
-        cls.summary = ac.compare(cls.config, 1024, cls.scores, cls.root / "runs" / "summary")
+        cls.summary = ac.compare(cls.config, 1024, cls.scores, cls.root / "runs" / "summary",
+                                 exclude_templates=["V4"])
 
     @classmethod
     def tearDownClass(cls):
@@ -131,6 +132,12 @@ class AblationCTest(unittest.TestCase):
         self.assertIn("llm-template", self.summary["paired"])
         self.assertIn("template-raw", self.summary["paired"])
         pair = self.summary["paired"]["llm-template"]["family"]
+        paired = self.summary["paired"]["llm-template"]
+        self.assertTrue(set(paired["by_template"]) <= {"V1", "V2", "V3", "V4", "V5", "V6"})
+        sens = paired["sensitivity_excluding_V4"]
+        self.assertEqual(sens["n_reads"], pair["n_reads"]
+                         - paired["by_template"].get("V4", {"n_reads": 0})["n_reads"])
+        self.assertIn("sensitivity", sens["kind"])
         self.assertEqual(pair["n_clusters"], 2)
         self.assertTrue(json.loads((self.root / "runs" / "summary" / "summary.json")
                                    .read_text())["inputs"]["llm"]["system_run"])

@@ -554,10 +554,12 @@ def context_stats(system_dir: Path, budget: int) -> dict[str, Any]:
 
 
 def compare(config: Mapping[str, Any], budget: int, score_dirs: Mapping[str, Path],
-            out: Path) -> dict[str, Any]:
+            out: Path, exclude_templates: Sequence[str] = ()) -> dict[str, Any]:
+    """`exclude_templates`: also report each pair without the reads of these view templates, as
+    a descriptive sensitivity analysis (`paired[pair]["sensitivity_excluding_<T>"]`)."""
     comparison, population = config["comparison"], config["population"]
     boot = comparison["bootstrap"]
-    inputs, values, clusters_by = {}, {}, {}
+    inputs, values, clusters_by, templates = {}, {}, {}, {}
     arms = {}
     for arm, score_dir in score_dirs.items():
         score_dir = Path(score_dir).resolve()
@@ -578,6 +580,7 @@ def compare(config: Mapping[str, Any], budget: int, score_dirs: Mapping[str, Pat
                        "code_sha": system["code_sha"], "evaluator_version": run["code_sha"]}
         included = [r for r in rows if r["question_type"] in population["include_types"]]
         values[arm] = {r["read_id"]: r["value"] for r in included}
+        templates = {r["read_id"]: r["template"] for r in included}
         clusters_by = {"family": {r["read_id"]: r["family"] for r in included},
                        "sequence": {r["read_id"]: r["history_id"] for r in included}}
         historical = [r for r in rows if r["question_type"] in population["descriptive_types"]]
@@ -606,9 +609,32 @@ def compare(config: Mapping[str, Any], budget: int, score_dirs: Mapping[str, Pat
                       for unit in [boot["cluster_unit"], *boot["sensitivity_units"]]}
         pairs[key]["by_question_type"] = _paired_by(values[a], values[b], score_dirs[a],
                                                     population)
+        family = clusters_by[boot["cluster_unit"]]
+        by_template = {}
+        for t in sorted(set(templates.values())):
+            ids = [r for r in values[a] if templates[r] == t]
+            out_t = metric.paired_bootstrap({r: values[a][r] for r in ids},
+                                            {r: values[b][r] for r in ids}, family,
+                                            resamples=boot["resamples"], seed=boot["seed"])
+            out_t.update(a_accuracy=mean(values[a][r] for r in ids),
+                         b_accuracy=mean(values[b][r] for r in ids),
+                         descriptive_only=len(ids) < 100)
+            by_template[t] = out_t
+        pairs[key]["by_template"] = by_template
+        if exclude_templates:
+            ids = [r for r in values[a] if templates[r] not in exclude_templates]
+            sens = metric.paired_bootstrap({r: values[a][r] for r in ids},
+                                           {r: values[b][r] for r in ids}, family,
+                                           resamples=boot["resamples"], seed=boot["seed"])
+            sens.update(a_accuracy=mean(values[a][r] for r in ids),
+                        b_accuracy=mean(values[b][r] for r in ids),
+                        excluded_templates=list(exclude_templates),
+                        kind="descriptive sensitivity analysis (post hoc, not preregistered)")
+            pairs[key]["sensitivity_excluding_" + "_".join(exclude_templates)] = sens
     summary = {"experiment": EXPERIMENT, "budget_tokens": budget, "inputs": inputs,
                "population": population, "arms": arms, "paired": pairs,
-               "bootstrap": boot, "metric": config["scoring"]["metric"]}
+               "bootstrap": boot, "metric": config["scoring"]["metric"],
+               "exclude_templates_sensitivity": list(exclude_templates)}
     out.mkdir(parents=True, exist_ok=False)
     (out / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n",
                                       encoding="utf-8")
@@ -658,6 +684,9 @@ def main(argv: list[str] | None = None) -> int:
     comp.add_argument("--budget", type=int, required=True)
     comp.add_argument("--arm", action="append", required=True, help="<arm>=<score run dir>")
     comp.add_argument("--out", type=Path, required=True, help="new directory under runs_root")
+    comp.add_argument("--exclude-template", action="append", default=[],
+                      help="also report each pair without this view template (descriptive "
+                           "sensitivity analysis)")
     args = parser.parse_args(argv)
     config = load_experiment(args.config)
     command = shlex.join([sys.executable, "-m", "grace.cli.ablation_c",
@@ -682,7 +711,8 @@ def main(argv: list[str] | None = None) -> int:
     if runs not in out.parents:
         parser.error(f"--out must lie under {runs}")
     score_dirs = dict(a.split("=", 1) for a in args.arm)
-    summary = compare(config, args.budget, {k: Path(v) for k, v in score_dirs.items()}, out)
+    summary = compare(config, args.budget, {k: Path(v) for k, v in score_dirs.items()}, out,
+                      args.exclude_template)
     print(json.dumps({k: v["family"]["difference"] for k, v in summary["paired"].items()},
                      indent=2))
     return 0
