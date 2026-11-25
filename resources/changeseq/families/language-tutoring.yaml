@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: language-tutoring
+group: learning
+title: Language tutoring
+companions: [Florian, Ayla, Gustav, Inés, Pekka]
+multi:
+  predicate: learnsLanguage
+  noun: languages being learned
+  lexicon: [Japanese, Korean, Turkish, Arabic, Hindi, Swahili, Mandarin, Hebrew, Icelandic, Welsh]
+  first: "I am learning {o}"
+  second: "you are learning {o}"
+  third: "{x} is learning {o}"
+  first_neg: "I stopped learning {o}"
+  third_neg: "{x} stopped learning {o}"
+  ask_first: "Which languages am I learning?"
+  ask_third: "Which languages is {x} learning?"
+  count_first: "How many languages am I learning?"
+  count_third: "How many languages is {x} learning?"
+exclusive:
+  predicate: enrolledAt
+  noun: university
+  lexicon: [Lakeside University, Northfield College, Hillcrest Institute, Riverbend University,
+            Eastgate College, Summit Academy, Westbrook University, Oakridge College,
+            Maplewood Institute, Harborview University]
+  first: "I am enrolled at {o}"
+  second: "you are enrolled at {o}"
+  third: "{x} is enrolled at {o}"
+  change_first: "I transferred to {o}"
+  change_third: "{x} transferred to {o}"
+  past_first: "I was enrolled at {o}"
+  past_third: "{x} was enrolled at {o}"
+  ask_first: "Where am I enrolled?"
+  ask_third: "Where is {x} enrolled?"
+task:
+  noun: tutoring booking
+  constraints:
+    - {predicate: tutoringFocus, datatype: string, request: "I want to focus on {v}",
+       lexicon: [conversation, grammar, exam preparation, business vocabulary, pronunciation, writing practice]}
+    - {predicate: sessionCount, datatype: string, request: "I would like {v}",
+       lexicon: [4 sessions, 6 sessions, 8 sessions, 10 sessions, 12 sessions, 16 sessions]}
+  catalogue: {predicate: sessionStart, datatype: time, noun: session time, phrase: "meets at {v}",
+              lexicon: ["07:40:00", "09:10:00", "11:25:00", "13:40:00", "15:55:00", "17:10:00", "18:40:00", "20:25:00"]}
+  items:
+    - {id: tutor-tanaka, label: Aiko Tanaka}
+    - {id: tutor-park, label: Min-jun Park}
+    - {id: tutor-kaya, label: Elif Kaya}
+    - {id: tutor-haddad, label: Omar Haddad}
+    - {id: tutor-menon, label: Ravi Menon}
+    - {id: tutor-njoroge, label: Amani Njoroge}
+    - {id: tutor-zhang, label: Wei Zhang}
+    - {id: tutor-levi, label: Noa Levi}
+    - {id: tutor-olafs, label: Gudrun Olafs}
+    - {id: tutor-evans, label: Rhys Evans}

@@ -49,6 +49,7 @@ def preregistration_tag_exists(tag: str = PREREGISTRATION_TAG, repo: Path = REPO
 
 def adapters() -> dict[str, Adapter]:
     from grace.eval.datasets.benchmarks import (
+        changeseq,
         halumem,
         locomo,
         longmemeval,
@@ -57,7 +58,8 @@ def adapters() -> dict[str, Adapter]:
     )
     return {a.slug: a for a in (locomo.LoCoMoAdapter(), longmemeval.LongMemEvalAdapter(),
                                 multiwoz.MultiWOZAdapter(), halumem.HaluMemAdapter(),
-                                memoryagentbench.MemoryAgentBenchAdapter())}
+                                memoryagentbench.MemoryAgentBenchAdapter(),
+                                changeseq.ChangeSeqAdapter())}
 
 
 def load_split(slug: str, split: str, *, config: BenchmarkConfig | None = None,

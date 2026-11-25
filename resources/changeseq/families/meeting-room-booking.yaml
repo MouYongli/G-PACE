@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: meeting-room-booking
+group: operations
+title: Meeting-room booking
+companions: [Konrad, Yasmin, Bjorn, Livia, Matilda]
+multi:
+  predicate: maintains
+  noun: services
+  lexicon: [Atlas, Boreal, Cygnus, Delphi, Ember, Fjord, Gemini, Helios, Iris, Juno]
+  first: "I maintain {o}"
+  second: "you maintain {o}"
+  third: "{x} maintains {o}"
+  first_neg: "I no longer maintain {o}"
+  third_neg: "{x} no longer maintains {o}"
+  ask_first: "Which services do I maintain?"
+  ask_third: "Which services does {x} maintain?"
+  count_first: "How many services do I maintain?"
+  count_third: "How many services does {x} maintain?"
+exclusive:
+  predicate: memberOfTeam
+  noun: team
+  lexicon: [Team Platform, Team Storage, Team Billing, Team Search, Team Identity, Team Payments,
+            Team Edge, Team Data, Team Mobile, Team Security]
+  first: "I am on {o}"
+  second: "you are on {o}"
+  third: "{x} is on {o}"
+  change_first: "I moved to {o}"
+  change_third: "{x} moved to {o}"
+  past_first: "I was on {o}"
+  past_third: "{x} was on {o}"
+  ask_first: "Which team am I on?"
+  ask_third: "Which team is {x} on?"
+task:
+  noun: meeting room booking
+  constraints:
+    - {predicate: roomCapacity, datatype: string, request: "the room must seat {v}",
+       lexicon: [4 people, 6 people, 8 people, 10 people, 12 people, 20 people]}
+    - {predicate: roomEquipment, datatype: string, request: "it needs {v}",
+       lexicon: [a projector, a whiteboard, a video bar, a speakerphone, a large screen, a flipchart]}
+  catalogue: {predicate: availableFrom, datatype: time, noun: available time,
+              phrase: "is available from {v}",
+              lexicon: ["08:05:00", "09:25:00", "10:35:00", "11:55:00", "13:05:00", "14:25:00", "15:35:00", "16:55:00"]}
+  items:
+    - {id: room-aurora, label: Room Aurora}
+    - {id: room-basalt, label: Room Basalt}
+    - {id: room-cedar, label: Room Cedar}
+    - {id: room-dune, label: Room Dune}
+    - {id: room-elm, label: Room Elm}
+    - {id: room-flint, label: Room Flint}
+    - {id: room-granite, label: Room Granite}
+    - {id: room-hazel, label: Room Hazel}
+    - {id: room-ivy, label: Room Ivy}
+    - {id: room-jade, label: Room Jade}

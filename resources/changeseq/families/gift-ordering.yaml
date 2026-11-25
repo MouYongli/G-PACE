@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: gift-ordering
+group: events
+title: Gift ordering
+companions: [Theo, Amira, Kasimir, Lucia, Fenna]
+multi:
+  predicate: collects
+  noun: collections
+  lexicon: [stamps, coins, vinyl records, postcards, comic books, fountain pens, snow globes,
+            model trains, seashells, enamel pins]
+  first: "I collect {o}"
+  second: "you collect {o}"
+  third: "{x} collects {o}"
+  first_neg: "I no longer collect {o}"
+  third_neg: "{x} no longer collects {o}"
+  ask_first: "What do I collect?"
+  ask_third: "What does {x} collect?"
+  count_first: "How many kinds of things do I collect?"
+  count_third: "How many kinds of things does {x} collect?"
+exclusive:
+  predicate: favouriteColour
+  noun: favourite colour
+  lexicon: [teal, crimson, amber, lavender, olive, coral, indigo, mustard, turquoise, burgundy]
+  first: "my favourite colour is {o}"
+  second: "your favourite colour is {o}"
+  third: "{x}'s favourite colour is {o}"
+  change_first: "my favourite colour is now {o}"
+  change_third: "{x}'s favourite colour is now {o}"
+  past_first: "my favourite colour was {o}"
+  past_third: "{x}'s favourite colour was {o}"
+  ask_first: "What is my favourite colour?"
+  ask_third: "What is {x}'s favourite colour?"
+task:
+  noun: gift order
+  constraints:
+    - {predicate: giftBudget, datatype: string, request: "my budget is {v}",
+       lexicon: [20 euros, 35 euros, 50 euros, 80 euros, 100 euros, 150 euros]}
+    - {predicate: wrapping, datatype: string, request: "please use {v} for wrapping",
+       lexicon: [kraft paper, a gift box, silk ribbon, recycled paper, a cloth wrap, tissue paper]}
+  catalogue: {predicate: deliveryBy, datatype: time, noun: delivery time,
+              phrase: "can be delivered by {v}",
+              lexicon: ["08:30:00", "10:15:00", "11:45:00", "13:20:00", "14:50:00", "16:25:00", "17:55:00", "19:10:00"]}
+  items:
+    - {id: gift-notebook, label: Leather Notebook}
+    - {id: gift-mugs, label: Ceramic Mug Set}
+    - {id: gift-lamp, label: Brass Desk Lamp}
+    - {id: gift-scarf, label: Wool Scarf}
+    - {id: gift-puzzle, label: Wooden Puzzle Box}
+    - {id: gift-apron, label: Linen Apron}
+    - {id: gift-terrarium, label: Glass Terrarium}
+    - {id: gift-kettle, label: Copper Kettle}
+    - {id: gift-speaker, label: Bamboo Speaker}
+    - {id: gift-coasters, label: Marble Coasters}

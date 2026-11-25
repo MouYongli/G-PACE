@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+# Rendered strings avoid the word "event": it is on the renderer's meta-language list.
+id: event-planning
+group: events
+title: Party planning
+companions: [Greta, Samir, Ilse, Marco, Zofia]
+multi:
+  predicate: likesGenre
+  noun: music genres
+  lexicon: [jazz, blues, techno, opera, reggae, folk music, hip hop, salsa, bluegrass, swing]
+  first: "I like {o}"
+  second: "you like {o}"
+  third: "{x} likes {o}"
+  first_neg: "I no longer like {o}"
+  third_neg: "{x} no longer likes {o}"
+  ask_first: "Which music genres do I like?"
+  ask_third: "Which music genres does {x} like?"
+  count_first: "How many music genres do I like?"
+  count_third: "How many music genres does {x} like?"
+exclusive:
+  predicate: favouriteColour
+  noun: favourite colour
+  lexicon: [teal, crimson, amber, lavender, olive, coral, indigo, mustard, turquoise, burgundy]
+  first: "my favourite colour is {o}"
+  second: "your favourite colour is {o}"
+  third: "{x}'s favourite colour is {o}"
+  change_first: "my favourite colour is now {o}"
+  change_third: "{x}'s favourite colour is now {o}"
+  past_first: "my favourite colour was {o}"
+  past_third: "{x}'s favourite colour was {o}"
+  ask_first: "What is my favourite colour?"
+  ask_third: "What is {x}'s favourite colour?"
+task:
+  noun: party venue booking
+  constraints:
+    - {predicate: guestCount, datatype: string, request: "we expect {v}",
+       lexicon: [about 20 guests, about 35 guests, about 50 guests, about 80 guests, about 100 guests, about 150 guests]}
+    - {predicate: cateringStyle, datatype: string, request: "I would like {v} as catering",
+       lexicon: [a buffet, a plated dinner, finger food, a barbecue, food trucks, family-style platters]}
+  catalogue: {predicate: latestEnd, datatype: time, noun: closing time,
+              phrase: "has to close by {v}",
+              lexicon: ["21:30:00", "22:15:00", "22:45:00", "23:20:00", "23:55:00", "00:30:00", "01:15:00", "02:05:00"]}
+  items:
+    - {id: venue-rosenhang, label: Villa Rosenhang}
+    - {id: venue-loft-17, label: Loft Siebzehn}
+    - {id: venue-gartenhaus, label: Gartenhaus Eiche}
+    - {id: venue-bootshaus, label: Bootshaus Nord}
+    - {id: venue-salon-mira, label: Salon Mira}
+    - {id: venue-kesselhaus, label: Kesselhaus}
+    - {id: venue-remise, label: Remise am Park}
+    - {id: venue-turmzimmer, label: Turmzimmer}
+    - {id: venue-glashaus, label: Glashaus Ost}
+    - {id: venue-atelier, label: Atelier Fluss}
