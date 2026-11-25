@@ -616,23 +616,23 @@ nodes:
     type: task
     title: Mem0 adapter
     milestone: M4
-    status: planned
+    status: done
     depends_on: [T003, T009]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 71
+    owner: m01-T029
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T029-mem0-adapter.md
   - id: T030
     type: task
     title: Cost ledgers and amortisation tooling
     milestone: M4
-    status: planned
+    status: done
     depends_on: [T004]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 66
+    owner: m01-T030
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T030-cost-ledgers.md
   - id: T031
     type: task
