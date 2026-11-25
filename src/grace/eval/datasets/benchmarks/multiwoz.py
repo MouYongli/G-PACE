@@ -10,7 +10,8 @@ Gold: the cumulative state after the user turn under annotations `2.4`, `2.2` an
 same task IDs, as an object slot -> value over the slot inventory `multiwoz-slots` (the 30 slots
 of the five evaluated domains, named as in 2.2: `hotel-bookday`, `train-leaveat`, ...).
 2.1/2.4 states come from the metadata of the following system turn; values `""`,
-`not mentioned` and `none` mean "not set". A 2.2 slot with several acceptable values has a list.
+`not mentioned` and `none` mean "not set". Values are strings; where 2.2 lists several acceptable
+values the first is the reference and all are kept in gold `metadata.alternatives`.
 Slots outside the inventory (bus, hospital, police, train-ticket) are dropped and counted.
 Dialogue acts of the user turn and the preceding system turn are kept in gold `metadata`.
 The user goal (`goal`) is excluded and counted.
@@ -60,8 +61,14 @@ def legacy_state(metadata: Mapping[str, Any], dropped: dict[str, int]) -> dict[s
     return state
 
 
-def state_22(turn: Mapping[str, Any], dropped: dict[str, int]) -> dict[str, Any]:
-    state: dict[str, Any] = {}
+def state_22(turn: Mapping[str, Any], dropped: dict[str, int]
+             ) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """2.2 user-turn frames -> (slot -> first value, slot -> all values where there are several).
+
+    The reference keeps one string per slot (the DST scorers compare strings); the further
+    acceptable values of 2.2 go into gold metadata as `alternatives`."""
+    state: dict[str, str] = {}
+    alternatives: dict[str, list[str]] = {}
     for frame in turn["frames"]:
         for name, values in frame["state"]["slot_values"].items():
             if name not in SLOTS:
@@ -69,8 +76,10 @@ def state_22(turn: Mapping[str, Any], dropped: dict[str, int]) -> dict[str, Any]
                 continue
             values = [v for v in values if v.strip() not in UNSET]
             if values:
-                state[name] = values[0] if len(values) == 1 else values
-    return state
+                state[name] = values[0]
+                if len(values) > 1:
+                    alternatives[name] = list(values)
+    return state, alternatives
 
 
 class MultiWOZAdapter(Adapter):
@@ -139,12 +148,16 @@ class MultiWOZAdapter(Adapter):
                         "system": ((acts22.get(str(system)) or {}).get("dialog_act")
                                    if system > 0 else None)},
             }
+            state22, alternatives = state_22(turns22[index], dropped)
             states = {"2.4": legacy_state(log[index + 1]["metadata"], dropped),
                       "2.1": legacy_state(log21[index + 1]["metadata"], dropped),
-                      "2.2": state_22(turns22[index], dropped)}
+                      "2.2": state22}
             for annotation, state in states.items():
+                metadata: dict[str, Any] = {"dialogue_acts": acts[annotation]}
+                if annotation == "2.2" and alternatives:
+                    metadata["alternatives"] = alternatives
                 records.gold.append(Gold(
                     benchmark=self.slug, split=records.split, history_id=did, task_id=task_id,
                     annotation=annotation, reference=state, evidence_ids=None,
                     evidence_segment_ids=None, evidence_unresolved=(), labels={},
-                    metadata={"dialogue_acts": acts[annotation]}))
+                    metadata=metadata))

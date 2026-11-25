@@ -21,4 +21,4 @@ splits:
     rule: "official MultiWOZ test list: 1,000 dialogues, 7,372 user turns (plan 6.5)"
     counts: {histories: 1000, messages: 14744, read_tasks: 7372, gold: 22116}
     history_list_file: MULTIWOZ2.4/testListFile.json
-metric: null   # scoring belongs to T004 / the Evaluation contract
+metric: configs/common/scorers.yaml#multiwoz   # scorer registry (T004, Evaluation contract)

@@ -36,4 +36,4 @@ splits:
       - "42f702e3-750c-1acc-9101-051f1f75991e"
       - "6b005479-e3b6-02fc-e52d-3a41eb0cf288"
       - "9ca7c5ff-487c-ba5d-04f6-05f27d35ba2a"
-metric: null   # scoring belongs to T004 / the Evaluation contract
+metric: configs/common/scorers.yaml#halumem-medium   # scorer registry (T004, Evaluation contract)

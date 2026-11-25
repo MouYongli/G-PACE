@@ -718,4 +718,4 @@ splits:
       - "factconsolidation_sh_32k:0:factconsolidation_sh_32k_no97"
       - "factconsolidation_sh_32k:0:factconsolidation_sh_32k_no98"
       - "factconsolidation_sh_32k:0:factconsolidation_sh_32k_no99"
-metric: null   # scoring belongs to T004 / the Evaluation contract
+metric: configs/common/scorers.yaml#memoryagentbench   # scorer registry (T004, Evaluation contract)

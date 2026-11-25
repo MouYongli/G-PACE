@@ -519,4 +519,4 @@ splits:
       - "c7cf7dfd"
       - "e48988bc"
       - "1de5cff2"
-metric: null   # scoring belongs to T004 / the Evaluation contract
+metric: configs/common/scorers.yaml#longmemeval-s   # scorer registry (T004, Evaluation contract)

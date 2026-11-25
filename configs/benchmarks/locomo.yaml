@@ -28,4 +28,4 @@ splits:
       - "conv-47"
       - "conv-48"
       - "conv-50"
-metric: null   # scoring belongs to T004 / the Evaluation contract
+metric: configs/common/scorers.yaml#locomo   # scorer registry (T004, Evaluation contract)
