@@ -3,7 +3,8 @@
 Each adapter converts a made-up release in the source format
 (tests/contracts/benchmark_sources.py) through `splits.load_split`; the written records must pass
 the reference checks of tests/contracts/records.py, keep every masked or excluded value out of
-the visible files, and count their exclusions. The guard tests cover held-out refusal, manifest and count mismatches.
+the visible files, and count their exclusions. The guard tests cover held-out refusal, manifest
+and count mismatches.
 """
 
 from __future__ import annotations
