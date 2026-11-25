@@ -124,7 +124,7 @@ An annotation MAY cover only some tasks (derived gold exists only for turns afte
 
 ## Benchmark mapping
 
-Owner: T001 manager (`m01-T001`) · Version: 0.2
+Owner: T001 manager (`m01-T001`) · Version: 0.2.1 (T002: HaluMem and MemoryAgentBench rows confirmed on the data)
 
 How the six benchmarks of `docs/research/benchmarks.md` map onto the records. Source field names follow the plan and the public releases; T002 confirms them on the data and records any deviation on the card.
 
@@ -134,8 +134,8 @@ How the six benchmarks of `docs/research/benchmarks.md` map onto the records. So
 | `multiwoz` | `dialogue_id` | None | Turn index as a string; `USER` → `user`, `SYSTEM` → `agent` | None | Per turn: one `state` read at each user turn | Cumulative state per annotation `2.4`, `2.2`, `2.1` on the same `task_id`; derived "current choice" gold (T006) as its own annotation; dialogue acts in `metadata` |
 | `locomo` | `sample_id` | Session `session_<k>`, dated by `session_<k>_date_time` | `dia_id`; both speakers `peer` | Segment time only | End of history: every question at $N$, `task_id` `<sample_id>:q<index>`; streaming file at $v(q)$ and $N$ (T007) | `evidence` → `evidence_ids`, unresolvable references in `evidence_unresolved`; `category` in `labels` |
 | `longmemeval-s` | `question_id` | Haystack session, dated by `haystack_dates` | `<session_id>:<turn index>`; `user`, `agent` | Segment time; `question_date` → `asked_at` | End of history, one question per history; `task_id` = `question_id` | Turns with `has_answer` → `evidence_ids`, `answer_session_ids` → `evidence_segment_ids` (both masked in messages); `question_type` and abstention in `labels` |
-| `halumem-medium` | User ID | Session | `<session_id>:<turn index>`; `user`, `agent` | Session time where given | Session by session: each question at the last version of its session | Evidence where the files give it; question type in `labels`; memory points and update labels as write-side gold |
-| `memoryagentbench` | Context ID; `subset` names LongMemEval(S\*), FactConsolidation 6K or 32K | Chunk, one message each | `<chunk_id>`; `document`, `speaker: null` | None | Chunk by chunk, then several questions at $N$ | `evidence_ids: null`; competency in `labels` |
+| `halumem-medium` | User ID (`uuid`) | Session `session_<k>` (the files have no session ID) | `<session_id>:<turn index>`; `user`, `agent` | Session `start_time`; turn time per message | Session by session: each question at the last version of its session | `evidence_ids: null` (the files cite memory points, not turns; cited memory points in `metadata`); question type in `labels`; memory points and update labels as write-side gold |
+| `memoryagentbench` | Context ID `<source>:<k>` (the files have none); `subset` names LongMemEval(S\*), FactConsolidation 6K or 32K | Chunk, one message each | `<chunk_id>`; `document`, `speaker: null` | None; LongMemEval(S\*) `question_dates` → `asked_at` | Chunk by chunk, then several questions at $N$ | `evidence_ids: null`; competency in `labels` |
 
 Per-turn reading (MultiWOZ) and end-of-history reading (LoCoMo) differ only in the `version` of their read tasks; the same harness drives both.
 

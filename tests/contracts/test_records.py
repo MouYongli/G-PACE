@@ -65,7 +65,7 @@ class MappingTest(unittest.TestCase):
         # History unit, segment, message, timestamps and evidence IDs (plan 3.1, 6.2, 6.7).
         segmented = {"change-seq", "locomo", "longmemeval-s", "halumem-medium", "memoryagentbench"}
         timed = {"change-seq", "locomo", "longmemeval-s", "halumem-medium"}
-        with_evidence = {"change-seq", "locomo", "longmemeval-s", "halumem-medium"}
+        with_evidence = {"change-seq", "locomo", "longmemeval-s"}  # HaluMem: memory points
         for slug in evaluated_slugs():
             with self.subTest(slug=slug):
                 records = Fixture(slug).records
