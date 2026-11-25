@@ -5,3 +5,6 @@ prefix_caching: true
 params:
   last_k: null
   window_tokens: 32768
+  # E001 decision (probe run E001-20261125T180821Z-b7d9): the window holds the whole answering
+  # call; reserve = output 256 + largest fixed prompt part 592 + 64, rounded up to 128.
+  prompt_reserve_tokens: 1024

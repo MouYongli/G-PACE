@@ -27,7 +27,7 @@ serving:
     args: [--max-model-len, "32768"]
   conditions:
     apc-on: {prefix_caching: true, args: []}
-    apc-off: {prefix_caching: false, args: [--no-enable-prefix-caching]}
+    apc-off: {prefix_caching: false, args: [--disable-prefix-caching]}
 
 benchmarks:
   locomo: {split: dev}

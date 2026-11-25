@@ -48,3 +48,4 @@ Pending.
 - 2026-11-21: created from plan section 9, phase 1.
 - 2026-11-22: research question numbering and baseline names aligned with plan v3.
 - 2026-11-25: manager session `m01-E001` started on `task/E001-pilot-measurements` from `main` at `795cb9e`; Issue #69. Design written before the first formal run (above), including the decision on the T003 window question.
+- 2026-11-25: probe run `E001-20261125T180821Z-b7d9` completed (code `1665757`). By the design rule it gives `prompt_reserve_tokens` 1024 (largest fixed prompt part 592 tokens, on a MultiWOZ state read), so the full-history context window is 31,744 tokens; set in `full-history`, `full-history-cached` and `last-k` before the first system run. Config fix before the first system run: vLLM 0.34 names the switch `--disable-prefix-caching` (the design text had the wrong flag name; the condition is unchanged).
