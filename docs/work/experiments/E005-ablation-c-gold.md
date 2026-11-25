@@ -31,22 +31,61 @@ Written on 2026-11-25 before the first formal run. Config: `configs/experiments/
 
 ## Acceptance
 
-- [ ] Every number traces to a run report.
+- [x] Every number traces to a run report: 12 runs (6 system, 6 score), each with `report.yaml`; paired statistics in the two `summary.json` files above.
 
 ## Runs
 
+Reports are under `$PROJECT_ROOT/runs/E005/artifacts/manager/E005/<run-id>/report.yaml`; arm and budget in brackets. Every run is at code SHA `cb52b73ed06e34ed74888481e0e776f8751bcb5c` (clean). Paired comparisons (not runs; checksums of every input `run.json` inside): `runs/E005/artifacts/manager/E005-summary/budget-1024/summary.json` and `.../budget-512/summary.json`.
+
 | Run ID | Date | Status | Code SHA | Report |
 | --- | --- | --- | --- | --- |
+| `E005-20261125T201943Z-e56e` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T201943Z-e56e/report.yaml` (system, template, 1024) |
+| `E005-20261125T201943Z-0e4f` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T201943Z-0e4f/report.yaml` (system, llm, 1024) |
+| `E005-20261125T201943Z-64c1` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T201943Z-64c1/report.yaml` (system, raw, 1024) |
+| `E005-20261125T201943Z-1949` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T201943Z-1949/report.yaml` (system, template, 512) |
+| `E005-20261125T201943Z-bb70` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T201943Z-bb70/report.yaml` (system, llm, 512) |
+| `E005-20261125T201943Z-aa89` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T201943Z-aa89/report.yaml` (system, raw, 512) |
+| `E005-20261125T202517Z-8003` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T202517Z-8003/report.yaml` (score of e56e) |
+| `E005-20261125T202505Z-2471` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T202505Z-2471/report.yaml` (score of 0e4f) |
+| `E005-20261125T202509Z-ef0b` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T202509Z-ef0b/report.yaml` (score of 64c1) |
+| `E005-20261125T202507Z-2731` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T202507Z-2731/report.yaml` (score of 1949) |
+| `E005-20261125T202514Z-b173` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T202514Z-b173/report.yaml` (score of bb70) |
+| `E005-20261125T202512Z-4535` | 2026-11-25 | completed | `cb52b73` | `runs/E005/artifacts/manager/E005/E005-20261125T202512Z-4535/report.yaml` (score of aa89) |
 
 ## Results
 
-Not run.
+From completed runs only (code `cb52b73`). Population: 955 questions about the state at the read version, 25 sequences, 5 families; set match; intervals are 95% cluster-bootstrap percentile intervals over families (10,000 resamples, seed 20261125), paired for differences; the sequence-level interval is the sensitivity analysis.
+
+**Answer accuracy** (`metrics.json` of the score runs; invalid outputs count as wrong):
+
+| Budget | Template | LLM rendering | Raw window | Score runs (template, llm, raw) |
+| --- | --- | --- | --- | --- |
+| 1024 (primary) | 0.903 [0.892, 0.911] (invalid 15) | 0.882 [0.869, 0.890] (invalid 18) | 0.614 [0.599, 0.629] (invalid 0) | `8003`, `2471`, `ef0b` |
+| 512 | 0.876 [0.863, 0.889] (invalid 15) | 0.864 [0.849, 0.879] (invalid 15) | 0.585 [0.569, 0.599] (invalid 0) | `2731`, `b173`, `4535` |
+
+**Paired differences** (`summary.json`):
+
+| Budget | Pair | Difference | 95% CI (family) | 95% CI (sequence) | Discordant (first only / second only) |
+| --- | --- | --- | --- | --- | --- |
+| 1024 | llm − template | −0.021 | [−0.024, −0.018] | [−0.030, −0.011] | 2 / 22 |
+| 1024 | template − raw | +0.289 | [+0.278, +0.305] | [+0.258, +0.317] | 282 / 6 |
+| 1024 | llm − raw | +0.268 | [+0.258, +0.284] | [+0.237, +0.298] | 270 / 14 |
+| 512 | llm − template | −0.013 | [−0.024, +0.001] | [−0.026, +0.002] | 15 / 27 |
+| 512 | template − raw | +0.291 | [+0.265, +0.318] | [+0.260, +0.322] | 289 / 11 |
+| 512 | llm − raw | +0.279 | [+0.253, +0.304] | [+0.252, +0.306] | 278 / 12 |
+
+At 1024 the llm − template difference is negative in every family (−0.016 to −0.027) and in every leave-one-family-out estimate (−0.020 to −0.022). By question type (1024, llm − template): changed −0.055 (199 reads), uniform −0.018 (501), abstention 0.000 (171), presupposition 0.000 (84, descriptive). By template the LLM arm loses mainly on the constraints view V4 (0.845 against 0.974, 155 reads).
+
+**Rendering** (llm arm, `views/view_events.jsonl` and `calls.jsonl` of the system runs): 1024: 639 units rendered, 13 of 638 checked LLM sentences failed the rendering check and fell back to the template (sentence failure rate 0.020, unit fallback rate 0.020); 602 render calls (all `ok`, ledger W), 247,580 input tokens (232,704 served from the prefix cache) and 30,643 output tokens on the write side, against 0 for the template arm. 512: 14 of 638 failed (0.022); 602 calls, 247,580 input and 30,626 output tokens. Mean context tokens at 1024: template 506, llm 521, raw 972; every view fits at 1024 in both view arms (15 of 15 views in every context); at 512 the mean number of views in context is 14.0 (template) and 13.8 (llm).
+
+**Other observations.** Presupposition questions ("my field of work is still education, isn't it?", 84 reads) score 0 in every arm: Qwen3-8B answers `unknown` (or an invalid `unknown` with citations) although the view states the current value; this is answering-model behaviour under the shared answer prompt, identical across arms, and it bounds every arm's accuracy. Historical questions (190 reads, descriptive, outside the population): template 0.284, llm 0.274, raw 0.274 at 1024. Inspection of the discordant V4 reads shows the mechanism of the LLM arm's loss: the rendered sentence often drops the task the constraint belongs to ("The constraint is arrive by 12:00." against the template's "Requested for train booking A: arrive by 12:00."), leaving the link only in the view title; the rendering check requires the row values, not the binding constants, so such sentences pass.
 
 ## Conclusion
 
-Pending.
+On gold graphs of the development families, LLM rendering of the result rows does not help the answering LLM more than template serialisation at equal display budget: it is 2.1 points worse at the primary budget (CI excludes zero at both cluster units) and 1.3 points worse at 512 (CI includes zero), while costing 602 render calls and about 278K tokens on the write side per pass over the 25 sequences. Both view arms beat the raw-text window by 27 to 29 points. This meets the overturn condition of the RQ3 premise as stated in plan 4.2 for the gold-graph setting ("template serialisation is not worse in answer accuracy"): on this evidence rendering, caching and maintaining rendered text are not needed, and the phase 2 gate (D008) should weigh the framing "a staleness criterion plus computing at query time". Limits: one answering and rendering model (Qwen3-8B), one seed, development data, gold graphs with surface entity labels, a scorer not yet registered in `configs/common/scorers.yaml`, and five families as clusters; the rerun on extracted graphs is E010.
 
 ## Log
 
 - 2026-11-23: created from the full project DAG.
 - 2026-11-25: manager session `m01-E005` started on `task/E005-ablation-c-gold` from `63f9d4fff7021651c9626af18bdc0a25ce50e557`; Issue #95. Design and config written before the first formal run; CPU pre-checks (view answers against gold, template context sizes) on the development set.
+- 2026-11-25: formal runs at `cb52b73` (Qwen3-8B, vLLM 0.34, GPU 3, port 8106): six system runs (template, llm, raw at 1024 and 512) and six score runs, all completed, with reports; comparisons in `E005-summary/budget-1024` and `budget-512`. Result: llm − template −0.021 [−0.024, −0.018] at 1024. Server stopped by PID and the compute.yaml entry removed. No judge run.
