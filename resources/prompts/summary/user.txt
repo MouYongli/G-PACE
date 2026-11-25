@@ -1,0 +1,7 @@
+Length limit: {{max_tokens}} tokens.
+
+Current summary:
+{{summary}}
+
+New messages:
+{{messages}}

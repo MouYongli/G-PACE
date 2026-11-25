@@ -1,0 +1,88 @@
+# Scorer registry (T004; Evaluation section of docs/research/contracts.md). Registered before any
+# formal comparison: per benchmark, each metric's code, upstream source, direction, annotation,
+# population (denominator), abstention rule and invalid-output policy. The benchmark cards in
+# docs/research/benchmarks.md (data owner) point here for their Evaluation field.
+#
+# population.include: a gold label and the values that enter the denominator (all reads if absent).
+# abstention: the gold label that marks a task as unanswerable; an `unknown` prediction is correct
+#   exactly on those tasks (scorers without an abstention rule score `unknown` as wrong).
+# upstream.verified: false until the implementation has reproduced upstream's numbers on upstream's
+#   published examples (T004 acceptance item 2; see the T004 PR for the gap).
+version: 1
+benchmarks:
+  locomo:
+    metrics:
+      - name: f1
+        code: grace.eval.analysis.metrics.answer:locomo_score
+        direction: higher
+        annotation: 3eb6f2c
+        population: {include: {label: category, in: [1, 2, 3, 4]}}
+        strata: [category]
+        invalid_policy: count_as_wrong
+        upstream: {repo: snap-research/locomo, file: task_eval/evaluation.py,
+                   revision: 3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376, verified: false}
+      - name: f1-adversarial
+        code: grace.eval.analysis.metrics.answer:locomo_score
+        direction: higher
+        annotation: 3eb6f2c
+        population: {include: {label: category, in: [5]}}
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: snap-research/locomo, file: task_eval/evaluation.py,
+                   revision: 3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376, verified: false}
+        note: Reported separately with the judging rule stated (plan 6.5).
+      - name: judge-accuracy
+        code: grace.eval.analysis.metrics.answer:judged_values
+        judge: blind
+        direction: higher
+        annotation: 3eb6f2c
+        population: {include: {label: category, in: [1, 2, 3, 4]}}
+        strata: [category]
+        abstention: {label: category, value: 5}
+        invalid_policy: count_as_wrong
+  longmemeval-s:
+    metrics:
+      - name: official-judge-accuracy
+        code: grace.eval.analysis.metrics.answer:judged_values
+        judge: longmemeval-official
+        direction: higher
+        annotation: cleaned
+        population: {}
+        strata: [question_type]
+        abstention: {label: abstention, value: true}
+        invalid_policy: count_as_wrong
+      - name: judge-accuracy
+        code: grace.eval.analysis.metrics.answer:judged_values
+        judge: blind
+        direction: higher
+        annotation: cleaned
+        population: {}
+        strata: [question_type]
+        abstention: {label: abstention, value: true}
+        invalid_policy: count_as_wrong
+  multiwoz:
+    # One set of predictions scored against each annotation (plan 6.5).
+    metrics:
+      - name: jga
+        code: grace.eval.analysis.metrics.dst:joint_goal
+        direction: higher
+        annotations: ["2.4", "2.2", "2.1"]
+        population: {}
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        note: Registered definition in grace.eval.analysis.metrics.dst; no single official scorer covers 2.4, 2.2 and 2.1.
+      - name: slot-f1
+        code: grace.eval.analysis.metrics.dst:slot_f1
+        direction: higher
+        annotations: ["2.4", "2.2", "2.1"]
+        population: {}
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+  change-seq:
+    metrics: []   # pending: scoring follows the generator design (T008) and its gold builder
+  halumem-medium:
+    metrics: []   # pending: official QA and memory-point scoring use an LLM judge; register before E001 uses it
+  memoryagentbench:
+    metrics: []   # pending: register per subset before E001 uses it
