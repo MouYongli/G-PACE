@@ -96,3 +96,16 @@ prompts:
       The one compile repair of a read (T023, plan 5.6). Sent as a follow-up user message after
       the plan-query conversation and the rejected reply; no system message of its own.
       Variable: error (the parse, type or time error of the rejected reply).
+  render-changeseq:
+    call_type: render
+    sha256: 84ed03f3023ecdcbf4702c82f167cdd6590e062dc529ef87132ace25690e7ce7
+    schema: null              # plain text: the message only
+    schema_sha256: null
+    note: >-
+      Surface renderer of the controlled change sequences (T015; docs/research/change-sequences.md
+      section 7), sent to the renderer model of D006 (configs/models/mistral-small-3.2-24b.yaml),
+      never to an evaluated model. One call per attempt and message. Variables: speaker, persona,
+      register, date, previous (the six preceding rendered messages), meaning (the template
+      sentence), facts (the message's events with IDs resolved), discourse, required, allowed,
+      forbidden. Checked by src/grace/eval/datasets/changeseq/render.py (check_output); a message
+      that fails three attempts falls back to its template sentence.

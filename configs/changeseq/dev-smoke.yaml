@@ -1,6 +1,6 @@
 # Development smoke set of the change-sequence generator (task T015). Development families only
 # (resources/changeseq/split.yaml); template renderer (development and test renderer, not the
-# paper's renderer, which waits for the model choice of D006). Grids follow
+# paper's renderer; dev-model.yaml is the same set with the model renderer of D006). Grids follow
 # docs/research/change-sequences.md section 10 at reduced size: G-A schedules on rho = 10, and
 # one sequence per family at each other density level with the uniform schedules of G-S.
 dataset: change-seq-dev-smoke

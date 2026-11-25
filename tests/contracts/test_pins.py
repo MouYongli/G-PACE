@@ -102,7 +102,7 @@ class BudgetAndModelPinTest(unittest.TestCase):
     def test_model_pins_match_d006(self):
         roles = {"qwen3-8b": "primary", "qwen3.5-9b": "contemporary",
                  "qwen3.5-27b": "long-context", "gemma-4-31b-it": "long-context",
-                 "qwen3-32b": "writer-scale"}
+                 "qwen3-32b": "writer-scale", "mistral-small-3.2-24b": "renderer"}
         paths = sorted((CONFIGS / "models").glob("*.yaml"))
         self.assertEqual({p.stem for p in paths}, set(roles))
         for path in paths:
@@ -110,6 +110,13 @@ class BudgetAndModelPinTest(unittest.TestCase):
                 config = yaml_file(path)
                 self.assertEqual((config["status"], config["role"]), ("selected", roles[path.stem]))
                 pin = TokenizerPin.from_config(config)
+                self.assertFalse(pin.thinking)
+                if roles[path.stem] == "renderer":
+                    # The change-sequence renderer (T015) samples with a seed per attempt at the
+                    # model card's temperature; it is never an evaluated model.
+                    self.assertEqual(config["decoding"]["temperature"], 0.15)
+                    self.assertEqual(config["tokenizer"]["backend"], "mistral-common")
+                    continue
                 self.assertEqual(pin.template_kwargs.get("enable_thinking"), False)
                 self.assertEqual(config["decoding"]["temperature"], 0.0)
 

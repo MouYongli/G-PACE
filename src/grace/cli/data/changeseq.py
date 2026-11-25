@@ -1,4 +1,4 @@
-"""Build controlled change sequences from a dataset config (task T015). Model-free.
+"""Build controlled change sequences from a dataset config (task T015).
 
     uv run python -m grace.cli.data.changeseq configs/changeseq/dev-smoke.yaml \\
         --out "$PROJECT_ROOT/runs/T015/artifacts/<run-id>"
@@ -9,8 +9,12 @@ Writes into a new directory under runs_root (never into `$PROJECT_ROOT/data`): `
 `--allow-dirty` is given (then `code_dirty: true` is recorded and the run is not formal), and
 refuses held-out families unless the config sets `allow_held_out`.
 
-Surface text comes from the deterministic template renderer (development and test renderer; the
-paper's renderer waits for the model choice of D006).
+Surface text comes from the renderer the config names: the deterministic template renderer
+(`renderer: template-v1`, development and test renderer, no model calls) or the model renderer of
+D006 (`renderer: {kind: model, ...}`, design section 7), which needs `--base-url` of the served
+renderer model and writes every call to `calls.jsonl` of the run. run.json then records the model
+calls, the renderer record, the fallback rate per family, the families over the limit and the
+local-versus-server token-count check.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ import json
 import shlex
 import sys
 import traceback
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -40,6 +45,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("config", type=Path, help="dataset config under configs/changeseq/")
     parser.add_argument("--out", type=Path, required=True, help="new directory under runs_root")
     parser.add_argument("--allow-dirty", action="store_true")
+    parser.add_argument("--base-url", help="OpenAI-compatible URL of the renderer model server "
+                        "(model renderer only), e.g. http://127.0.0.1:8106/v1")
+    parser.add_argument("--workers", type=int, default=None,
+                        help="sequences rendered in parallel (default: the config's "
+                        "renderer.workers, else 1)")
     args = parser.parse_args(argv)
     runs = shared_dir("runs_root").resolve()
     out = args.out.resolve()
@@ -53,6 +63,8 @@ def main(argv: list[str] | None = None) -> int:
     config_path = args.config.resolve()
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     config = DatasetConfig.from_dict(raw)
+    if config.renderer_kind == "model" and not args.base_url:
+        parser.error("the config uses the model renderer: pass --base-url")
     out.mkdir(parents=True)
     resolved = out / "resolved-config.yaml"
     resolved.write_text(yaml.safe_dump(raw, sort_keys=True), encoding="utf-8")
@@ -70,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
                                *(argv if argv is not None else sys.argv[1:])]),
         "environment": environment("cpu"), "started_at": utc_now(), "finished_at": None,
         "n_records": 0, "model_calls": 0, "renderer": "template-v1",
+        "base_url": args.base_url if config.renderer_kind == "model" else None,
         "held_out_access": "none" if not config.allow_held_out else "generation only",
     }
 
@@ -77,18 +90,43 @@ def main(argv: list[str] | None = None) -> int:
         (out / "run.json").write_text(json.dumps(run, indent=2) + "\n", encoding="utf-8")
 
     save()
+    renderer, ledger = None, None
     try:
-        dataset = build_dataset(config, out / "dataset", code.sha)
+        workers = 1
+        if config.renderer_kind == "model":
+            from grace.eval.datasets.changeseq.model_renderer import model_renderer
+            from grace.llm.records import CallLedger
+
+            ledger = CallLedger(out / "calls.jsonl", out.name)
+            renderer = model_renderer(config.renderer, args.base_url, ledger)
+            run["renderer"] = renderer.describe()
+            workers = int(config.renderer.get("workers", 1))
+        if args.workers is not None:
+            workers = args.workers
+        run["workers"] = workers
+        save()
+        dataset = build_dataset(config, out / "dataset", code.sha, renderer=renderer,
+                                workers=workers)
     except Exception:
         run.update(status="failed", finished_at=utc_now(), error=traceback.format_exc())
+        if ledger is not None:
+            run["model_calls"] = len(ledger.records)
         save()
         raise
     run.update(status="completed", finished_at=utc_now(),
                n_records=sum(s["n_messages"] for s in dataset["sequences"]),
                n_sequences=len(dataset["sequences"]),
+               render=dataset["render"],
+               families_over_fallback_limit=sorted(f for f, x in dataset["render"].items()
+                                                   if x["over_limit"]),
                manifest_sha256=file_sha256(out / "dataset" / "MANIFEST.sha256"))
+    if ledger is not None:
+        run["model_calls"] = len(ledger.records)
+        run["calls_by_status"] = dict(sorted(Counter(r.status for r in ledger.records).items()))
+        run["token_check"] = renderer.token_check()
     save()
     print(json.dumps({k: run[k] for k in ("run_id", "status", "n_sequences", "n_records",
+                                          "model_calls", "families_over_fallback_limit",
                                           "manifest_sha256")}, indent=2))
     return 0
 

@@ -212,9 +212,11 @@ def ref_v2(S: DerivedState, b: Binding, k: int) -> ViewValue:
 
 
 def ref_v3(S: DerivedState, b: Binding, k: int) -> ViewValue:
+    """Count: one witness, the union of the witnesses of the counted members (plan 3.4; user
+    decision of 2026-11-25), none when nothing is counted."""
     members = ref_v1(S, b, k)
-    union = frozenset(w for ws in members.wit.values() for w in ws)
-    wit = {len(members.ans): set(union)}
+    union = frozenset(e for ws in members.wit.values() for w in ws for e in w)
+    wit = {len(members.ans): {union} if union else set()}
     return _value(wit, _witness_claims(wit, S), S, k)
 
 

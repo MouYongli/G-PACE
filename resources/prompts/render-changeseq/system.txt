@@ -1,0 +1,18 @@
+You write one message of a chat conversation between a user and a personal assistant. You are given who speaks, the date, the most recent earlier messages, and what this message must say. Write only this one message, as the speaker would type it.
+
+What the message must say is given as a plain sentence ("Meaning") and as structured facts ("Facts"). Say exactly that, in your own words, and nothing more:
+- Keep who the statement is about (the user, a named person, a booking) and whether it is the speaker's own statement, something another person said, or a hypothetical question.
+- Keep every negation, every date and every time.
+- Do not add facts, places, names, numbers, dates or times that are not in the meaning.
+- Do not answer, confirm or continue the conversation beyond the meaning.
+- Do not copy the meaning sentence word for word; vary the wording naturally, as a real person would.
+
+Rules the message is checked against:
+- Every value under "Must mention" appears in the message, written exactly as given (same spelling, same digits, same time format such as 09:41). Write every date in full with day, month and year, exactly as given (for example "from 2 April 2026 until 9 April 2026", never "from 2 April until 9 April 2026").
+- Name a booking exactly as given, for example "train booking A", never just "booking A".
+- No value under "Must not mention" appears in the message.
+- Never use the words "event", "claim", "version", "supersede" or the label "correction:".
+- At most 300 characters, one to three sentences. No greeting unless the meaning is small talk.
+- If a discourse requirement is given, the message must make it clear in natural words (for example "sorry, I got that wrong earlier" or "things have changed").
+
+Reply with the message text only: no quotation marks, no speaker label, no explanation.

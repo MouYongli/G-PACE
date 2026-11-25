@@ -85,6 +85,14 @@ class GeneratedSequenceTest(unittest.TestCase):
         self.assertEqual(unexplained, self.projected.component.get("V2/wit", 0))
         self.assertEqual(explained + unexplained, sum(self.full.value_mismatch.values()))
 
+    def test_raw_witnesses_agree_on_the_full_graph(self):
+        """F1 and F2 closed in T017, and the V3 count witness is one union witness on both sides
+        (plan 3.4, user decision of 2026-11-25): nothing differs, V3 witnesses included."""
+        self.assertEqual(self.full.mismatches, [])
+        self.assertEqual(self.full.v3_raw_witness_mismatch, 0)
+        self.assertEqual(self.projected.v3_raw_witness_mismatch, 0)
+        self.assertGreater(self.full.by_template["V3"], 0)
+
 
 class KnownGapTest(unittest.TestCase):
     def test_non_own_attributions_are_dropped_by_the_projection(self):

@@ -76,8 +76,10 @@ def evaluate(index: _Index, b: Binding, world: World) -> dict[str, Any]:
         for c, endorse in members:
             pairs += [(_obj(c), frozenset({c.claim_id, a.attribution_id})) for a in endorse]
         if b.template == "V3":
+            # One witness, the union of the members' witnesses (plan 3.4).
             n = len({_obj(c) for c, _ in members})
-            pairs = [(n, w) for _, w in pairs]
+            union = frozenset(e for _, w in pairs for e in w)
+            pairs = [(n, union)] if union else []
             answers = {n}
         else:
             answers = {a for a, _ in pairs}

@@ -17,6 +17,7 @@ semantics (section 6.2) reads the valid end from the claim itself.
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -102,10 +103,17 @@ def build_store(log: Sequence[LogRecord], history_id: str, *, validate: str | No
     return store
 
 
+# pyshacl and rdflib keep process-wide state (SPARQL query preparation): concurrent validations
+# from the parallel sequence builds of `build_dataset` reported spurious violations, so validation
+# runs one at a time.
+_VALIDATION = threading.Lock()
+
+
 def validate_graph(store: ClaimStore, shapes: Path = SHAPES_FILE) -> tuple[bool, str]:
     """SHACL validation of every entry of the store (RDF 1.1 serialisation), T014 shapes."""
-    data = rdflib.Graph().parse(data=rdf.to_ntriples(store.triples()) or "\n", format="nt")
-    shape_graph = rdflib.Graph().parse(shapes, format="turtle")
-    conforms, _, text = pyshacl.validate(data, shacl_graph=shape_graph, inference="none",
-                                         allow_infos=True, allow_warnings=False)
+    with _VALIDATION:
+        data = rdflib.Graph().parse(data=rdf.to_ntriples(store.triples()) or "\n", format="nt")
+        shape_graph = rdflib.Graph().parse(shapes, format="turtle")
+        conforms, _, text = pyshacl.validate(data, shacl_graph=shape_graph, inference="none",
+                                             allow_infos=True, allow_warnings=False)
     return bool(conforms), str(text)
