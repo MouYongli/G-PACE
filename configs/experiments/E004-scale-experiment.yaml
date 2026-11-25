@@ -1,0 +1,53 @@
+# E004 Scale experiment: push, pull, hybrid (docs/work/experiments/E004-scale-experiment.md; plan
+# 5.4, ablation A; RQ2). CPU only, no model call (template rendering). Driven by
+#   uv run python -m grace.cli.scale plan|run|summary --config configs/experiments/E004-scale-experiment.yaml
+# One run per (view mix, blocks, seed, standing views); the cells of a run are
+# read_scope x writes_per_read; every cell is measured for every arm and repetition.
+experiment: E004
+version: 1
+
+# Synthetic graphs from the T015 generator (src/grace/eval/datasets/changeseq/), development
+# families only (resources/changeseq/split.yaml). A graph is `blocks` generated sequences with
+# prefixed IDs, interleaved round robin; messages 1..prefix_length of every block are committed
+# before measuring, the rest form the measured window (src/grace/eval/runner/probes/scale.py).
+generator:
+  version: changeseq-generator-2
+  families: [hotel-stay, apartment-search, train-travel, flight-travel, car-rental]
+  block_length: 512        # messages per block
+  prefix_length: 256       # messages per block committed before measuring (graph size)
+  density: 10.0            # C1-C5 macros per 100 messages (the generator default mix)
+
+# View mixes: the template families standing views are drawn from. `five` leaves out `pending`,
+# whose compiled query time grows quadratically with the graph in the current compiler
+# (calibration, experiment Log 2026-11-25); `six` is the full main configuration.
+mixes:
+  six: [list, current, count, constraints, pending, choice]
+  five: [list, current, count, constraints, choice]
+
+# Graphs and standing views per mix. A number of views above the bindings the graph admits is not
+# run (12 per block for `five`, 15 for `six`).
+graphs:
+  - {mix: five, blocks: [16, 64, 256], views: [12, 48, 192, 768]}
+  - {mix: six, blocks: [4, 16], views: [12, 48]}
+
+grid:
+  read_scope: [4, all]                    # views checked per read: 4 drawn per read, or all
+  writes_per_read: [1, 4, 16, 64, 256]    # committed change sets between consecutive reads
+
+seeds: [1, 2]          # graph realisations: block generation, view choice and read draws
+repetitions: 3         # timing repetitions of every (cell, seed); arm order rotated per repetition
+reads: 16              # read periods per measurement
+
+# Arms of configs/views/staleness.yaml (T019).
+arms:
+  push: claim_pattern_filters   # claim-pattern push with local filters, no confirmation
+  pull: requery                 # read-time re-query with fingerprints
+  hybrid: push_confirm          # push filter plus read-time confirmation
+
+diagnostics:
+  repeats: 3                       # timings per query (minimum reported)
+  compiled_pending_max_blocks: 16  # the compiled `pending` query is timed only up to this size
+
+budget:
+  max_hours_per_run: 8             # a run that exceeds this fails (recorded, not retried silently)
+  parallel_runs: 10                # runs started concurrently (of 224 logical CPUs, shared)
