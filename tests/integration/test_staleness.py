@@ -233,6 +233,15 @@ class GeneratedSequenceTest(unittest.TestCase):
                             < marked(replay(s, "claim_pattern"))
                             for _, _, s, _ in self.sequences))
 
+    def test_marks_ignore_what_the_default_constraint_rejects(self):
+        """F1: with the default constraint (own, positive, not derived), the claim-pattern
+        strategies mark the same views on the full graph as on its own-positive projection."""
+        for family, seed, seq, bundle in self.sequences:
+            for arm in CLAIM_PATTERN_ARMS:
+                with self.subTest(family=family, seed=seed, arm=arm):
+                    self.assertEqual(marked(replay(seq, arm)),
+                                     marked(replay(projected(seq, bundle), arm)))
+
     def test_pull_and_hybrid_make_the_same_repairs(self):
         for family, seed, seq, _ in self.sequences:
             for every in (1, 3):

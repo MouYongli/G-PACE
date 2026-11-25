@@ -7,6 +7,7 @@ change sets are written by hand, so every expected trigger is stated here, not c
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from grace.context.memory.graph.changeset import ChangeSet
 from grace.context.memory.graph.entities import EntityEquivalence
@@ -51,9 +52,16 @@ def claim(cid, s, p, o, v, start=None, end=None):
     return Claim(cid, s, p, obj, None, ValidTime(start, end), v)
 
 
-def att(aid, cid, v, speaker="user", fn="inform"):
-    return Attribution(aid, cid, speaker, CommunicativeFunction(fn), ReportMode.OWN,
-                       Polarity.POSITIVE, Certainty.CERTAIN, False, f"m{v}", v)
+def att(aid, cid, v, speaker="user", fn="inform", mode=ReportMode.OWN,
+        polarity=Polarity.POSITIVE, derived=False):
+    return Attribution(aid, cid, speaker, CommunicativeFunction(fn), mode, polarity,
+                       Certainty.CERTAIN, derived, f"m{v}", v)
+
+
+def relax(dependencies, **fields):
+    """The dependency patterns with the given attribution fields relaxed (set to None)."""
+    return tuple(replace(d, pattern=replace(d.pattern, attribution=replace(
+        d.pattern.attribution, **dict.fromkeys(fields, None)))) for d in dependencies)
 
 
 def ev(eid, cid, v):
@@ -96,6 +104,16 @@ class DependencyPatternsTest(unittest.TestCase):
         self.assertEqual(len(current.filters), 1)
         self.assertEqual(current.to_record()["filters"][0]["op"], ">")
 
+    def test_record_keeps_the_attribution_defaults_and_relaxations(self):
+        (d,) = deps("list", "user", "plays")
+        self.assertEqual(d.to_record()["attribution"],
+                         {"speaker": {"entity": "user"}, "function": "inform",
+                          "report_mode": "own", "polarity": "positive", "derived": False})
+        (loose,) = relax((d,), report_mode=1, polarity=1, derived=1)
+        self.assertEqual(loose.to_record()["attribution"],
+                         {"speaker": {"entity": "user"}, "function": "inform",
+                          "report_mode": None, "polarity": None, "derived": None})
+
 
 class TriggerTest(unittest.TestCase):
     def test_new_claim_matches_through_its_attribution(self):
@@ -117,6 +135,39 @@ class TriggerTest(unittest.TestCase):
                          [att("a1", "c1", 1, speaker="assistant")]),
                    Options(attribution=False))
         self.assertEqual(loose, {(ANSWER, "c1", POSITIVE)})
+
+    def test_attribution_defaults_own_positive_not_derived(self):
+        """F1 (plan 3.3): a quote, hypothetical, denial or derived attribution does not satisfy
+        a default constraint, so it marks nothing; with that field relaxed it marks again."""
+        cases = {"quote": ("report_mode", {"mode": ReportMode.QUOTE}),
+                 "hypothetical": ("report_mode", {"mode": ReportMode.HYPOTHETICAL}),
+                 "denial": ("polarity", {"polarity": Polarity.NEGATIVE}),
+                 "derived": ("derived", {"derived": True})}
+        d = deps("list", "user", "plays")
+        for name, (field, kwargs) in cases.items():
+            for dependencies, expected in ((d, set()),
+                                           (relax(d, **{field: 1}), {(ANSWER, "a2", POSITIVE)})):
+                with self.subTest(case=name, relaxed=dependencies is not d):
+                    m = Matcher()
+                    # A new claim carrying only that attribution ...
+                    first = m(dependencies, cs(1, [claim("c1", "user", "plays",
+                                                         Value("violin"), 1)],
+                                               [att("a1", "c1", 1, **kwargs)],
+                                               [ev("e1", "c1", 1)]))
+                    self.assertEqual(first, {(ANSWER, "a1", POSITIVE), (CITATION, "e1", POSITIVE)}
+                                     if expected else set())
+                    # ... and a later such attribution on an existing claim.
+                    m2 = Matcher()
+                    m2(dependencies, cs(1, [claim("c2", "user", "plays", Value("cello"), 1)]))
+                    self.assertEqual(m2(dependencies, cs(2, atts=[att("a2", "c2", 2, **kwargs)])),
+                                     expected)
+
+    def test_relaxing_one_field_keeps_the_other_defaults(self):
+        d = relax(deps("list", "user", "plays"), report_mode=1)
+        m = Matcher()
+        m(d, cs(1, [claim("c1", "user", "plays", Value("violin"), 1)]))
+        quoted_denial = att("a2", "c1", 2, mode=ReportMode.QUOTE, polarity=Polarity.NEGATIVE)
+        self.assertEqual(m(d, cs(2, atts=[quoted_denial])), set())
 
     def test_other_subject_or_predicate_does_not_match(self):
         m, d = Matcher(), deps("list", "user", "plays")
