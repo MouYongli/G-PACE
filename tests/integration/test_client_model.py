@@ -74,6 +74,23 @@ class ClientModelTest(unittest.TestCase):
         self.assertTrue(all(r.read_id == task.read_id and r.category == "A" for r in records))
         check_calls(read_jsonl(self.calls))
 
+    def test_response_format_is_merged_into_decoding_and_none_changes_nothing(self):
+        """T034: the optional structured-output request (Graphiti's json_schema mode)."""
+        tag = CallTag("external", "write", "h", 1)
+        schema = {"type": "json_schema",
+                  "json_schema": {"name": "R", "schema": {"type": "object"}}}
+        with FakeServer([(200, completion("{}"))] * 3) as srv:
+            model = self.model(srv)
+            messages = [{"role": "user", "content": "hi"}]
+            model.chat(messages, tag, max_tokens=8)
+            model.chat(messages, tag, max_tokens=8, response_format=None)
+            model.chat(messages, tag, max_tokens=8, response_format=schema)
+        plain, explicit_none, structured = (r["body"] for r in srv.requests)
+        self.assertEqual(plain, explicit_none)
+        self.assertNotIn("response_format", plain)
+        self.assertEqual(structured, {**plain, "response_format": schema})
+        self.assertEqual(model.decoding, {"temperature": 0.0, "top_p": 1.0})  # not mutated
+
     def test_transport_failure_is_not_ok_and_embeddings_are_recorded(self):
         with FakeServer([(500, {})] * 3) as srv:
             result = self.model(srv).chat([{"role": "user", "content": "hi"}],

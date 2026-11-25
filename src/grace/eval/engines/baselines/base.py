@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -55,12 +55,16 @@ class EmbedResult:
 class ModelPort(Protocol):
     """The model access a baseline needs. Implemented by the harness (`harness/models.py`).
 
-    `max_tokens` caps the generated tokens of the call (None: the backend's default)."""
+    `max_tokens` caps the generated tokens of the call (None: the backend's default).
+    `response_format` is the OpenAI-compatible structured-output request (e.g. `json_schema`,
+    which vLLM enforces by constrained decoding); None sends none, as for every engine except
+    Graphiti (T034)."""
 
     def chat(self, messages: Sequence[dict[str, str]], tag: CallTag, *,
              prompt_sha256: str | None = None,
              parse: Callable[[str], Any] | None = None,
-             max_tokens: int | None = None) -> ChatResult: ...
+             max_tokens: int | None = None,
+             response_format: Mapping[str, Any] | None = None) -> ChatResult: ...
 
     def embed(self, texts: Sequence[str], tag: CallTag) -> EmbedResult: ...
 

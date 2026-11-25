@@ -1,15 +1,21 @@
 # Graphiti (plan 7.2, "External systems"): graphiti-core 0.31.2 with its embedded Kuzu backend,
 # through the adapter in src/grace/eval/engines/baselines/graphiti.py, every LLM and embedding call
 # through grace.llm. Needs the envs/graphiti environment (uv sync --project envs/graphiti).
-# top_k is Graphiti's default search limit, max_tokens its default for LLM calls, max_coroutines
-# null its default concurrency. All are placeholders until fixed on development data.
+# top_k is Graphiti's default search limit and max_coroutines null its default concurrency.
+# max_tokens is lowered from Graphiti's 16,384 to 4,096: at temperature 0 Qwen3-8B sometimes loops
+# inside a JSON list (episode_indices counting up) until the cap, and every retry repeats it; the
+# longest regular reply seen on conv-26 was far below 1,000 tokens (T034 log). All are placeholders
+# until fixed on development data.
 engine: graphiti
 description: Graphiti (graphiti-core 0.31.2, Kuzu), one group per history, one episode per message
 prefix_caching: false
 params:
   top_k: 10
-  max_tokens: 16384
+  max_tokens: 4096
   max_coroutines: null
+  # Graphiti's default for OpenAI-compatible servers: the response schema as response_format,
+  # enforced by vLLM's constrained decoding. The only engine that uses constrained decoding.
+  structured_output: json_schema
   # Same Qwen3-Embedding query instruction as the dense channel and Mem0, applied to the query
   # at read time only.
   query_instruction: Given a question about a conversation, retrieve the messages that answer it

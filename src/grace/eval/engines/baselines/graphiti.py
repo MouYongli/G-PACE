@@ -13,17 +13,24 @@ This module is the adapter patch; it changes only where Graphiti sends its calls
 keeps its graph:
 
 1. **Model calls.** Graphiti's LLM, embedder and cross-encoder clients are replaced by
-   `_PortLLM`, `_PortEmbedder` and `_PortReranker`, which send every request through the
+   `PortLLM`, `PortEmbedder` and `PortReranker`, which send every request through the
    harness's `ModelPort` (and so through `grace.llm` and the run's cost ledger). Graphiti's own
    provider clients are never constructed, so it cannot reach a hosted API. LLM calls are
    `external` with the trigger of the phase (ingestion: `write`, ledger `W`); embeddings are
    `embed`. Decoding is the model config's (temperature 0); `max_tokens` is Graphiti's
    (16,384 unless a call sets its own). The ledger's `prompt_sha256` of an LLM call is
-   `prompt_hash(<prompt name>)`, Graphiti's template being code identified by its name in the
-   pinned version, so calls can be counted by type from `calls.jsonl` alone (`PROMPT_NAMES`).
-2. **Structured output.** The port has no `response_format`, so `_PortLLM` keeps Graphiti's base
-   `LLMClient.generate_response` path, which appends the response model's JSON schema to the
-   prompt (as upstream's `json_object` mode does). The reply is parsed as JSON and validated
+   `prompt_hash(<prompt name>, <structured-output mode>)`: Graphiti's template is code, identified
+   by its name in the pinned version, and the mode is part of how it is sent, so every call record
+   says which template and whether constrained decoding was used (`prompt_names_by_hash`), and
+   calls can be counted by type from `calls.jsonl` alone.
+2. **Structured output.** `PortLLM` is upstream's `OpenAIGenericClient` (Graphiti's client for
+   OpenAI-compatible servers such as vLLM) with only the transport replaced. In its default mode,
+   `json_schema` (`structured_output: json_schema`), the response model's JSON schema is sent as
+   `response_format`, which vLLM enforces by constrained decoding; this is the only engine of the
+   project that uses constrained decoding, because Graphiti's own default does. In `json_object`
+   mode the schema is appended to the prompt instead (upstream's fallback). Without constrained
+   decoding Qwen3-8B often echoes the schema instead of an instance (T034 log: 6 of the first 8
+   conv-26 episodes failed). The reply is parsed as JSON and validated
    against the response model; output that does not parse or validate is retried once by the port
    (`invalid_output` records), as for every engine of this project, and then by Graphiti's own
    retry policy (4 attempts on JSON errors and empty replies). The policy is upstream's except
@@ -33,7 +40,8 @@ keeps its graph:
    leaves the graph without that episode, the message stays in the visible log, and the engine
    logs one line `GRAPHITI_EPISODE {json}` per episode (logger `grace.graphiti`, level INFO for
    `ok`, WARNING for `failed`) with the version, message ID, outcome, error and number of LLM
-   calls. The failure rate (T034 log) is computed from these lines and `calls.jsonl`.
+   calls. The logger writes to stderr unless configured otherwise. The failure rate (T034 log) is
+   computed from these lines and `calls.jsonl`.
 4. **Graph store.** The embedded Kuzu backend (`KuzuDriver`), one on-disk database in a temporary
    directory per engine, that is per history; no server is started. `save` checkpoints and copies
    the database file next to `state.json`. The driver's `_database` is set to the group ID:
@@ -72,6 +80,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tempfile
 import weakref
 from collections.abc import Sequence
@@ -103,20 +112,42 @@ PROMPT_NAMES = (  # graphiti_core.prompts.names.PromptName of the pinned version
 UNNAMED_PROMPT = "unnamed"
 
 LOG = logging.getLogger("grace.graphiti")
+if not LOG.handlers:  # the episode lines are run evidence: on stderr even when nothing is set up
+    _handler = logging.StreamHandler(sys.stderr)
+    _handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+    LOG.addHandler(_handler)
+    LOG.setLevel(logging.INFO)
+    LOG.propagate = False
 _PROMPT: contextvars.ContextVar[str] = contextvars.ContextVar("graphiti_prompt",
                                                               default=UNNAMED_PROMPT)
 _GROUP_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
 _FENCE = re.compile(r"^```[a-zA-Z0-9_-]*[ \t]*\r?\n?|\r?\n?```[ \t]*$")
 _G: SimpleNamespace | None = None
+_NO_CLIENT = object()
 
 
-def prompt_hash(name: str) -> str:
-    """The ledger's `prompt_sha256` of a Graphiti call: its template named in the pinned version."""
-    return hashlib.sha256(f"graphiti-core=={GRAPHITI_VERSION}:{name}".encode()).hexdigest()
+STRUCTURED_OUTPUT = ("json_schema", "json_object")  # OpenAIGenericClient's modes
 
 
-def prompt_names_by_hash() -> dict[str, str]:
-    return {prompt_hash(name): name for name in (*PROMPT_NAMES, UNNAMED_PROMPT)}
+def prompt_hash(name: str, mode: str) -> str:
+    """The ledger's `prompt_sha256` of a Graphiti call: its template named in the pinned version,
+    and the structured-output mode it was sent with."""
+    return hashlib.sha256(f"graphiti-core=={GRAPHITI_VERSION}:{name}:{mode}".encode()).hexdigest()
+
+
+def prompt_names_by_hash() -> dict[str, tuple[str, str]]:
+    """`prompt_sha256` -> (prompt name, structured-output mode)."""
+    return {prompt_hash(name, mode): (name, mode)
+            for name in (*PROMPT_NAMES, UNNAMED_PROMPT) for mode in STRUCTURED_OUTPUT}
+
+
+def response_format(response_model: Any, mode: str) -> dict[str, Any]:
+    """`OpenAIGenericClient._build_response_format` of the pinned version."""
+    if response_model is None or mode == "json_object":
+        return {"type": "json_object"}
+    return {"type": "json_schema",
+            "json_schema": {"name": getattr(response_model, "__name__", "structured_response"),
+                            "schema": response_model.model_json_schema()}}
 
 
 def group_id(history_id: str) -> str:
@@ -201,9 +232,10 @@ def _graphiti() -> SimpleNamespace:
     from graphiti_core.cross_encoder.client import CrossEncoderClient
     from graphiti_core.driver.kuzu_driver import KuzuDriver
     from graphiti_core.embedder.client import EmbedderClient
-    from graphiti_core.llm_client.client import LLMClient, is_server_or_retry_error
+    from graphiti_core.llm_client.client import is_server_or_retry_error
     from graphiti_core.llm_client.config import LLMConfig
     from graphiti_core.llm_client.errors import EmptyResponseError
+    from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
     from graphiti_core.nodes import EpisodeType
     from graphiti_core.search import search_utils
 
@@ -217,12 +249,14 @@ def _graphiti() -> SimpleNamespace:
         def __init__(self, reason: str):
             super().__init__(reason, "", 0)
 
-    class PortLLM(LLMClient):
-        """Stands in for a `graphiti_core.llm_client` provider."""
+    class PortLLM(OpenAIGenericClient):
+        """Upstream's client for OpenAI-compatible servers, sending through the model port. The
+        `client` argument keeps upstream from constructing an OpenAI client; it is never used."""
 
-        def __init__(self, engine: GraphitiEngine, max_tokens: int):
+        def __init__(self, engine: GraphitiEngine, max_tokens: int, mode: str):
             super().__init__(LLMConfig(api_key="unused", model=engine.model.model,
-                                       temperature=0, max_tokens=max_tokens), cache=False)
+                                       temperature=0), cache=False, client=_NO_CLIENT,
+                             max_tokens=max_tokens, structured_output_mode=mode)
             self.engine = engine
 
         async def generate_response(self, *args, **kwargs):
@@ -246,17 +280,21 @@ def _graphiti() -> SimpleNamespace:
         async def _generate_response(self, messages, response_model=None, max_tokens=None,
                                      model_size=None, *, model=None):
             engine = self.engine
-            chat = [{"role": m.role, "content": m.content} for m in messages
-                    if m.role in ("system", "user")]
-            name = _PROMPT.get()
+            chat = []
+            for m in messages:  # as upstream: input cleaned, system and user turns only
+                m.content = self._clean_input(m.content)
+                if m.role in ("system", "user"):
+                    chat.append({"role": m.role, "content": m.content})
+            name, mode = _PROMPT.get(), self.structured_output_mode
 
             def parse(text):
                 return parse_structured(text, response_model)
 
             result = await asyncio.to_thread(
                 engine.model.chat, chat, engine.tag("external"),
-                prompt_sha256=prompt_hash(name), parse=parse,
-                max_tokens=max_tokens or self.max_tokens)
+                prompt_sha256=prompt_hash(name, mode), parse=parse,
+                max_tokens=max_tokens or self.max_tokens,
+                response_format=response_format(response_model, mode))
             engine.note_call(name, result)
             if result.ok:
                 return result.parsed
@@ -310,10 +348,14 @@ class GraphitiEngine(BaselineEngine):
     kind = "graphiti"
 
     def __init__(self, model, *, top_k: int = 10, max_tokens: int = 16384,
-                 query_instruction: str | None = None, max_coroutines: int | None = None):
+                 query_instruction: str | None = None, max_coroutines: int | None = None,
+                 structured_output: str = "json_schema"):
         super().__init__(model)
         if top_k < 1 or max_tokens < 1 or (max_coroutines is not None and max_coroutines < 1):
             raise ValueError("top_k >= 1, max_tokens >= 1 and max_coroutines >= 1 or null")
+        if structured_output not in STRUCTURED_OUTPUT:
+            raise ValueError(f"structured_output is one of {STRUCTURED_OUTPUT}")
+        self.structured_output = structured_output
         _graphiti()
         self.top_k, self.max_tokens, self.max_coroutines = top_k, max_tokens, max_coroutines
         self.query_instruction = query_instruction
@@ -347,7 +389,8 @@ class GraphitiEngine(BaselineEngine):
         # KuzuDriver never sets `_database`, which add_episode compares with the group ID; Kuzu
         # has one database per file, so the group is its database.
         driver._database = self.group
-        self.client = g.Graphiti(graph_driver=driver, llm_client=g.PortLLM(self, self.max_tokens),
+        llm = g.PortLLM(self, self.max_tokens, self.structured_output)
+        self.client = g.Graphiti(graph_driver=driver, llm_client=llm,
                                  embedder=g.PortEmbedder(self), cross_encoder=g.PortReranker(),
                                  max_coroutines=self.max_coroutines)
         if fresh:

@@ -66,10 +66,13 @@ class ClientModel:
 
     def chat(self, messages, tag: CallTag, *, prompt_sha256: str | None = None,
              parse: Callable[[str], Any] | None = None,
-             max_tokens: int | None = None) -> ChatResult:
+             max_tokens: int | None = None,
+             response_format: Mapping[str, Any] | None = None) -> ChatResult:
         self.observed.extend(m["content"] for m in messages)
         context = call_context(tag)
         decoding = {**self.decoding, **({"max_tokens": max_tokens} if max_tokens else {})}
+        if response_format is not None:  # structured output (T034, Graphiti): sent as given
+            decoding["response_format"] = dict(response_format)
         parsed: dict[str, Any] = {}
 
         def validate(text: str) -> str | None:
@@ -167,7 +170,10 @@ class RecordingModel:
 
     def chat(self, messages, tag: CallTag, *, prompt_sha256: str | None = None,
              parse: Callable[[str], Any] | None = None,
-             max_tokens: int | None = None) -> ChatResult:
+             max_tokens: int | None = None,
+             response_format: Mapping[str, Any] | None = None) -> ChatResult:
+        """`response_format` is accepted for parity with `ClientModel` and not enforced: the
+        responder decides the output."""
         category_for(tag.call_type, tag.trigger)  # refuse a bad tag before any attempt
         self.observed.extend(m["content"] for m in messages)
         call_ids: list[str] = []
