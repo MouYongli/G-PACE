@@ -1,0 +1,142 @@
+/* Shell shared by the annotation pages: header, list view, workspace with collapsible sidebars,
+   messages frame, label area, help dialog. Page-specific content is styled in <benchmark>.css. */
+.view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.view[hidden] { display: none; }
+.bar { align-items: center; gap: 10px 14px; }
+.bar-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.help-button { width: 28px; padding: 4px 0; border-radius: 999px; font-weight: 600; }
+.annotator, .conv-pick { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.annotator input { width: 12ch; }
+.conv-pick select { width: auto; font-weight: 600; color: var(--ink); }
+.progress-text { color: var(--muted); font-size: 13px; }
+.save-state { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.save-state.saved::before { content: "● "; color: var(--ok); }
+.save-state.failed { color: var(--bad); }
+.home { color: inherit; text-decoration: none; }
+.context-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; padding: 5px 16px; border-bottom: 1px solid var(--line); background: var(--bg); font-size: 13px; }
+.context-bar .spacer { flex: 1; }
+.context-bar select { padding: 2px 6px; }
+.back { color: var(--accent); text-decoration: none; white-space: nowrap; border-left: 1px solid var(--line); padding-left: 14px; }
+.back:hover { text-decoration: underline; }
+.scroll { min-height: 0; overflow-y: auto; }
+.st.todo { color: var(--muted); } .st.draft { color: var(--warn); } .st.done { color: var(--ok); }
+.st.flag, .flag-mark { color: var(--bad); }
+.ev { color: var(--warn); }
+
+/* ---- View 1: conversation list ---- */
+.list-main { flex: 1; min-height: 0; overflow-y: auto; padding: clamp(12px, 2.5vw, 32px); width: 100%; max-width: 1200px; margin: 0 auto; }
+.notice-line { display: flex; align-items: center; gap: 8px; margin: 8px 16px 0; padding: 4px 6px 4px 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent-soft); }
+.notice-line[hidden] { display: none; }
+.notice-line > span { flex: 1; }
+.notice-line.bad { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.table-wrap { padding: 0; overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr { cursor: pointer; }
+.data-table tbody tr:hover, .data-table tbody tr:focus-visible { background: var(--accent-soft); }
+.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.data-table .cid { font-weight: 600; color: var(--accent); white-space: nowrap; }
+.data-table .progress-cell { min-width: 220px; width: 34%; }
+.meter { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; display: flex; }
+.meter .done { background: var(--ok); } .meter .draft { background: var(--warn); }
+.progress-note { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.list-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-top: 12px; font-size: 13px; }
+.list-foot .spacer { flex: 1; }
+.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; }
+
+/* ---- View 2: workspace ---- */
+.workspace {
+  --rail: 34px;
+  --qw: clamp(230px, 19vw, 330px); --tw: clamp(190px, 15vw, 270px); --lw: clamp(310px, 25vw, 410px);
+  flex: 1; min-height: 0; display: grid; position: relative;
+  grid-template-columns: var(--qw) var(--tw) minmax(0, 1fr) var(--lw);
+  grid-template-rows: minmax(0, 1fr);
+}
+.workspace.q-closed { --qw: var(--rail); }
+.workspace.t-closed { --tw: var(--rail); }
+.workspace > * { min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
+.workspace > *:last-child { border-right: 0; }
+
+/* Collapsible sidebars: the rail shows when closed, the body when open. */
+.side { display: flex; background: var(--panel); }
+.side-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.side .rail { display: none; flex: 1; border: 0; border-radius: 0; padding: 10px 0; background: var(--panel); color: var(--muted);
+  flex-direction: column; align-items: center; gap: 10px; }
+.side .rail:hover { background: var(--accent-soft); color: var(--accent); }
+.rail-text { writing-mode: vertical-rl; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+.rail .rail-mark { color: var(--warn); font-size: 11px; }
+.side.closed .rail { display: flex; }
+.side.closed .side-body { display: none; }
+.side-head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); min-height: 41px; }
+.side-head h2 { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-head .count { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.icon { border: 0; background: none; padding: 2px 7px; color: var(--muted); border-radius: 6px; }
+.icon:hover { background: var(--accent-soft); color: var(--accent); }
+
+.filters { display: grid; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.filters .choices { gap: 4px; }
+
+
+/* Messages */
+.messages { display: flex; flex-direction: column; background: var(--bg); }
+.messages-bar { display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-bottom: 1px solid var(--line); background: var(--panel); min-height: 41px; }
+.messages-bar .spacer { flex: 1; }
+.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex: none; }
+.segmented button { border: 0; border-radius: 0; padding: 3px 10px; font-size: 12px; }
+.segmented button + button { border-left: 1px solid var(--line); }
+.segmented button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.segmented button:disabled { color: var(--muted); cursor: default; }
+
+/* Label area */
+.label-area { display: flex; flex-direction: column; background: var(--panel); }
+.label-head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--line); min-height: 41px; }
+.label-head .where { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.label-head .where b { font-family: var(--mono); font-size: 13px; }
+.label-head .spacer { flex: 1; }
+.label-head .nav { padding: 2px 9px; }
+.label-scroll { flex: 1; padding: 12px 14px; }
+.placeholder { color: var(--muted); display: grid; gap: 10px; justify-items: start; }
+#label-form { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--line); }
+#label-form:empty { display: none; }
+#label-form .labels { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+#label-form .choice .key { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+#label-form textarea { min-height: 72px; resize: vertical; display: block; }
+.problems { margin: 10px 0 0; padding: 6px 10px 6px 26px; border-radius: 6px; background: var(--warn-soft); color: var(--warn); font-size: 12px; }
+.problems:empty { display: none; }
+.label-foot { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); }
+.label-foot:empty { display: none; }
+.label-foot .spacer { flex: 1; }
+.label-foot .primary { background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 600; padding: 5px 14px; }
+.label-foot .primary:hover { filter: brightness(1.08); }
+.label-foot .flagged { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+
+/* Help */
+#help { border: 1px solid var(--line); border-radius: 10px; padding: 0; background: var(--panel); color: var(--ink); width: min(640px, 92vw); max-height: 88vh; }
+#help::backdrop { background: rgba(0, 0, 0, .35); }
+.help-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+.help-body { padding: 4px 16px 16px; }
+.help-body h3 { font-size: 13px; margin: 14px 0 4px; }
+.help-body p { margin: 4px 0; }
+.help-table { border-collapse: collapse; width: 100%; }
+.help-table td { padding: 3px 10px 3px 0; vertical-align: top; }
+.help-table td:first-child { white-space: nowrap; }
+
+/* ---- Narrower screens ---- */
+/* Medium: the widths are fluid already; the script closes the message tree (then the question list)
+   by default when the messages column would get too narrow. */
+/* Narrow: messages on top, label below; an opened sidebar lies over the content. */
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: var(--rail) var(--rail) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(180px, 46%); }
+  .workspace .side { grid-row: 1 / 3; }
+  .workspace .messages { grid-column: 3; grid-row: 1; border-right: 0; }
+  .workspace .label-area { grid-column: 3; grid-row: 2; border-top: 1px solid var(--line); }
+  .side:not(.closed) { position: absolute; z-index: 5; left: 0; top: 0; bottom: 0; width: min(88vw, 340px); box-shadow: 4px 0 18px rgba(0, 0, 0, .25); }
+  #questions-side.closed { grid-column: 1; }
+  #tree-side.closed { grid-column: 2; }
+  .wide-only { display: none; }
+}
+@media (max-width: 560px) {
+  .annotator input { width: 9ch; }
+}

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoCoMo annotation</title>
+<!--
+  LoCoMo annotation page (fragment coverage, T012). Two views: the list of conversations, and one
+  conversation with its questions, message tree, messages and the label form.
+  Open index.html straight from disk, or serve the repository root and open the page:
+      uv run python -m http.server 8000 --bind 127.0.0.1
+      http://localhost:8000/web/human-reviewer/locomo/
+  Without imported data the page shows data/example.js (LoCoMo, snap-research/locomo @ 3eb6f2c,
+  CC BY-NC 4.0). Imported data and labels stay in this browser; nothing is uploaded.
+-->
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/shell.css">
+<link rel="stylesheet" href="../css/locomo.css">
+</head>
+<body>
+
+<!-- Shared by both views -->
+<header class="topbar bar">
+  <h1><a href="#/" class="home">LoCoMo</a></h1>
+  <span class="spacer"></span>
+  <span class="save-state" data-save></span>
+    <div class="bar-group">
+      <button type="button" id="import-data">Import data</button>
+      <button type="button" id="import-labels">Import labels</button>
+      <button type="button" id="export-csv">Export CSV</button>
+      <button type="button" class="help-button" aria-label="Help">?</button>
+    </div>
+    <label class="annotator">Annotator
+      <input type="text" id="annotator" placeholder="your ID" autocomplete="off" spellcheck="false">
+    </label>
+</header>
+<div id="notice" class="notice-line" hidden><span id="notice-text"></span><button type="button" class="icon" id="notice-close" aria-label="Dismiss">×</button></div>
+
+<!-- View 1: conversation list -->
+<div class="view" id="list-view" hidden>
+  <main class="list-main">
+    <div class="table-wrap card">
+      <table id="conversations" class="data-table">
+        <thead>
+          <tr>
+            <th>Conversation</th><th>Speakers</th><th class="num wide-only">Sessions</th>
+            <th class="num wide-only">Turns</th><th class="num">Questions</th>
+            <th class="num wide-only">Overlap</th><th>Progress</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <footer class="list-foot">
+      <span id="list-total"></span>
+      <span class="spacer"></span>
+      <span id="data-source" class="muted"></span>
+    </footer>
+  </main>
+</div>
+
+<!-- View 2: one conversation -->
+<div class="view" id="conv-view" hidden>
+  <nav class="context-bar" aria-label="Conversation">
+    <label class="conv-pick">Conversation:
+      <select id="conv-select" aria-label="Conversation"></select>
+    </label>
+    <span id="conv-progress" class="progress-text"></span>
+    <span class="spacer"></span>
+    <a class="back" href="#/">← Back to List</a>
+  </nav>
+  <main class="workspace" id="workspace">
+    <section class="side" id="questions-side" aria-label="Questions">
+      <button type="button" class="rail" data-toggle="questions" title="Show questions ( [ )">
+        <span class="rail-arrow">»</span><span class="rail-text">Questions</span>
+      </button>
+      <div class="side-body">
+        <div class="side-head">
+          <h2>Questions <span id="question-count" class="count"></span></h2>
+          <button type="button" class="icon" data-toggle="questions" title="Hide questions ( [ )" aria-label="Hide questions">«</button>
+        </div>
+        <div class="filters">
+          <div class="choices" id="status-filter"></div>
+          <div class="choices" id="category-filter"></div>
+          <input type="search" id="search" placeholder="Search question or answer" aria-label="Search questions">
+        </div>
+        <ol id="questions" class="scroll"></ol>
+      </div>
+    </section>
+
+    <section class="side" id="tree-side" aria-label="Message tree">
+      <button type="button" class="rail" data-toggle="tree" title="Show message tree ( ] )">
+        <span class="rail-arrow">»</span><span class="rail-text">Messages</span>
+      </button>
+      <div class="side-body">
+        <div class="side-head">
+          <h2>Messages</h2>
+          <button type="button" class="icon" id="tree-expand" title="Expand or collapse all sessions" aria-label="Expand or collapse all sessions">±</button>
+          <button type="button" class="icon" data-toggle="tree" title="Hide message tree ( ] )" aria-label="Hide message tree">«</button>
+        </div>
+        <ol id="tree" class="scroll"></ol>
+      </div>
+    </section>
+
+    <section class="messages" aria-label="Messages">
+      <div class="messages-bar">
+        <span id="current-session" class="current-session"></span>
+        <span class="spacer"></span>
+        <div class="segmented" role="group" aria-label="Messages shown">
+          <button type="button" data-show="all">All</button>
+          <button type="button" data-show="evidence">Evidence</button>
+        </div>
+      </div>
+      <div id="dialogue" class="scroll"><div id="dialogue-inner"></div></div>
+    </section>
+
+    <aside class="label-area" aria-label="Label">
+      <div class="label-head" id="label-head"></div>
+      <div class="label-scroll scroll">
+        <div id="question-card"></div>
+        <form id="label-form" autocomplete="off"></form>
+      </div>
+      <div class="label-foot" id="label-foot"></div>
+    </aside>
+  </main>
+</div>
+
+<dialog id="help">
+  <form method="dialog" class="help-head"><h2>Help</h2><button aria-label="Close">Close</button></form>
+  <div class="help-body">
+    <h3>Task</h3>
+    <p>For each question, decide whether it can be expressed in the query fragment. Judge expressibility,
+       not whether a system would answer it correctly.</p>
+    <table class="help-table">
+      <tr><td><b>in_fragment</b></td><td>Expressible. Add the operations beyond a single claim pattern and any flag.</td></tr>
+      <tr><td><b>open_reasoning</b></td><td>Counterfactual, inference or summary.</td></tr>
+      <tr><td><b>date_arithmetic</b></td><td>A duration between two events.</td></tr>
+      <tr><td><b>common_sense</b></td><td>Exactly one piece of world knowledge is missing.</td></tr>
+      <tr><td><b>other</b></td><td>Give the reason: image_only, annotation_error or beyond_fragment.</td></tr>
+    </table>
+    <h3>Status</h3>
+    <p><span class="st todo">○</span> todo · <span class="st draft">◐</span> draft, kept automatically in this browser ·
+       <span class="st done">✓</span> done, confirmed and complete · <span class="st flag">⚑</span> flagged for a second look ·
+       <span class="ev">◆</span> evidence turn of the current question.</p>
+    <p>Only questions marked done are counted and exported. Changing a done question returns it to draft
+       until it is confirmed again.</p>
+    <h3>Keys</h3>
+    <table class="help-table">
+      <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous question</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Choose the label</td></tr>
+      <tr><td><kbd>e</kbd></td><td>Next evidence turn</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Confirm and go to the next question (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> inside the rationale)</td></tr>
+      <tr><td><kbd>f</kbd></td><td>Flag or unflag</td></tr>
+      <tr><td><kbd>v</kbd></td><td>Switch between all messages and evidence only</td></tr>
+      <tr><td><kbd>[</kbd> / <kbd>]</kbd></td><td>Show or hide the question list / the message tree</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Leave a text field</td></tr>
+    </table>
+    <h3>Data and files</h3>
+    <p><b>Import data</b> reads a file from this computer: the original <span class="mono">locomo10.json</span>, or a file in
+       the page's own format. <b>Import labels</b> reads a label CSV to continue earlier work. <b>Export CSV</b> downloads
+       the done labels. Nothing is uploaded.</p>
+    <p class="muted" id="help-source"></p>
+  </div>
+</dialog>
+
+<input type="file" id="data-file" accept=".json,application/json" hidden>
+<input type="file" id="labels-file" accept=".csv,text/csv" hidden>
+
+<script src="data/example.js"></script>
+<script src="../js/base.js"></script>
+<script src="../js/locomo-data.js"></script>
+<script src="../js/locomo.js"></script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+{
+ "source": {
+  "benchmark": "multiwoz",
+  "versions": [
+   "2.1",
+   "2.2",
+   "2.4"
+  ],
+  "split": "dev",
+  "text_from": "2.4",
+  "census_run": "T006-20261125T010238Z-7565"
+ },
+ "dialogue_id": "SNG01196.json",
+ "domains": [
+  "restaurant"
+ ],
+ "goal": [
+  "You are looking for a restaurant. The restaurant should serve world food and should be in the centre",
+  "The restaurant should be in the expensive price range",
+  "If there is no such restaurant, how about one that serves korean food",
+  "Once you find the restaurant you want to book a table for 2 people at 13:15 on monday",
+  "Make sure you get the reference number"
+ ],
+ "turns": [
+  {
+   "index": 0,
+   "speaker": "user",
+   "text": "I am looking for a restaurant. The restaurant should serve world food and should be in the centre",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Food",
+      "value": "world"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Area",
+      "value": "centre"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "area",
+      "value": "centre"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "food",
+      "value": "world"
+     }
+    ]
+   },
+   "state": {
+    "2.1": {
+     "restaurant-food": "world",
+     "restaurant-area": "centre"
+    },
+    "2.2": {
+     "restaurant-area": "centre",
+     "restaurant-food": "world"
+    },
+    "2.4": {
+     "restaurant-food": "world",
+     "restaurant-area": "centre"
+    }
+   }
+  },
+  {
+   "index": 1,
+   "speaker": "system",
+   "text": "Unfortunately, I couldn't find a restaurant that serves that kind of food in that area.",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Restaurant-NoOffer",
+      "slot": "Food",
+      "value": "that kind of food"
+     },
+     {
+      "act": "Restaurant-NoOffer",
+      "slot": "Area",
+      "value": "that area"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Restaurant-NoOffer",
+      "slot": "area",
+      "value": "that area"
+     },
+     {
+      "act": "Restaurant-NoOffer",
+      "slot": "food",
+      "value": "that kind of food"
+     }
+    ]
+   }
+  },
+  {
+   "index": 2,
+   "speaker": "user",
+   "text": "What expensive restaurants are there?",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Price",
+      "value": "expensive"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "pricerange",
+      "value": "expensive"
+     }
+    ]
+   },
+   "state": {
+    "2.1": {
+     "restaurant-food": "world",
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre"
+    },
+    "2.2": {
+     "restaurant-area": "centre",
+     "restaurant-food": "world",
+     "restaurant-pricerange": "expensive"
+    },
+    "2.4": {
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre"
+    }
+   }
+  },
+  {
+   "index": 3,
+   "speaker": "system",
+   "text": "The cambridge chop house is expensive and it's british food. Is that okay?",
+   "acts": {
+    "2.1": [
+     {
+      "act": "general-reqmore",
+      "slot": "none",
+      "value": "none"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Price",
+      "value": "expensive"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Name",
+      "value": "The cambridge chop house"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Food",
+      "value": "british"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "food",
+      "value": "british"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "name",
+      "value": "The cambridge chop house"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "pricerange",
+      "value": "expensive"
+     },
+     {
+      "act": "general-reqmore",
+      "slot": "none",
+      "value": "none"
+     }
+    ]
+   }
+  },
+  {
+   "index": 4,
+   "speaker": "user",
+   "text": "No. Try looking for a restaurant that serves Korean food.",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Food",
+      "value": "korean"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "food",
+      "value": "korean"
+     }
+    ]
+   },
+   "state": {
+    "2.1": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre"
+    },
+    "2.2": {
+     "restaurant-area": "centre",
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive"
+    },
+    "2.4": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre"
+    }
+   },
+   "census": {
+    "2.1": {
+     "label": "reject",
+     "how": "counter-value",
+     "offer_kinds": {
+      "restaurant": [
+       "inform-entity"
+      ]
+     },
+     "offered": {
+      "restaurant": {
+       "food": [
+        "british"
+       ],
+       "name": [
+        "the cambridge chop house"
+       ],
+       "pricerange": [
+        "expensive"
+       ]
+      }
+     }
+    },
+    "2.2": {
+     "label": "reject",
+     "how": "counter-value",
+     "offer_kinds": {
+      "restaurant": [
+       "inform-entity"
+      ]
+     },
+     "offered": {
+      "restaurant": {
+       "food": [
+        "british"
+       ],
+       "name": [
+        "the cambridge chop house"
+       ],
+       "pricerange": [
+        "expensive"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "index": 5,
+   "speaker": "system",
+   "text": "I found the Little Seoul restaurant. Would you like me to make a reservation?",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Booking-Inform",
+      "slot": "none",
+      "value": "none"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Name",
+      "value": "Little Seoul restaurant"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Booking-Inform",
+      "slot": "none",
+      "value": "none"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "name",
+      "value": "Little Seoul restaurant"
+     }
+    ]
+   }
+  },
+  {
+   "index": 6,
+   "speaker": "user",
+   "text": "Yes, a table for two.",
+   "acts": {
+    "2.1": [],
+    "2.2": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "bookpeople",
+      "value": "2"
+     }
+    ]
+   },
+   "state": {
+    "2.1": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre",
+     "restaurant-bookpeople": "2"
+    },
+    "2.2": {
+     "restaurant-area": "centre",
+     "restaurant-bookpeople": "2",
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive"
+    },
+    "2.4": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-name": "little seoul",
+     "restaurant-area": "centre",
+     "restaurant-bookpeople": "2"
+    }
+   },
+   "census": {
+    "2.1": {
+     "label": "none",
+     "how": null,
+     "offer_kinds": {
+      "restaurant": [
+       "booking-inform",
+       "inform-entity"
+      ]
+     },
+     "offered": {
+      "restaurant": {
+       "name": [
+        "little seoul restaurant"
+       ]
+      }
+     }
+    },
+    "2.2": {
+     "label": "accept",
+     "how": "explicit",
+     "offer_kinds": {
+      "restaurant": [
+       "booking-inform",
+       "inform-entity"
+      ]
+     },
+     "offered": {
+      "restaurant": {
+       "name": [
+        "little seoul restaurant"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "index": 7,
+   "speaker": "system",
+   "text": "I'd be happy to reserve for you, what day and time are you looking for?",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Booking-Request",
+      "slot": "Time",
+      "value": "?"
+     },
+     {
+      "act": "Booking-Request",
+      "slot": "Day",
+      "value": "?"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Booking-Request",
+      "slot": "bookday",
+      "value": "?"
+     },
+     {
+      "act": "Booking-Request",
+      "slot": "booktime",
+      "value": "?"
+     }
+    ]
+   }
+  },
+  {
+   "index": 8,
+   "speaker": "user",
+   "text": "Thank you, I need a reservation for 2 people at 13:15 on Monday.",
+   "acts": {
+    "2.1": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Time",
+      "value": "13:15"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "Day",
+      "value": "monday"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "People",
+      "value": "2"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Restaurant-Inform",
+      "slot": "bookday",
+      "value": "monday"
+     },
+     {
+      "act": "Restaurant-Inform",
+      "slot": "booktime",
+      "value": "13:15"
+     }
+    ]
+   },
+   "state": {
+    "2.1": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre",
+     "restaurant-booktime": "13:15",
+     "restaurant-bookday": "monday",
+     "restaurant-bookpeople": "2"
+    },
+    "2.2": {
+     "restaurant-area": "centre",
+     "restaurant-bookday": "monday",
+     "restaurant-bookpeople": "2",
+     "restaurant-booktime": "13:15",
+     "restaurant-food": "korean",
+     "restaurant-name": "little seoul",
+     "restaurant-pricerange": "expensive"
+    },
+    "2.4": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-name": "little seoul",
+     "restaurant-area": "centre",
+     "restaurant-booktime": "13:15",
+     "restaurant-bookday": "monday",
+     "restaurant-bookpeople": "2"
+    }
+   }
+  },
+  {
+   "index": 9,
+   "speaker": "system",
+   "text": "GG3DCUFD is your confirmation code, may I help you with anything else?",
+   "acts": {
+    "2.1": [
+     {
+      "act": "general-reqmore",
+      "slot": "none",
+      "value": "none"
+     },
+     {
+      "act": "Booking-Book",
+      "slot": "Ref",
+      "value": "GG3DCUFD"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "Booking-Book",
+      "slot": "ref",
+      "value": "GG3DCUFD"
+     },
+     {
+      "act": "general-reqmore",
+      "slot": "none",
+      "value": "none"
+     }
+    ]
+   }
+  },
+  {
+   "index": 10,
+   "speaker": "user",
+   "text": "No that was everything. Thanks",
+   "acts": {
+    "2.1": [
+     {
+      "act": "general-thank",
+      "slot": "none",
+      "value": "none"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "general-thank",
+      "slot": "none",
+      "value": "none"
+     }
+    ]
+   },
+   "state": {
+    "2.1": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-area": "centre",
+     "restaurant-booktime": "13:15",
+     "restaurant-bookday": "monday",
+     "restaurant-bookpeople": "2"
+    },
+    "2.2": {
+     "restaurant-area": "centre",
+     "restaurant-bookday": "monday",
+     "restaurant-bookpeople": "2",
+     "restaurant-booktime": "13:15",
+     "restaurant-food": "korean",
+     "restaurant-name": "little seoul",
+     "restaurant-pricerange": "expensive"
+    },
+    "2.4": {
+     "restaurant-food": "korean",
+     "restaurant-pricerange": "expensive",
+     "restaurant-name": "little seoul",
+     "restaurant-area": "centre",
+     "restaurant-booktime": "13:15",
+     "restaurant-bookday": "monday",
+     "restaurant-bookpeople": "2"
+    }
+   }
+  },
+  {
+   "index": 11,
+   "speaker": "system",
+   "text": "Thank you for using our services.",
+   "acts": {
+    "2.1": [
+     {
+      "act": "general-bye",
+      "slot": "none",
+      "value": "none"
+     }
+    ],
+    "2.2": [
+     {
+      "act": "general-bye",
+      "slot": "none",
+      "value": "none"
+     }
+    ]
+   }
+  }
+ ]
+}
