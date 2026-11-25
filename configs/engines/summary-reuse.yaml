@@ -1,0 +1,11 @@
+# Rolling summary plus recent raw text, mode reuse (plan 7.2): "rewrite" rewrites the summary
+# whenever messages leave the recent window ("expensive"); "reuse" appends summary blocks and never
+# rewrites them ("wrong"). Window and block sizes are placeholders until fixed on development data.
+engine: summary
+description: Rolling summary (reuse) plus recent raw text
+prefix_caching: false
+params:
+  mode: reuse
+  recent_k: 8
+  block_size: 8
+  max_summary_tokens: 512
