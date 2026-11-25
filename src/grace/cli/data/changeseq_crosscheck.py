@@ -31,9 +31,12 @@ therefore runs twice:
   disagreement is a compiler, IR-template or reference-function fault.
 
 A disagreement on `full` whose `own-positive` counterpart agrees is reported as *explained* by
-that gap. V3's witness is compared after collapsing the generator's per-member witness sets into
-one union set (the compiler's convention, plan 3.4); raw V3 witness differences are counted
+that gap. Witnesses are compared raw; the V3 count witness is one union witness on both sides
+(plan 3.4, user decision of 2026-11-25), and raw V3 witness differences are also counted
 separately.
+
+The node the run belongs to (`task` in run.json) is `--task`, by default the node directory of
+`--out` (`runs_root/<NODE>/...`), so that reruns by another node are labelled with that node.
 
 Writes `run.json`, `summary.json`, `mismatches.jsonl` and `queries.txt` into a new directory under
 runs_root. Refuses a dirty worktree unless `--allow-dirty`, and any sequence not in the
@@ -44,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import sys
 import traceback
@@ -179,15 +183,6 @@ def canonical(result: QueryResult) -> dict[str, Any]:
             "ev": sorted({e for a in result.answers for e in a.evidence})}
 
 
-def union_witnesses(value: Mapping[str, Any]) -> dict[str, Any]:
-    """V3: one witness, the union of the member witnesses (plan 3.4; the compiler's form)."""
-    wit = []
-    for answer, sets in value["wit"]:
-        union = sorted({e for s in sets for e in s})
-        wit.append([answer, [union] if union else []])
-    return {**value, "wit": wit}
-
-
 # ---------------------------------------------------------------------------------------------
 # Graphs
 
@@ -266,11 +261,8 @@ def check_sequence(store: ClaimStore, bindings: Sequence[Binding], world: World,
         if b.template == "V3":
             out.v3_raw_witness_mismatch += sum(g["wit"] != w["wit"] for g, w in zip(
                 got, want, strict=True))
-            want_cmp = [union_witnesses(w) for w in want]
-        else:
-            want_cmp = want
         out.by_template[b.template] += n + 1
-        for t, (g, w) in enumerate(zip(got, want_cmp, strict=True)):
+        for t, (g, w) in enumerate(zip(got, want, strict=True)):
             if g != w:
                 out.value_mismatch[b.template] += 1
                 part = next(k for k in ("ans", "wit", "ev") if g[k] != w[k])
@@ -356,6 +348,15 @@ def queries_text(bindings: Sequence[Binding], world: World, mode: str) -> str:
 # Entry point
 
 
+NODE = re.compile(r"[TE]\d{3}")
+
+
+def node_of(out: Path, runs: Path) -> str | None:
+    """The node directory of a run directory `runs_root/<NODE>/...`, if it names a node."""
+    first = out.relative_to(runs).parts[0]
+    return first if NODE.fullmatch(first) else None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("dataset_run", type=Path,
@@ -364,11 +365,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--modes", nargs="+", default=["rdf11"], choices=["rdf11", "rdf12"],
                         help="claim serialisations to execute on")
     parser.add_argument("--allow-dirty", action="store_true")
+    parser.add_argument("--task", help="node of this run (T<NNN> or E<NNN>); default: the node "
+                        "directory of --out")
     args = parser.parse_args(argv)
     runs = shared_dir("runs_root").resolve()
     out, upstream = args.out.resolve(), args.dataset_run.resolve()
     if runs not in out.parents:
         parser.error(f"--out must lie under {runs}")
+    task = args.task or node_of(out, runs)
+    if task is None or not NODE.fullmatch(task):
+        parser.error("cannot tell the node from --out; pass --task T<NNN> or E<NNN>")
     if out.exists():
         parser.error(f"{out} exists; a run directory is created exclusively")
     up_run = json.loads((upstream / "run.json").read_text(encoding="utf-8"))
@@ -383,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"dataset manifest {manifest} differs from the upstream run.json")
     out.mkdir(parents=True)
     run = {
-        "run_id": out.name, "task": "T015", "stage": "check", "upstream": [up_run["run_id"]],
+        "run_id": out.name, "task": task, "stage": "check", "upstream": [up_run["run_id"]],
         "status": "running", "code_sha": code.sha, "code_dirty": code.dirty,
         "config_path": up_run["config_path"], "config_sha256": up_run["config_sha256"],
         "resources_sha256": resources_sha256(), "seed": up_run["seed"],
