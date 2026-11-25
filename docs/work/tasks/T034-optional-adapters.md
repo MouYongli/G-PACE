@@ -49,3 +49,4 @@ Adapters for the summary-table benchmarks and the optional external systems (pla
   - Rows: Graphiti on Qwen3-8B (main protocol) and a separate row on its native backbone (the OpenAI models that the pinned version defaults to). The native row calls a hosted API and spends money, so it needs the user's approval and budget before it runs.
   - Engine code goes under `eval/engines/baselines/` in a later round (outside this round's write scope). Order: LoCoMo development histories first, then the other benchmarks.
 - 2026-11-25: acceptance: item 1 met by the T002 adapters (evidence above); item 2 `make test` (377 tests, OK) and `make lint` (ruff, all checks passed) on `795cb9e`. Graphiti and Mem0g adapters are not written; the node stays open for them.
+- 2026-11-25: the user confirmed the HaluMem projection recorded above (decision for the user to confirm, same day).

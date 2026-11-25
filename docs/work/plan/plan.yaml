@@ -383,12 +383,12 @@ nodes:
     type: task
     title: Views and rendering
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T017, T004, T009]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 65
+    owner: m01-T018
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T018-views-rendering.md
   - id: T019
     type: task
@@ -750,11 +750,11 @@ nodes:
     type: task
     title: Optional benchmark and system adapters
     milestone: M6
-    status: planned
+    status: active
     depends_on: [T002, T003]
-    issue: null
-    owner: null
-    start: null
+    issue: 68
+    owner: m01-T034
+    start: 2026-11-25
     finish: null
     file: ../tasks/T034-optional-adapters.md
   - id: T035
