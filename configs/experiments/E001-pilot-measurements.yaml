@@ -27,7 +27,9 @@ serving:
     args: [--max-model-len, "32768"]
   conditions:
     apc-on: {prefix_caching: true, args: []}
-    apc-off: {prefix_caching: false, args: [--disable-prefix-caching]}
+    # apc-off runs on its own server on port 8101 (after the embedding server stopped), next to the
+    # apc-on server on 8100, on the same GPU (design change of 2026-11-25, see the experiment Log).
+    apc-off: {prefix_caching: false, port: 8101, args: [--disable-prefix-caching]}
 
 benchmarks:
   locomo: {split: dev}
