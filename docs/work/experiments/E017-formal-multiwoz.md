@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-On the 1,000 test dialogues, does the system keep the original constraint and report the current selection after a system offer? Primary evidence for the role claim of RQ1, unless D007 moved it to the controlled sequences.
+On the 1,000 test dialogues, does the system keep the original constraint and report the current selection after a system offer? Primary evidence for the attribution-guard claim of RQ1, unless D007 moved it to the controlled sequences.
 
 ## Design
 

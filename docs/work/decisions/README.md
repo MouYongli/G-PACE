@@ -11,11 +11,11 @@ A decision records a choice that constrains later work: context, options, the ch
 | [D003](D003-agent-workspace-layout.md) | Agent workspace layout and language policy | `.agents/` as single source, worktrees, language policy, docs layout |
 | [D004](D004-python-and-inference-environment.md) | Python version and inference environment | Python 3.12; CPU-only research environment; separate vLLM serving environment over HTTP |
 | [D005](D005-contribution-wording.md) | Wording of the proposition and contribution scope | Phase 0 gate: what the paper claims as new after the novelty check |
-| [D006](D006-model-lineup.md) | Model line-up and judge snapshot | Contemporary small model, long-context second reader, larger same-family writer and judge snapshot |
+| [D006](D006-model-lineup.md) | Model line-up and judge snapshot | Contemporary small model, long-context second answering model, larger same-family writer and judge snapshot |
 | [D007](D007-gate-evidence-placement.md) | Phase 1 gate: evidence placement | Where each claim's primary evidence sits after the pilot measurements |
 | [D008](D008-gate-paper-framing.md) | Phase 2 gate: paper framing | Whether view maintenance remains a cost claim |
 | [D009](D009-gate-extraction-bottleneck.md) | Phase 3 gate: extraction bottleneck | What the extracted-graph results allow the paper to claim; main extraction granularity |
-| [D010](D010-gate-role-claims.md) | Phase 4 gate: role and open-predicate claims | How far the role and open-predicate claims are narrowed |
+| [D010](D010-gate-attribution-guard-claims.md) | Phase 4 gate: attribution-guard and open-predicate claims | How far the attribution-guard and open-predicate claims are narrowed |
 | [D011](D011-vocabulary-go-no-go.md) | Whether to run vocabulary evolution | Go or no-go for the optional phase 5 |
 | [D012](D012-configuration-lock.md) | Configuration lock | Freeze of configuration, splits, judging rules, budgets and non-inferiority margins |
 | [D013](D013-code-structure.md) | Code structure and dependency rules | Packages of `src/grace/`, their import rules and how experiments run in stages; layout in `../plan/structure.md` |

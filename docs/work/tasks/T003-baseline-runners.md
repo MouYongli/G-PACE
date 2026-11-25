@@ -8,7 +8,7 @@ created: 2026-11-21
 
 ## Goal
 
-Runnable baselines needed by the pilot: same-reader full history, text retrieval (BM25, dense, RRF), rolling summary with recent raw text, and the fixed-schema slot table with roles and provenance, all producing predictions and cost-ledger entries under the T001 contracts.
+Runnable baselines needed by the pilot: full history with the same answering LLM, text retrieval (BM25, dense, RRF), rolling summary with recent raw text, and the fixed-schema slot table with speaker and communicative-function fields and provenance, all producing predictions and cost-ledger entries under the T001 contracts.
 
 ## Scope
 

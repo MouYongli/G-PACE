@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Goal
 
-The generator designed in T008: natural English dialogues whose ground truth is a program event log, covering the seven change classes of plan section 6.4, with a gold claim graph at every version, a read schedule with gold answers and witnesses, and per-message answer and citation staleness for every template view.
+The generator designed in T008: natural English dialogues whose ground truth is a program event log, covering the seven change types of plan section 6.4, with a gold claim graph at every version, a read schedule with gold answers and witnesses, and per-message answer and citation staleness for every template view.
 
 ## Scope
 

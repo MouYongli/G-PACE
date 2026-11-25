@@ -8,15 +8,15 @@ created: 2026-11-23
 
 ## Question
 
-How often do the seven change classes of plan section 6.4 occur per thousand messages in natural dialogue, and how many are missed by citation-based dependencies? Serves RQ2. If the three missed classes are rare, view maintenance is positioned for high-revision workloads.
+How often do the seven change types of plan section 6.4 occur per thousand messages in natural dialogue, and how many are missed by citation-based dependencies? Serves RQ2. If the three missed types are rare, view maintenance is positioned for high-revision workloads.
 
 ## Design
 
 | Item | Value |
 | --- | --- |
 | Benchmarks and splits | LoCoMo development histories (conv-26, conv-49); LongMemEval development histories |
-| Systems and baselines | One-off extraction prompt and hand-written queries over the template views of plan section 5.4; no reader |
-| Metrics | Occurrences per thousand messages by change class; ratio of citation to answer staleness; misses of the two citation-based strategies |
+| Systems and baselines | One-off extraction prompt and hand-written queries over the template views of plan section 5.4; no answering LLM |
+| Metrics | Occurrences per thousand messages by change type; ratio of citation to answer staleness; misses of the two citation-based strategies |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E002-rough-staleness-distribution.yaml` (to be created) |
 

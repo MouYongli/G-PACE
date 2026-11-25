@@ -13,7 +13,7 @@ The gold-graph results decide the framing of the paper (plan section 9, phase 2 
 ## Options
 
 - Template serialisation ties with LLM rendering (E005): the paper becomes 'a staleness criterion plus computing at query time' and later cost experiments shrink.
-- Re-querying is never more expensive in the scale experiment (E004): RQ2 narrows to 'freshness checks are cheap'; push matching is reported as an implementation.
+- Re-querying is never more expensive in the scale experiment (E004): RQ2 narrows to 'exact staleness checks are cheap'; push matching is reported as an implementation.
 - Neither: keep the three claims as planned.
 
 ## Decision

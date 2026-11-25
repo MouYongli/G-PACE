@@ -8,12 +8,12 @@ created: 2026-11-23
 
 ## Goal
 
-The baselines of plan section 7.2 that need the writer: a fixed-schema slot table with roles and sources, an append-only memory that resolves conflicts at query time without caching, the template-serialisation variant of the system, and hybrid retrieval over chunks tagged with speaker and dialogue act.
+The baselines of plan section 7.2 that need the writer: a fixed-schema slot table with speaker and communicative-function fields and sources, an append-only memory that resolves conflicts at query time without caching, the template-serialisation variant of the system, and hybrid retrieval over chunks tagged with speaker and dialogue act.
 
 ## Scope
 
 - In scope:
-  - All use the same reader, answer prompt and budgets.
+  - All use the same answering LLM, answer prompt and budgets.
   - Tags are predicted by the same writer and their tokens are charged.
 - Out of scope: External systems (T029, T034).
 - Layout (decision D013): a system that reuses the GRACE assembly is a config under `configs/engines/`, and the component it replaces lives in `src/grace/context/` next to the original. This holds for the template-serialisation variant, query-time resolution without views, and the slot table of ablation B. Only tagged hybrid retrieval, which does not use the GRACE assembly, goes to `src/grace/eval/engines/baselines/`.

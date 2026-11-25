@@ -25,9 +25,9 @@ milestones:           # research plan section 9; one milestone per implementatio
     due: null
     gate_node: D007   # the decision node that applies this gate
     gate: >-
-      Few MultiWOZ offer turns: the role claim's primary evidence moves to the controlled
-      sequences. Narrow spread of LoCoMo read points: streaming moves to the supplementary
-      material. Fragment coverage below one half: lower expectations for RQ1 on LoCoMo. The
+      Few MultiWOZ offer turns: the primary evidence for the attribution-guard claim moves to
+      the controlled sequences. Narrow spread of LoCoMo read points: streaming moves to the
+      supplementary material. Fragment coverage below one half: lower expectations for RQ1 on LoCoMo. The
       write budget cannot pay back on paper: claim no token savings on LoCoMo. The changes
       missed by citation-based dependencies are rare in natural dialogue: view maintenance
       targets high-revision workloads, with RQ2 resting on the controlled sequences.
@@ -36,10 +36,10 @@ milestones:           # research plan section 9; one milestone per implementatio
     due: null
     gate_node: D008   # the decision node that applies this gate
     gate: >-
-      If template serialisation ties with LLM rendering on reader accuracy, the paper becomes
+      If template serialisation ties with LLM rendering on answer accuracy, the paper becomes
       "a staleness criterion plus computing at query time" and view maintenance is no longer a
       cost claim. If re-querying at read time is not more expensive anywhere in the range of
-      the scale experiment, narrow RQ2 to "freshness checks are cheap".
+      the scale experiment, narrow RQ2 to "exact staleness checks are cheap".
   - id: M3
     title: End-to-end extraction and planning
     due: null
@@ -53,9 +53,9 @@ milestones:           # research plan section 9; one milestone per implementatio
     due: null
     gate_node: D010   # the decision node that applies this gate
     gate: >-
-      If tagged hybrid retrieval obtains most of the role gain, narrow the conclusion to "role
-      information helps". If the fixed slot table ties on open-domain slices, claim no gain
-      from open predicates.
+      If tagged hybrid retrieval obtains most of the gain attributed to the guard, narrow the
+      conclusion to "speaker and dialogue-act information helps". If the fixed slot table ties
+      on open-domain slices, claim no gain from open predicates.
   - id: M5
     title: Vocabulary evolution
     due: null
@@ -644,7 +644,7 @@ nodes:
     file: ../tasks/T031-locomo-streaming.md
   - id: E011
     type: experiment
-    title: "Ablation B: roles, representation, time"
+    title: "Ablation B: attribution guard, representation, time"
     milestone: M4
     status: planned
     depends_on: [T026, T027, T028, T015]
@@ -652,7 +652,7 @@ nodes:
     owner: null
     start: null
     finish: null
-    file: ../experiments/E011-ablation-b-roles.md
+    file: ../experiments/E011-ablation-b-attribution-guard.md
   - id: E012
     type: experiment
     title: "Ablation D: retrieval channels"
@@ -688,7 +688,7 @@ nodes:
     file: ../experiments/E014-dev-quality-cost.md
   - id: D010
     type: decision
-    title: "Phase 4 gate: role and open-predicate claims"
+    title: "Phase 4 gate: attribution-guard and open-predicate claims"
     milestone: M4
     status: proposed
     depends_on: [E011, E012, E014]
@@ -696,11 +696,11 @@ nodes:
     owner: null
     start: 2026-11-23
     finish: null
-    file: ../decisions/D010-gate-role-claims.md
+    file: ../decisions/D010-gate-attribution-guard-claims.md
   # ---- M5 · Vocabulary evolution
   - id: T032
     type: task
-    title: Vocabulary maintenance role
+    title: Vocabulary maintenance call
     milestone: M5
     status: planned
     depends_on: [D011, T022]
@@ -708,10 +708,10 @@ nodes:
     owner: null
     start: null
     finish: null
-    file: ../tasks/T032-vocabulary-role.md
+    file: ../tasks/T032-vocabulary-maintenance.md
   - id: E015
     type: experiment
-    title: Ablations F and H; role invocation arm of G
+    title: Ablations F and H; call-type invocation arm of G
     milestone: M5
     status: planned
     depends_on: [T032, T025]

@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-Does an LLM-rendered view help the reader more than a template serialisation of the same result rows? This is the premise of RQ3. If the template ties, nothing expensive needs caching and the paper becomes 'a staleness criterion plus computing at query time'.
+Does an LLM-rendered view help the answering LLM more than a template serialisation of the same result rows? This is the premise of RQ3. If the template ties, nothing expensive needs caching and the paper becomes 'a staleness criterion plus computing at query time'.
 
 ## Design
 
@@ -16,7 +16,7 @@ Does an LLM-rendered view help the reader more than a template serialisation of 
 | --- | --- |
 | Benchmarks and splits | Controlled change sequences, development template families, gold graphs |
 | Systems and baselines | Template serialisation; LLM rendering; raw-text window as reference; equal display budget |
-| Metrics | Reader accuracy and the paired difference; render-check failure rate; rendering tokens on the write side |
+| Metrics | Answer accuracy and the paired difference; render-check failure rate; rendering tokens on the write side |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E005-ablation-c-gold.yaml` (to be created) |
 

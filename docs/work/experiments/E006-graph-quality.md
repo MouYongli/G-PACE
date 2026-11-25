@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-How good is the extracted graph itself: claim precision, recall and F1, role and time fields, and how often a restatement counts as independent evidence? Serves all three research questions as the error source of the graph channel.
+How good is the extracted graph itself: claim precision, recall and F1, attribution and time fields, and how often a restatement counts as independent evidence? Serves all three research questions as the error source of the graph channel.
 
 ## Design
 
@@ -16,7 +16,7 @@ How good is the extracted graph itself: claim precision, recall and F1, role and
 | --- | --- |
 | Benchmarks and splits | Annotated segments from T024; controlled sequences with gold graphs |
 | Systems and baselines | Primary writer at the main configuration |
-| Metrics | Claim precision, recall, F1; shape conformance and retries; whether the cited span entails the claim; role and time accuracy; answer coverage upper bound |
+| Metrics | Claim precision, recall, F1; shape conformance and retries; whether the cited span entails the claim; attribution and time accuracy; answer coverage upper bound |
 | Seeds and budget | TBD in config |
 | Config | `configs/experiments/E006-graph-quality.yaml` (to be created) |
 
