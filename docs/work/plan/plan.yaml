@@ -206,11 +206,11 @@ nodes:
     type: experiment
     title: Pilot measurements
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T002, T003, T004, D002, D006]
-    issue: null
-    owner: null
-    start: null
+    issue: 69
+    owner: m01-E001
+    start: 2026-11-25
     finish: null
     file: ../experiments/E001-pilot-measurements.md
   - id: D002
