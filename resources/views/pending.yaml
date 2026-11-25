@@ -1,0 +1,14 @@
+# Template family "candidates awaiting acceptance" (plan 5.4; change-sequences.md 6.2, V5).
+# The fragment allows one NOT EXISTS (plan 3.3), so the reference's two negated patterns (no user
+# accept, no user reject) are written as one: no stance of the user on the offered claim. The two
+# agree whenever the user's only stances on offered claims are accept and reject.
+family: pending
+reference: V5
+binding: task
+title: "candidates offered for {subject} and not yet accepted"
+query: |
+  SELECT ?item WHERE {
+    ($subject, $choice, ?item) [$assistant, offer]
+    NOT EXISTS { ($subject, $choice, ?item) [$user, _] }
+  }
+sentence: "Offered for {subject} and not yet accepted: {item}."

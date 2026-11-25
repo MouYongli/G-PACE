@@ -1,0 +1,9 @@
+# Template family "original constraints of a task" (plan 5.4; change-sequences.md 6.2, V4): the
+# constraints the user requested and has not revised. Offers never enter it.
+family: constraints
+reference: V4
+binding: task
+title: "constraints requested for {subject}"
+query: |
+  SELECT ?constraint ?value WHERE { ($subject, ?constraint, ?value) [$user, request] }
+sentence: "Requested for {subject}: {constraint} {value}."

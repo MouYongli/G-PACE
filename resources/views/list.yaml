@@ -1,0 +1,12 @@
+# Template family "multi-valued attribute list of an entity" (plan 5.4; change-sequences.md 6.2, V1).
+# Placeholders in `query`: $subject (entity), $predicate (predicate name), $user, $assistant,
+# $state_speaker (`_` when the config leaves it null) and $choice (from the view config).
+# Placeholders in `sentence` and `title`: {subject}, {predicate} (humanised) and the answer variables of the query by name ({count} for the counted column).
+family: list
+reference: V1
+binding: entity_predicate
+predicates: multi_valued
+title: "{predicate} of {subject}"
+query: |
+  SELECT ?value WHERE { ($subject, $predicate, ?value) [$state_speaker, inform] }
+sentence: "{subject} {predicate} {value}."
