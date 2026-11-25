@@ -184,23 +184,23 @@ nodes:
     type: task
     title: Baseline runners
     milestone: M1
-    status: active
+    status: done
     depends_on: [T001, D013]
     issue: 31
     owner: m01-T003
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T003-baseline-runners.md
   - id: T004
     type: task
     title: Prompts, counters, judges
     milestone: M1
-    status: active
+    status: done
     depends_on: [T001, D013]
     issue: 32
     owner: m01-T004
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T004-prompts-counters-judges.md
   - id: E001
     type: experiment
