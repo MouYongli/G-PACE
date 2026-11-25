@@ -1,0 +1,54 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: library-holds
+group: leisure
+title: Library holds
+companions: [Ansgar, Esme, Jovan, Liesel, Nikos]
+multi:
+  predicate: readsGenre
+  noun: book genres
+  lexicon: [crime novels, poetry, science fiction, biographies, travel writing, graphic novels,
+            historical fiction, cookbooks, fantasy, essays]
+  first: "I read {o}"
+  second: "you read {o}"
+  third: "{x} reads {o}"
+  first_neg: "I no longer read {o}"
+  third_neg: "{x} no longer reads {o}"
+  ask_first: "Which book genres do I read?"
+  ask_third: "Which book genres does {x} read?"
+  count_first: "How many book genres do I read?"
+  count_third: "How many book genres does {x} read?"
+exclusive:
+  predicate: memberOfBranch
+  noun: library branch
+  lexicon: [Central Branch, Riverside Branch, Hilltop Branch, Market Branch, Parkside Branch,
+            Station Branch, Harbour Branch, Castle Branch, Meadow Branch, Bridge Branch]
+  first: "I am a member of the {o}"
+  second: "you are a member of the {o}"
+  third: "{x} is a member of the {o}"
+  change_first: "I switched to the {o}"
+  change_third: "{x} switched to the {o}"
+  past_first: "I was a member of the {o}"
+  past_third: "{x} was a member of the {o}"
+  ask_first: "Which library branch am I a member of?"
+  ask_third: "Which library branch is {x} a member of?"
+task:
+  noun: book hold
+  constraints:
+    - {predicate: bookFormat, datatype: string, request: "I want the {v}",
+       lexicon: [hardcover, paperback, audiobook, e-book, large print, illustrated edition]}
+    - {predicate: holdLength, datatype: string, request: "please keep it for {v}",
+       lexicon: [7 days, 10 days, 14 days, 21 days, 28 days, 30 days]}
+  catalogue: {predicate: readyFrom, datatype: time, noun: collection time,
+              phrase: "is ready for collection from {v}",
+              lexicon: ["09:15:00", "10:05:00", "11:30:00", "12:50:00", "14:35:00", "15:45:00", "17:15:00", "18:50:00"]}
+  items:
+    - {id: book-salt-road, label: The Salt Road}
+    - {id: book-winter-orchard, label: Winter Orchard}
+    - {id: book-small-things, label: A Map of Small Things}
+    - {id: book-glass-lighthouse, label: The Glass Lighthouse}
+    - {id: book-quiet-harbours, label: Quiet Harbours}
+    - {id: book-clockmaker, label: The Clockmaker's Daughter}
+    - {id: book-north-of-nowhere, label: North of Nowhere}
+    - {id: book-paper-moons, label: Paper Moons}
+    - {id: book-long-meadow, label: The Long Meadow}
+    - {id: book-bright-islands, label: Bright Islands}

@@ -1,0 +1,19 @@
+# Development / held-out split of the scenario families (design docs/research/change-sequences.md,
+# section 11). Families that share a non-core predicate, an entity type outside the core or a value
+# lexicon form one domain group; whole groups are assigned to development by the seeded
+# permutation of `template_families.compute_split` until exactly `n_development` families are
+# reached. The groups below were committed before any sequence was generated;
+# `template_families.load_split` recomputes the assignment and fails if it differs.
+seed: change-seq-split-v1
+n_development: 5
+groups:
+  travel: [train-travel, flight-travel, car-rental]
+  lodging: [hotel-stay, apartment-search]
+  dining: [restaurant-booking, grocery-delivery]
+  events: [concert-tickets, event-planning, gift-ordering]
+  learning: [music-lessons, course-enrolment, language-tutoring]
+  health: [dental-appointments, pet-care]
+  leisure: [sports-club, library-holds]
+  operations: [service-operations, meeting-room-booking, home-repair]
+development_groups: [lodging, travel]
+held_out_groups: [dining, events, health, learning, leisure, operations]

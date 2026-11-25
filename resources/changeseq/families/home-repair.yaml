@@ -1,0 +1,54 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: home-repair
+group: operations
+title: Home repair
+companions: [Ruben, Aaliyah, Eckhart, Noemi, Svea]
+multi:
+  predicate: ownsAppliance
+  noun: appliances
+  lexicon: [dishwasher, tumble dryer, chest freezer, coffee machine, robot vacuum, bread maker,
+            water softener, heat pump, wine fridge, steam oven]
+  first: "I own a {o}"
+  second: "you own a {o}"
+  third: "{x} owns a {o}"
+  first_neg: "I no longer own a {o}"
+  third_neg: "{x} no longer owns a {o}"
+  ask_first: "Which appliances do I own?"
+  ask_third: "Which appliances does {x} own?"
+  count_first: "How many appliances do I own?"
+  count_third: "How many appliances does {x} own?"
+exclusive:
+  predicate: rentsFrom
+  noun: landlord
+  lexicon: [Keller Estates, Hofmann Housing, Brightdoor Homes, Stadtbau Nord, Urban Nest,
+            Lindgren Property, Mosaic Living, Crestview Lettings, Altbau Partners, Weststadt Wohnen]
+  first: "I rent from {o}"
+  second: "you rent from {o}"
+  third: "{x} rents from {o}"
+  change_first: "I now rent from {o}"
+  change_third: "{x} now rents from {o}"
+  past_first: "I rented from {o}"
+  past_third: "{x} rented from {o}"
+  ask_first: "Who do I rent from?"
+  ask_third: "Who does {x} rent from?"
+task:
+  noun: repair appointment
+  constraints:
+    - {predicate: repairType, datatype: string, request: "it is about a {v}",
+       lexicon: [leaking tap, broken boiler, blocked drain, faulty socket, cracked window, stuck door]}
+    - {predicate: repairBudget, datatype: string, request: "I can spend up to {v}",
+       lexicon: [100 euros, 200 euros, 300 euros, 450 euros, 600 euros, 800 euros]}
+  catalogue: {predicate: technicianArrival, datatype: time, noun: technician arrival,
+              phrase: "can send a technician at {v}",
+              lexicon: ["07:20:00", "08:40:00", "10:00:00", "11:20:00", "13:00:00", "14:40:00", "16:00:00", "17:20:00"]}
+  items:
+    - {id: repair-fixright, label: FixRight}
+    - {id: repair-handwerk, label: Handwerk Hoch}
+    - {id: repair-quickmend, label: QuickMend}
+    - {id: repair-rohr, label: Rohr Rapid}
+    - {id: repair-spark, label: Spark and Sons}
+    - {id: repair-tapteam, label: TapTeam}
+    - {id: repair-bauhilfe, label: Bauhilfe Blitz}
+    - {id: repair-homehelp, label: HomeHelp Plus}
+    - {id: repair-wolf, label: Werkstatt Wolf}
+    - {id: repair-rangers, label: Repair Rangers}

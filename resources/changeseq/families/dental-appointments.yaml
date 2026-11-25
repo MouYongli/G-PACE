@@ -1,0 +1,54 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: dental-appointments
+group: health
+title: Dental appointments
+companions: [Marlene, Femi, Torsten, Alba, Keiko]
+multi:
+  predicate: takesMedication
+  noun: medications
+  lexicon: [ibuprofen, aspirin, metformin, insulin, levothyroxine, amoxicillin, omeprazole,
+            cetirizine, warfarin, salbutamol]
+  first: "I take {o}"
+  second: "you take {o}"
+  third: "{x} takes {o}"
+  first_neg: "I no longer take {o}"
+  third_neg: "{x} no longer takes {o}"
+  ask_first: "Which medications do I take?"
+  ask_third: "Which medications does {x} take?"
+  count_first: "How many medications do I take?"
+  count_third: "How many medications does {x} take?"
+exclusive:
+  predicate: insuredWith
+  noun: health insurer
+  lexicon: [Alpina Health, Nordkasse, Medivita, Sanaplus, Vitalis Care, Corvia Health,
+            Helvo Insurance, Prima Salus, Orbis Health, Lumen Care]
+  first: "I am insured with {o}"
+  second: "you are insured with {o}"
+  third: "{x} is insured with {o}"
+  change_first: "I switched my health insurance to {o}"
+  change_third: "{x} switched health insurance to {o}"
+  past_first: "I was insured with {o}"
+  past_third: "{x} was insured with {o}"
+  ask_first: "Who am I insured with?"
+  ask_third: "Who is {x} insured with?"
+task:
+  noun: dental appointment
+  constraints:
+    - {predicate: treatment, datatype: string, request: "I need a {v}",
+       lexicon: [cleaning, filling, check-up, crown fitting, whitening session, root canal]}
+    - {predicate: preferredSlot, datatype: string, request: "I prefer {v} slots",
+       lexicon: [early morning, late morning, lunchtime, early afternoon, late afternoon, early evening]}
+  catalogue: {predicate: appointmentTime, datatype: time, noun: appointment time,
+              phrase: "has a slot at {v}",
+              lexicon: ["07:50:00", "09:05:00", "10:25:00", "11:35:00", "13:50:00", "15:05:00", "16:25:00", "17:35:00"]}
+  items:
+    - {id: dentist-okafor, label: Dr. Okafor}
+    - {id: dentist-lindqvist, label: Dr. Lindqvist}
+    - {id: dentist-moreau, label: Dr. Moreau}
+    - {id: dentist-petrova, label: Dr. Petrova}
+    - {id: dentist-nakamura, label: Dr. Nakamura}
+    - {id: dentist-alvarez, label: Dr. Alvarez}
+    - {id: dentist-brennan, label: Dr. Brennan}
+    - {id: dentist-costa, label: Dr. Costa}
+    - {id: dentist-haugen, label: Dr. Haugen}
+    - {id: dentist-silva, label: Dr. Silva}
