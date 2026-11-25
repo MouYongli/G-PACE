@@ -105,7 +105,7 @@ By domain (lenient): attraction 28.1%, hotel 24.3%, restaurant 18.3%, train 17.0
 
 ## Precision of the rule (manual check)
 
-**Status: checked by the agent session `m01-T006`, pending human confirmation.**
+**Status: checked by the agent session `m01-T006`, pending human confirmation.** The precision below is not human-verified. Human confirmation is done by the second annotator the user names under decision D007 (`docs/work/decisions/D007-gate-evidence-placement.md`, "Also recorded here"), before the two-annotator part of T006 starts.
 
 - **Sample.** 60 identified dev turns, drawn by seeded stratification (seed 6): 30 labelled accept, 30 labelled reject. The sample comes from the development split so that no test utterance is read. The rule is the same on both splits.
 - **Criterion.** A label is correct when the system turn makes an offer the user can take up, and the user's turn takes it up (accept) or turns it down (reject). When a turn declines part of an offer, an `accept` label counts as incorrect.
@@ -117,7 +117,7 @@ By domain (lenient): attraction 28.1%, hotel 24.3%, restaurant 18.3%, train 17.0
 - **Files.**
   - `docs/research/multiwoz-offer-turns-check.tsv` (tracked): turn ID, label, offer kinds, verdict and note; no utterance text.
   - `$PROJECT_ROOT/runs/T006/artifacts/manual-check/check_sample_verdicts.tsv`: the same rows with the three-turn context, offered values and act evidence, for a human to re-check.
-- **Not done here.** Plan 6.5 asks for two annotators on 200 turns with Cohen's κ for the derivation rule. This check covers 60 turns by one (agent) checker and gives no κ.
+- **Not done here.** Plan 6.5 asks for two annotators on 200 turns with Cohen's κ for the derivation rule. This check covers 60 turns by one (agent) checker and gives no κ. That part waits for the D007 annotator.
 
 ## Interval width and recommendation (plan 6.5)
 
@@ -132,7 +132,7 @@ By domain (lenient): attraction 28.1%, hotel 24.3%, restaurant 18.3%, train 17.0
   | Accept turns only | 1,104 | 2.70 |
   | **Reject turns only** | **45** | **13.4** |
 
-- **Recommendation.** MultiWOZ offer turns **remain the primary evidence** for the role claim on accept-or-reject turns taken together. Every variant stays below 5 points except the reject-only slice. Rejections are too rare (45 test turns) to support any separate claim about rejection; that slice should be reported descriptively, with the controlled sequences carrying the rejection cases.
+- **Recommendation.** MultiWOZ offer turns **remain the primary evidence** for the attribution-guard claim of RQ1 (`census.json` still says "role claim", the wording at run time) on accept-or-reject turns taken together. Every variant stays below 5 points except the reject-only slice. Rejections are too rare (45 test turns) to support any separate claim about rejection; that slice should be reported descriptively, with the controlled sequences carrying the rejection cases.
 
 ## Limitations
 
