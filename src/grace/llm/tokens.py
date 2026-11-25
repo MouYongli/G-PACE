@@ -10,6 +10,7 @@ here; the model line-up is decision D006.
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -95,6 +96,18 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def read_chat_template(path: Path) -> str:
+    """The Jinja chat template in a pinned file: the file itself (`chat_template.jinja`), or the
+    `chat_template` string of a JSON tokenizer config (Qwen3 embeds it in tokenizer_config.json)."""
+    text = Path(path).read_text(encoding="utf-8")
+    if Path(path).suffix != ".json":
+        return text
+    template = json.loads(text).get("chat_template")
+    if not isinstance(template, str) or not template:
+        raise TokenizerPinError(f"{path.name} has no `chat_template` string")
+    return template
+
+
 def locate_snapshot(pin: TokenizerPin) -> Path:
     """Local snapshot directory of the pinned revision; never downloads."""
     from huggingface_hub import snapshot_download
@@ -131,8 +144,7 @@ class HFTokenCounter:
         self.pin = pin
         self.name = f"{pin.hf_repo}@{pin.revision}"
         self._tokenizer = AutoTokenizer.from_pretrained(str(snapshot), local_files_only=True)
-        template = (snapshot / pin.chat_template).read_text(encoding="utf-8")
-        self._tokenizer.chat_template = template  # the pinned file, whatever the config embeds
+        self._tokenizer.chat_template = read_chat_template(snapshot / pin.chat_template)
 
     @classmethod
     def from_model_config(cls, path: Path) -> HFTokenCounter:

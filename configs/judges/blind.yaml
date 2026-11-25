@@ -6,8 +6,23 @@ version: 1                        # bump on any change below; judgements name th
 prompt: judge                     # configs/common/prompts.yaml
 prompt_sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2
 parse: one_word                   # CORRECT / INCORRECT, else verdict invalid (judge.parse_label)
-model: null                       # judge snapshot: decision D006 (proposed). Pin a dated snapshot,
-                                  # available until publication, before E001 judges anything.
+model:                            # primary judge (decision D006): local, open weights, never retired
+  provider: vllm                  # served with scripts/serve-model.sh; reserve GPUs in runs/compute.yaml
+  hf_repo: deepseek-ai/DeepSeek-V4-Flash-0731
+  revision: 7872f01b1d1fe23eabc4c98b48bffcef5a386062
+  served_name: deepseek-ai/DeepSeek-V4-Flash-0731
+  licence: MIT
+  note: no Jinja chat template (encoding/encoding_dsv4.py); token counting and thinking mode are
+    settled before E001 judges anything
+comparison_model:                 # E001 only: agreement with the primary judge and with human labels
+  provider: azure-openai          # D006: secondary judge, budget EUR 50 for the whole project
+  model: gpt-4.1-mini
+  version: "2025-04-14"           # Azure lifecycle page: retires 2027-04-14 (deployments 2027-10-14)
+  deployment: Sweden Central, standard (not batch)
+  base_url_env: AZURE_OPENAI_ENDPOINT     # https://<resource>.openai.azure.com/openai/v1
+  deployment_env: AZURE_OPENAI_DEPLOYMENT # sent as `model`
+  api_key_env: AZURE_OPENAI_API_KEY       # never written to the repository
+  auth_header: api-key
 decoding:
   temperature: 0.0
   max_tokens: 10

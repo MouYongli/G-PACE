@@ -100,6 +100,21 @@ class ClientTest(unittest.TestCase):
         self.assertEqual((record.gpu_seconds, record.latency_ms), (4.0, 2000.0))
         self.assertEqual(srv.requests[0]["auth"], "Bearer secret")
 
+    def test_azure_api_key_header(self):
+        import os
+
+        os.environ["GRACE_TEST_KEY"] = "secret"
+        try:
+            with FakeServer([(200, completion("x"))]) as srv:
+                client = self.client(srv, endpoint={"api_key_env": "GRACE_TEST_KEY",
+                                                    "auth_header": "api-key"})
+                client.chat(MESSAGES, READ, prompt_sha256=None)
+        finally:
+            del os.environ["GRACE_TEST_KEY"]
+        self.assertEqual((srv.requests[0]["api_key"], srv.requests[0]["auth"]), ("secret", None))
+        with self.assertRaises(ValueError):
+            Endpoint(base_url="http://x/v1", served_model="m", model_label="m", auth_header="basic")
+
     def test_template_kwargs_of_the_pin_reach_the_server(self):
         pin = TokenizerPin.from_file(MODELS / "qwen3.5-9b.yaml")
         with FakeServer([(200, completion("x"))]) as srv:

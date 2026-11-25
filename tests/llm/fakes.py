@@ -36,6 +36,7 @@ class FakeServer:
                 length = int(self.headers["Content-Length"])
                 outer.requests.append({"path": self.path,
                                        "auth": self.headers.get("Authorization"),
+                                       "api_key": self.headers.get("api-key"),
                                        "body": json.loads(self.rfile.read(length))})
                 status, body = outer.replies.pop(0)
                 data = body if isinstance(body, str) else json.dumps(body)

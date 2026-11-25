@@ -1,10 +1,9 @@
-# Tokenizer and chat-template pin of a CANDIDATE model (T004). The model line-up is decision D006,
-# still proposed: this file pins what is in the local cache so that counting can be checked; it does
-# not choose a model. Checksums are SHA-256 of the files in the Hugging Face snapshot of `revision`;
-# grace.llm.tokens refuses to count when a file differs. The tokenizer files and chat template are
-# byte-identical to qwen3.5-9b.yaml, so both count the same.
+# Tokenizer and chat-template pin of a model chosen in decision D006 (long-context second answering model).
+# Checksums are SHA-256 of the files in the Hugging Face snapshot of `revision`; grace.llm.tokens
+# refuses to count when a file differs.
 model: qwen3.5-27b
-status: candidate                 # D006 proposed
+status: selected                  # D006 accepted
+role: long-context
 hf_repo: Qwen/Qwen3.5-27B
 revision: 81a287ca484a5e71148f5beb7f367bb5286d70f9
 served_name: Qwen/Qwen3.5-27B

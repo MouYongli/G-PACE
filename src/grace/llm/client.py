@@ -50,6 +50,9 @@ class Endpoint:
     served_model: str  # the `model` field sent to the server
     model_label: str  # recorded in `model`: served model and snapshot, e.g. repo@revision
     api_key_env: str | None = None  # name of the environment variable holding the key
+    # How the key is sent: "bearer" (Authorization: Bearer, OpenAI and vLLM) or "api-key"
+    # (the `api-key` header of Azure OpenAI, decision D006).
+    auth_header: str = "bearer"
     timeout_s: float = 600.0
     gpu_accounting: str = "none"  # "none" or "wall_clock"
     gpus: int = 0  # GPUs of the server, for wall_clock accounting
@@ -66,6 +69,8 @@ class Endpoint:
                    chat_template_kwargs=dict(pin.template_kwargs), **kwargs)
 
     def __post_init__(self):
+        if self.auth_header not in ("bearer", "api-key"):
+            raise ValueError(f"unknown auth_header {self.auth_header!r}")
         if self.gpu_accounting not in ("none", "wall_clock"):
             raise ValueError(f"unknown gpu_accounting {self.gpu_accounting!r}")
         if self.gpu_accounting == "wall_clock" and self.gpus < 1:
@@ -115,6 +120,8 @@ class ChatClient:
         key = os.environ.get(self.endpoint.api_key_env)
         if not key:
             raise RuntimeError(f"environment variable {self.endpoint.api_key_env} is not set")
+        if self.endpoint.auth_header == "api-key":
+            return {"api-key": key}
         return {"Authorization": f"Bearer {key}"}
 
     def _record(self, context: CallContext, attempt: int, status: str, input_tokens: int,
