@@ -76,6 +76,7 @@ class SchemaResponder:
         self.schema = None
         self.entities = []
         self.formats = []
+        self.max_tokens = []
 
     def __call__(self, messages):
         user = messages[-1]["content"]
@@ -113,6 +114,7 @@ class SchemaModel(RecordingModel):
     def chat(self, messages, tag, *, response_format=None, **kwargs):
         self.responder.schema = response_format
         self.responder.formats.append(response_format)
+        self.responder.max_tokens.append(kwargs.get("max_tokens"))
         return super().chat(messages, tag, response_format=response_format, **kwargs)
 
 
@@ -137,7 +139,7 @@ class GraphitiEngineTest(unittest.TestCase):
         responder = SchemaResponder()
         model = SchemaModel(responder, self.ledger)
         with mock.patch.object(socket.socket, "connect", side_effect=AssertionError("network")):
-            engine = self.engine(model)
+            engine = self.engine(model, max_tokens=512)
             for message in self.item.messages:
                 engine.write(message)
             read = engine.read(self.read_at(5), 256)
@@ -148,6 +150,7 @@ class GraphitiEngineTest(unittest.TestCase):
         self.assertTrue(all(names[r.prompt_sha256][1] == "json_schema" for r in external))
         self.assertTrue(all(r.category == "W" for r in external))
         self.assertTrue(all(f and f["type"] == "json_schema" for f in responder.formats))
+        self.assertEqual(set(responder.max_tokens), {512})  # caps edge extraction's 16,384 too
         reads = [r for r in self.ledger.records if r.trigger == "read"]
         self.assertTrue(reads and all(r.call_type == "embed" for r in reads))  # the query only
         self.assertNotEqual(read.context.text, EMPTY_CONTEXT)

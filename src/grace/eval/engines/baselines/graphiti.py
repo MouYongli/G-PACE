@@ -17,8 +17,9 @@ keeps its graph:
    harness's `ModelPort` (and so through `grace.llm` and the run's cost ledger). Graphiti's own
    provider clients are never constructed, so it cannot reach a hosted API. LLM calls are
    `external` with the trigger of the phase (ingestion: `write`, ledger `W`); embeddings are
-   `embed`. Decoding is the model config's (temperature 0); `max_tokens` is Graphiti's
-   (16,384 unless a call sets its own). The ledger's `prompt_sha256` of an LLM call is
+   `embed`. Decoding is the model config's (temperature 0). The engine's `max_tokens` caps every
+   call, including the ones where Graphiti sets its own limit (edge extraction asks for 16,384).
+   The ledger's `prompt_sha256` of an LLM call is
    `prompt_hash(<prompt name>, <structured-output mode>)`: Graphiti's template is code, identified
    by its name in the pinned version, and the mode is part of how it is sent, so every call record
    says which template and whether constrained decoding was used (`prompt_names_by_hash`), and
@@ -293,7 +294,7 @@ def _graphiti() -> SimpleNamespace:
             result = await asyncio.to_thread(
                 engine.model.chat, chat, engine.tag("external"),
                 prompt_sha256=prompt_hash(name, mode), parse=parse,
-                max_tokens=max_tokens or self.max_tokens,
+                max_tokens=min(max_tokens or self.max_tokens, self.max_tokens),
                 response_format=response_format(response_model, mode))
             engine.note_call(name, result)
             if result.ok:
