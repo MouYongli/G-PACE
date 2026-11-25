@@ -361,11 +361,11 @@ nodes:
     type: task
     title: Sequence audit
     milestone: M2
-    status: planned
+    status: active
     depends_on: [T015]
-    issue: null
-    owner: null
-    start: null
+    issue: 93
+    owner: m01-T016
+    start: 2026-11-25
     finish: null
     file: ../tasks/T016-sequence-audit.md
   - id: T017
@@ -449,11 +449,11 @@ nodes:
     type: experiment
     title: Ablation C on gold graphs
     milestone: M2
-    status: planned
+    status: active
     depends_on: [T015, T018]
-    issue: null
-    owner: null
-    start: null
+    issue: 95
+    owner: m01-E005
+    start: 2026-11-25
     finish: null
     file: ../experiments/E005-ablation-c-gold.md
   - id: D008
