@@ -23,7 +23,7 @@ from pathlib import Path
 
 from grace.config.paths import project_root
 from grace.context import api
-from grace.eval.datasets.benchmarks.base import NATIVE_SCHEDULE, load_config
+from grace.eval.datasets.benchmarks.base import NATIVE_SCHEDULE, BenchmarkConfig, load_config
 from grace.eval.datasets.benchmarks.splits import load_split
 
 VISIBLE = ("histories.jsonl", "messages.jsonl")
@@ -96,9 +96,13 @@ def assemble(histories: Sequence[api.HistoryInfo], messages: Sequence[api.Messag
 
 
 def load_dev(slug: str, split: str = "dev", schedule: str | None = None,
-             history_ids: list[str] | None = None, *, data_root: Path | None = None) -> Inputs:
-    """Visible records of a development split, loaded and checked by `load_split`."""
-    config = load_config(slug)
+             history_ids: list[str] | None = None, *, data_root: Path | None = None,
+             config: BenchmarkConfig | None = None) -> Inputs:
+    """Visible records of a development split, loaded and checked by `load_split`.
+
+    `config` replaces `configs/benchmarks/<slug>.yaml` (E001: change-seq development data that is
+    still the output of an upstream T015 run); its split must still be of kind `development`."""
+    config = config or load_config(slug)
     spec = config.splits.get(split)
     if spec is None or spec.kind != "development":
         raise ValueError(f"{slug}/{split} refused: the harness runs development splits only")
