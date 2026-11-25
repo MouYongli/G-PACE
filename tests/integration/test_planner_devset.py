@@ -19,7 +19,7 @@ import yaml
 from grace.context.pipeline.query.planner import Planner, PlannerConfig, summarize
 from tests.integration import planner_dev as pd
 
-F1_CASES = 26  # gold IR wrong only on the unfiltered graph: [u, f] cannot require own/positive
+F1_CASES = 0  # gold IR wrong only on the unfiltered graph; 26 before [u, f] got its defaults
 
 
 class PlannerDevSubsetTest(unittest.TestCase):

@@ -36,7 +36,7 @@ from dataclasses import dataclass, replace
 
 from grace.context.memory.graph import rdf
 from grace.context.memory.graph.entries import Entity, Value
-from grace.context.memory.graph.vocabulary import XSD
+from grace.context.memory.graph.vocabulary import GRACE, XSD
 from grace.context.pipeline.query.ir import (
     Bound,
     ClaimPattern,
@@ -120,6 +120,14 @@ def _function(function) -> str:
     return f"gf:{function.value}"
 
 
+def _concept(value) -> str:
+    """A report-mode or polarity concept, in the `g:` prefix (memory/graph/rdf.py, CONCEPTS)."""
+    iri = rdf.CONCEPTS[value].value
+    if not iri.startswith(GRACE):
+        raise ValueError(f"concept {value!r} is not in the g: namespace: {iri}")
+    return "g:" + iri[len(GRACE):]
+
+
 def _predicate(name: str) -> str:
     return f"gp:{name}"  # predicate names are [A-Za-z][A-Za-z0-9_]* (type-checked)
 
@@ -173,6 +181,15 @@ class _Body:
                 parts.append(f"prov:wasAttributedTo {self.term(p.attribution.speaker)}")
             if p.attribution.function is not None:
                 parts.append(f"{_G['function']} {_function(p.attribution.function)}")
+            # Defaults of [u, f] (plan 3.3): own statement, positive, not derived; each may be
+            # relaxed (None), which drops its triple.
+            if p.attribution.report_mode is not None:
+                parts.append(f"{_G['reportMode']} {_concept(p.attribution.report_mode)}")
+            if p.attribution.polarity is not None:
+                parts.append(f"{_G['polarity']} {_concept(p.attribution.polarity)}")
+            if p.attribution.derived is not None:
+                parts.append(f"{_G['derived']} "
+                             f"{_literal(Value(str(p.attribution.derived).lower(), 'boolean'))}")
             parts.append(f"{KNOWN} ?_w_{n}")
             self.add(" ; ".join(parts) + " .")
             self.add(f"FILTER(?_w_{n} <= {CUTOFF})")

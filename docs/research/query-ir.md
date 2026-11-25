@@ -6,7 +6,7 @@ Code: `src/grace/context/pipeline/query/` (`ir.py` types and type checker, `gram
 
 ## 1. What the fragment contains
 
-The atom is the **claim pattern** `(s, p, o, scope)[u, f]`. The first four positions match a claim and are constants or variables; the bracket is an optional attribution constraint that requires an attribution on that claim with speaker `u` and communicative function `f`. A query combines claim patterns with exactly the six operations of plan 3.3:
+The atom is the **claim pattern** `(s, p, o, scope)[u, f]`. The first four positions match a claim and are constants or variables; the bracket is an optional attribution constraint that requires an attribution on that claim with speaker `u` and communicative function `f`. By default that attribution must also be the speaker's own statement (report mode own), positive and not derived, so quotes, hypotheticals, denials and inferred attributions do not satisfy the constraint (plan 3.3, user decision of 2026-11-25 on finding F1 of T015). A query may relax each default explicitly, and only relax it: `[u, f, mode=_]` accepts any report mode, `polarity=_` any polarity, `derived=_` derived attributions too (section 2). Certainty is not constrained. A query combines claim patterns with exactly the six operations of plan 3.3:
 
 | Operation | IR type | Text form |
 | --- | --- | --- |
@@ -32,7 +32,8 @@ Group      ::= "{" Pattern ( "." Pattern ){0,2} "."? Item* "}"      (* items and
 Item       ::= Filter | Negation
 Negation   ::= "NOT" "EXISTS" "{" Pattern "."? Filter* "}"
 Pattern    ::= "(" Subject "," Predicate "," Object ( "," Scope )? ")" Constraint? ( "AS" Var )?
-Constraint ::= "[" ( Entity | Var | "_" ) "," ( Function | "_" ) "]"
+Constraint ::= "[" ( Entity | Var | "_" ) "," ( Function | "_" ) ( "," Relax )* "]"
+Relax      ::= ( "mode" | "polarity" | "derived" ) "=" "_"            (* each at most once *)
 Subject    ::= Entity | Var
 Predicate  ::= Name | Var
 Object     ::= Entity | Var | Literal
@@ -53,7 +54,9 @@ Literal    ::= String ( "^^" Datatype )? | Integer | "true" | "false"
 Datatype   ::= "string" | "integer" | "boolean" | "date" | "dateTime" | "time"
 ```
 
-Keywords are case-insensitive; `#` starts a comment. Literals must be in the canonical lexical form of their datatype (the same rule as claim objects in the contract). `AS ?c` labels the matched claim node so that `start(?c)`, `end(?c)` and `LATEST … OF ?c` can refer to it; a label is never an answer variable. `to_text` prints the canonical form, and `parse(to_text(q)) == q`.
+Keywords are case-insensitive; `#` starts a comment. Literals must be in the canonical lexical form of their datatype (the same rule as claim objects in the contract). `AS ?c` labels the matched claim node so that `start(?c)`, `end(?c)` and `LATEST … OF ?c` can refer to it; a label is never an answer variable. `to_text` prints the canonical form, and `parse(to_text(q)) == q`; relaxed defaults are printed in the order `mode`, `polarity`, `derived`.
+
+**Attribution defaults.** In the IR, `AttributionConstraint` has three fields besides speaker and function: `report_mode` (default `ReportMode.OWN`), `polarity` (default `Polarity.POSITIVE`) and `derived` (default `False`). `None` relaxes a field to "any" and is written `mode=_`, `polarity=_`, `derived=_`. Any other value (a constraint that requires a quote or a denial) is rejected by the parser and the type checker, because the fragment only lets a query relax the defaults.
 
 Examples, from the running examples of plan 3.5:
 
@@ -126,7 +129,9 @@ For each positive claim pattern labelled `?c`:
 FILTER(?_v_c <= %r%)
 ?c g:scope "work" .                       # scope constant; a variable binds; `default` is
 FILTER NOT EXISTS { ?c g:scope ?_sc_c }   # … this form; `_` adds nothing
-?_a_c g:about ?c ; prov:wasAttributedTo U ; g:function gf:f ; g:knownFrom ?_w_c .   # [u, f]
+?_a_c g:about ?c ; prov:wasAttributedTo U ; g:function gf:f ;                     # [u, f]
+      g:reportMode g:OwnStatement ; g:polarity g:Positive ;                       # defaults; a relaxed
+      g:derived "false"^^xsd:boolean ; g:knownFrom ?_w_c .                        # one drops its triple
 FILTER(?_w_c <= %r%)
 FILTER NOT EXISTS { ?_s_c g:supersedes ?c ; g:knownFrom ?_sv_c . FILTER(?_sv_c <= %r%) }   # current
 FILTER NOT EXISTS { ?_s_c g:supersedes ?c ; g:kind g:Correction ;
@@ -185,11 +190,11 @@ The evidence of an answer is the union of the evidence of the claims in its witn
 - Arithmetic, date arithmetic and comparisons between variables, including "the train arrives before the requested time" (both sides are variables). A rule template or the planner must bind one side to a constant first.
 - Aggregates other than distinct counting; maximum by anything other than version or valid-time start; latest state per group.
 - Negation over more than one pattern or nested negation; negation that shares no variable with the positive part.
-- Constraints on report mode, polarity or certainty of an attribution: an attribution constraint matches speaker and function only, as in plan 3.3.
+- Attribution constraints that require a non-default report mode or polarity (only quotes, only hypotheticals, only denials) or only derived attributions; constraints on certainty. A constraint can only keep or relax its defaults (section 2).
 - Comparisons with the time of reading in stored views.
 
 ## 7. Open questions
 
 1. **Joins across merged entities.** Constants and answers use class representatives, but a join variable still compares node identity, so a join between two members of one class is not made. Exact evaluation needs either canonicalised claim nodes or per-variable class expansion. Entity merges already invalidate every view of the history (plan 5.2), so this affects only reads after a merge.
-2. **Polarity of attributions in constraints.** A negative stance by the same speaker and function (a denial) satisfies `[u, f]` like a positive one. Plan 3.3 defines the constraint on speaker and function only; whether `[u, f]` should require positive polarity is a decision for the plan owner.
-3. **Dependency patterns.** `patterns.py` (dependency patterns for staleness decisions, T018 and T019) is not part of this task's scope and is not implemented yet; the IR exposes the positive patterns, the negated pattern and their local filters for it.
+2. **Polarity of attributions in constraints (resolved 2026-11-25).** The user decided on finding F1 of T015's cross-check (PR #72) that `[u, f]` by default requires an own, positive, not derived attribution, and that a query may relax these defaults explicitly (plan 3.3). Section 2 ("Attribution defaults") and section 4 implement this.
+3. **Dependency patterns.** These were implemented by T019 in `views/dependencies.py` and matched in `views/staleness/matching.py`, not in `pipeline/query/patterns.py`. Those modules still match an attribution constraint on speaker and function only and do not record the relaxed defaults in a dependency record. The change matcher therefore also fires on quoted, hypothetical, negative or derived attributions that the compiled query no longer accepts. That over-marks, which is sound (no misses), but it is less precise; the follow-up belongs to the owner of `views/`.

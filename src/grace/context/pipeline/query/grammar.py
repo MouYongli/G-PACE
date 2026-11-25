@@ -28,6 +28,7 @@ from grace.context.memory.graph.entries import (
     time_datatype,
 )
 from grace.context.pipeline.query.ir import (
+    ATTRIBUTION_DEFAULTS,
     At,
     AttributionConstraint,
     Bound,
@@ -271,8 +272,23 @@ class _Parser:
                     raise self.error("unknown communicative function; expected one of "
                                      f"{[f.value for f in CommunicativeFunction]} or _",
                                      tok) from None
+            relaxed: dict[str, None] = {}
+            while self.accept(","):
+                tok = self.next()
+                name = tok.text.lower() if tok.kind == "name" else ""
+                if name not in ATTRIBUTION_DEFAULTS:
+                    raise self.error("expected a relaxed default of the attribution constraint "
+                                     f"({', '.join(f'{n}=_' for n in ATTRIBUTION_DEFAULTS)})",
+                                     tok)
+                if ATTRIBUTION_DEFAULTS[name][0] in relaxed:
+                    raise self.error(f"{name} is relaxed twice", tok)
+                self.expect("=")
+                if not self.accept("_"):
+                    raise self.error(f"{name} can only be relaxed to _ (any); an attribution "
+                                     "constraint cannot require a non-default value")
+                relaxed[ATTRIBUTION_DEFAULTS[name][0]] = None
             self.expect("]")
-            attribution = AttributionConstraint(speaker, function)
+            attribution = AttributionConstraint(speaker, function, **relaxed)
         label = None
         if self.accept("AS"):
             label = self.var()
@@ -515,7 +531,8 @@ def _pattern_text(p: ClaimPattern) -> str:
         a = p.attribution
         speaker = "_" if a.speaker is None else _term_text(a.speaker)
         function = "_" if a.function is None else a.function.value
-        text += f" [{speaker}, {function}]"
+        relax = "".join(f", {name}=_" for name in a.relaxed())
+        text += f" [{speaker}, {function}{relax}]"
     if p.label is not None and not p.label.name.startswith("_"):
         text += f" AS {p.label}"  # reserved labels are the compiler's and are not printed
     return text

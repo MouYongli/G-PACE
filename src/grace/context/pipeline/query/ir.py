@@ -12,10 +12,12 @@ representation covers exactly the six operations of the fragment:
 6. provenance expansion: the witnesses of every answer and the evidence of their claims
    (`Query.provenance`).
 
-The atom is the claim pattern (s, p, o, scope)[u, f]. Every query is parameterised by its cut-off
-version (`At.known`; `None` means the version being read), may fix a valid time (`At.valid`) and
-states whether it reads the current state (built-in "currently accepted" negation) or the
-historical state (only corrected claims are excluded) (`At.state`).
+The atom is the claim pattern (s, p, o, scope)[u, f]; by default the attribution constraint also
+requires an own, positive, not derived attribution, and a query may relax that explicitly.
+Every query is parameterised by its cut-off version (`At.known`; `None` means the version being
+read), may fix a valid time (`At.valid`) and states whether it reads the current state (built-in
+"currently accepted" negation) or the historical state (only corrected claims are excluded)
+(`At.state`).
 
 What the fragment excludes cannot be built from these types (property paths, OPTIONAL, UNION,
 nested negation, other aggregates); the text parser in `grammar.py` rejects those forms with a
@@ -36,6 +38,8 @@ from grace.context.memory.graph.entries import (
     CommunicativeFunction,
     Entity,
     EntryError,
+    Polarity,
+    ReportMode,
     ValidTime,
     Value,
 )
@@ -104,11 +108,32 @@ SpeakerTerm = Var | Entity | None
 class AttributionConstraint:
     """`[u, f]`: the claim must carry an attribution by speaker `u` with function `f`.
 
-    Either part may be left open (`None`); at least one must be given.
+    Either part may be left open (`None`); at least one must be given. By default the attribution
+    must also be the speaker's own statement (report mode own), positive and not derived, so that
+    quotes, hypotheticals, denials and inferred attributions do not satisfy it (plan 3.3). A query
+    relaxes each default explicitly by setting the field to `None` ("any"; in the text form
+    `[u, f, mode=_, polarity=_, derived=_]`). Only relaxation is in the fragment: a field is
+    either its default or `None`, so a constraint can never require a quote or a denial.
     """
 
     speaker: SpeakerTerm = None
     function: CommunicativeFunction | None = None
+    report_mode: ReportMode | None = ReportMode.OWN
+    polarity: Polarity | None = Polarity.POSITIVE
+    derived: bool | None = False
+
+    def relaxed(self) -> tuple[str, ...]:
+        """The names of the relaxed defaults, in canonical order (`mode`, `polarity`,
+        `derived`)."""
+        return tuple(name for name, value in (("mode", self.report_mode),
+                                              ("polarity", self.polarity),
+                                              ("derived", self.derived)) if value is None)
+
+
+# Default of each relaxable field of `AttributionConstraint`, keyed by its text name.
+ATTRIBUTION_DEFAULTS = {"mode": ("report_mode", ReportMode.OWN),
+                        "polarity": ("polarity", Polarity.POSITIVE),
+                        "derived": ("derived", False)}
 
 
 @dataclass(frozen=True)
@@ -426,6 +451,13 @@ def _check_pattern(p: ClaimPattern, where: str) -> None:
         if a.function is not None and not isinstance(a.function, CommunicativeFunction):
             raise QueryTypeError(f"{where}: function must be one of "
                                  f"{[f.value for f in CommunicativeFunction]}")
+        for name, (attr, default) in ATTRIBUTION_DEFAULTS.items():
+            value = getattr(a, attr)
+            if value is not None and (value is not default or type(value) is not type(default)):
+                raise QueryTypeError(
+                    f"{where}: attribution {name} must be its default {default!r} or relaxed "
+                    f"(None, `{name}=_`), got {value!r}; an attribution constraint can only "
+                    "relax its defaults")
     if p.label is not None and not isinstance(p.label, Var):
         raise QueryTypeError(f"{where}: label must be a variable")
     p.variables()
