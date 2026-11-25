@@ -66,3 +66,13 @@ prompts:
     schema: null
     schema_sha256: null
     note: LongMemEval official judge, abstention questions (question ID ending in _abs).
+  render-view:
+    call_type: render
+    sha256: 0f7b5a73a563452025593a6d7490d51baedabe0e7e22b2fa447114ec1da05a19
+    schema: llm/render-view   # resources/schemas/llm/render-view.json
+    schema_sha256: a6891608c8077ed97c5005b3b4dea56398857cbbea73d941a1578ed6419e68dc
+    note: >-
+      View rendering (plan 5.4), added by T018. Variables: title (the view's title) and rows (one
+      line per rendering unit, "[row ID] name = value; ...", members of a count indented). Output:
+      sentences, each labelled with the row IDs it states; checked by
+      src/grace/context/views/render.py, failed sentences fall back to the template.

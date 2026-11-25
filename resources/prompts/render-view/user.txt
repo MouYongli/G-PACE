@@ -1,0 +1,3 @@
+View: {{title}}
+Rows:
+{{rows}}
