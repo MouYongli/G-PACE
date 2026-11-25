@@ -1,0 +1,6 @@
+Context:
+{{context}}
+
+Current date: {{asked_at}}
+
+{{request}}

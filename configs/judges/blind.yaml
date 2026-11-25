@@ -1,0 +1,23 @@
+# Blind judge (T004; plan 6.7 "Judge calibration", 7.1 "Judging").
+# Code: grace.eval.analysis.judging.judge (blind_judge). The judge sees only question, reference and
+# response; calls are booked as evaluation overhead (call_type judge, trigger evaluation).
+judge: blind
+version: 1                        # bump on any change below; judgements name the judge config
+prompt: judge                     # configs/common/prompts.yaml
+prompt_sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2
+parse: one_word                   # CORRECT / INCORRECT, else verdict invalid (judge.parse_label)
+model: null                       # judge snapshot: decision D006 (proposed). Pin a dated snapshot,
+                                  # available until publication, before E001 judges anything.
+decoding:
+  temperature: 0.0
+  max_tokens: 10
+  seed: 0
+judged_outputs: [answer]          # unknown and invalid are scored by rule (Evaluation section)
+calibration:
+  # Agreement with human labels (Evaluation section, "Judge calibration"). Measured in E001 on
+  # development data only; the numbers are a known gap until then.
+  sample_size: 200
+  sample: stratified by benchmark and by the judge's verdict, development reads of the pilot runs
+  annotators: 2
+  label_file: human-labels.jsonl  # grace.eval.analysis.judging.human.read_labels format
+  report: [judge_vs_adjudicated kappa, observed agreement, between-annotator kappa, judge_invalid]

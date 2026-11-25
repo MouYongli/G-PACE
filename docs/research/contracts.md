@@ -206,30 +206,77 @@ The three ledgers (plan 8.1) are sums over the records of a category: logical to
 
 ## Evaluation
 
-Owner: TBD (evaluation owner) · Version: 0.1
+> Replaces the sample-level v0.1. Scoring is keyed by `read_id` and scored against one gold `annotation` at a time, following the T001 records.
 
-Before any formal comparison, register for each benchmark on its card: official metric, metric direction, evaluation code and version, denominator, and invalid-output policy (count as wrong, or exclude and report).
+Owner: T004 manager (`m01-T004`; assigned by the user's dispatch of the 2026-11-25 round) · Version: 0.2 · Producer: `judge` and `score` stages (`eval/analysis/judging/`, `eval/analysis/metrics/`) · Consumers: reporting (T035, T036)
 
-Each scoring call writes one `metrics.json` object:
+### Registration
+
+Before any formal comparison every metric is registered in `configs/common/scorers.yaml`; the benchmark card's Evaluation field points there. Per benchmark and metric:
+
+| Key | Rules |
+| --- | --- |
+| `name`, `direction` | Registered metric name; `higher` or `lower`. |
+| `code` | `module:function` of the scorer. Official scorers name `upstream` (`repo`, `file`, `revision`, `verified`); `verified` stays `false` until the scorer reproduces upstream's numbers on upstream's published examples. |
+| `annotation` or `annotations` | The gold annotation(s) scored ([Gold](#gold)). One set of predictions is scored against each annotation separately (MultiWOZ 2.4, 2.2, 2.1). |
+| `population` | The denominator: all reads of the read-task file, or those whose gold `labels` match `include` (LoCoMo categories 1 to 4). |
+| `judge` | For judged metrics, the judge config in `configs/judges/`. |
+| `abstention` | The gold label that marks a task as unanswerable. |
+| `invalid_policy` | `count_as_wrong` or `exclude_and_report`. |
+| `strata` | Gold labels by which the metric is also reported. Stratum labels are used on the scoring side only (plan 6.7). |
+
+### Scoring rules
+
+- Alignment follows the evaluator obligations of [Prediction](#prediction); scoring aborts on any of them, and on an unparsable line or an empty prediction file. Gold is indexed by `(annotation, task_id)`; a read whose task the annotation does not cover is outside that annotation's population, and the covered count is reported as `n_total`.
+- Each read gets a value in $[0, 1]$. `answer` and `state` predictions are scored by the registered scorer. `unknown` is correct exactly on tasks the `abstention` label marks, and wrong otherwise; for a state read it is the empty state. `invalid` scores 0 under `count_as_wrong` and leaves the denominator under `exclude_and_report`; it is counted in `n_invalid` either way.
+- Judged metrics judge only `answer` predictions; `unknown` and `invalid` are scored by the rules above without a judge call. A judgement whose own output is unparsable (`verdict: invalid`) leaves the denominator and is counted in `n_judge_invalid`.
+
+### Judges
+
+- A judge config (`configs/judges/<judge>.yaml`) pins the prompt by its hash in `configs/common/prompts.yaml`, the parsing rule, decoding (temperature 0) and the judge model snapshot. The snapshot is decision D006; until it is taken `model` is `null` and no judge run is formal.
+- The judge is blind: its input is exactly the question, the reference of the scored annotation and the prediction as text (lists joined with `; `). It never receives run, engine or config names, the working context, citations, `raw_output` or `metadata`.
+- Judge calls are call records with `call_type: judge`, `trigger: evaluation` ([Cost ledger](#cost-ledger)); each judgement is one `judgements.jsonl` record ([Experiment run](#experiment-run)) naming its judge config. One `judge` run MAY run several judges over the same predictions (LongMemEval: the blind and the official judge); `(read_id, judge)` is unique.
+- Judge reruns are new `judge` runs and are reported as their own source of uncertainty (plan 6.9).
+
+### Judge calibration against human labels
+
+Measured on development data only, before the blind judge's numbers are used in a comparison:
+
+1. Draw a sample of judged development reads, stratified by benchmark and by the judge's verdict (size in `configs/judges/blind.yaml`).
+2. Two annotators label each read `correct` or `incorrect`, seeing only what the judge sees; disagreements are adjudicated into a third label set.
+3. Labels are JSON Lines, one record per read and annotator: `read_id`, `task_id`, `annotation`, `annotator` (`adjudicated` for the merged set), `verdict`.
+4. Report, with `eval/analysis/judging/human.py`: Cohen's $\kappa$ and observed agreement of the judge against the adjudicated labels, $\kappa$ between the two annotators, the number of reads, and the number of judge outputs that were `invalid`.
+
+Negative controls (deliberately wrong and vague answers), judge reruns and agreement between the blind and the official judge are calibration of T035.
+
+### `metrics.json`
+
+One JSON object `{"metrics": [...]}`, written exclusively by a `score` run, with one record per benchmark, split, annotation, metric and stratum:
 
 | Field | Type | Rules |
 | --- | --- | --- |
-| `benchmark`, `split` | string | As in the input. |
+| `benchmark`, `split` | string | As in the predictions. |
+| `schedule` | string | The read-task file the scored run used (`read_tasks.jsonl`, `read_tasks.streaming.jsonl`). |
+| `annotation` | string | Gold annotation scored against. |
+| `metric`, `direction` | string | Registered name and direction. |
+| `stratum` | string or `null` | `<label>=<value>`; `null` for the whole population. |
 | `seed` | integer | Seed of the run that produced the predictions. |
-| `metric` | string | Registered metric name. |
-| `value` | number | Metric value on the registered denominator. |
-| `n_total` | integer | Samples in the split. |
-| `n_scored` | integer | Samples that entered the denominator. |
-| `n_invalid` | integer | Present but unparsable predictions. |
-| `evaluator_version` | string | Evaluator code SHA or package version. |
+| `value` | number or `null` | Mean over the denominator; `null` exactly when `n_scored` is 0. |
+| `n_total` | integer | Reads in the registered population. |
+| `n_scored` | integer | Reads that entered the denominator. |
+| `n_invalid`, `n_unknown` | integer | `invalid` and `unknown` predictions in the population. |
+| `n_judge_invalid` | integer | Reads left out because the judge output was unparsable; 0 for unjudged metrics. |
+| `invalid_policy` | string | As registered. |
+| `scorer` | string | `<benchmark>/<metric>` in the registry. |
+| `evaluator_version` | string | Full code SHA of the `score` run. |
 
-Reporting rules:
+### Reporting rules
 
-- Report every benchmark, split and seed separately, with counts.
+- Report every benchmark, split, annotation and seed separately, with counts.
 - Multi-seed summaries give the mean, the sample standard deviation and the number of runs.
 - Cross-benchmark averages follow `docs/work/decisions/D002-evaluation-aggregation.md`; never average without a recorded normalization and weighting.
 
-Required regression tests: empty prediction file, duplicate key, missing key, extra key, mixed splits, shuffled order, unparsable prediction.
+Required regression tests (`tests/contracts/test_evaluation.py`): empty prediction file, duplicate key, missing key, extra key, mixed splits, shuffled order, unparsable prediction; also snapshot mismatches, both invalid-output policies, the abstention rule and the `metrics.json` record.
 
 ## Experiment run
 
