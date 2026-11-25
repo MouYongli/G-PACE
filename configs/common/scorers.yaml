@@ -46,7 +46,7 @@ benchmarks:
         code: grace.eval.analysis.metrics.answer:judged_values
         judge: longmemeval-official
         direction: higher
-        annotation: cleaned
+        annotation: 98d7416   # data version of longmemeval-s (contracts.md, Gold `annotation`)
         population: {}
         strata: [question_type]
         abstention: {label: abstention, value: true}
@@ -55,7 +55,7 @@ benchmarks:
         code: grace.eval.analysis.metrics.answer:judged_values
         judge: blind
         direction: higher
-        annotation: cleaned
+        annotation: 98d7416   # data version of longmemeval-s (contracts.md, Gold `annotation`)
         population: {}
         strata: [question_type]
         abstention: {label: abstention, value: true}
