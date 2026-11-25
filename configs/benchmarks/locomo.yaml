@@ -1,7 +1,31 @@
-# Fill in when the data is bound; null means not configured yet. Card: docs/research/benchmarks.md#locomo
+# Data binding, splits and adapter options of locomo (task T002).
+# Card: docs/research/benchmarks.md#locomo. Loaded only through grace.eval.datasets.benchmarks.splits.load_split,
+# which refuses held-out splits until the preregistration tag of T033 exists.
 benchmark: locomo
-version: null
+version: 3eb6f2c
 data_root: data/locomo        # relative to PROJECT_ROOT
-manifest_sha256: null
-splits: {}
-metric: null
+manifest_sha256: c68369667248276b0b7b314d6cf566a877386471ac49f94dada7c9f1ca588ae7
+adapter:
+  exclude_categories: [5]   # adversarial; reported separately if evaluated (plan 6.5)
+splits:
+  dev:
+    kind: development
+    rule: "plan 6.5: conv-26 and conv-49 are the development set (308 questions of categories 1-4)"
+    counts: {histories: 2, messages: 928, read_tasks: 308, gold: 308}
+    histories:
+      - "conv-26"
+      - "conv-49"
+  held-out:
+    kind: held-out
+    rule: "plan 6.5: the other 8 histories are held out (1,232 questions)"
+    counts: {histories: 8, messages: 4954, read_tasks: 1232, gold: 1232}
+    histories:
+      - "conv-30"
+      - "conv-41"
+      - "conv-42"
+      - "conv-43"
+      - "conv-44"
+      - "conv-47"
+      - "conv-48"
+      - "conv-50"
+metric: null   # scoring belongs to T004 / the Evaluation contract

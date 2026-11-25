@@ -1,7 +1,24 @@
-# Fill in when the data is bound; null means not configured yet. Card: docs/research/benchmarks.md#multiwoz
+# Data binding, splits and adapter options of multiwoz (task T002).
+# Card: docs/research/benchmarks.md#multiwoz. Loaded only through grace.eval.datasets.benchmarks.splits.load_split,
+# which refuses held-out splits until the preregistration tag of T033 exists.
 benchmark: multiwoz
-version: null
+version: "2.4"
 data_root: data/multiwoz        # relative to PROJECT_ROOT
-manifest_sha256: null
-splits: {}
-metric: null
+manifest_sha256: 78ca9c26ba6859151981b60d5cf23effd50b94594eb294d91e25ed16e481fc35
+extra_manifests:   # further annotations scored on the same predictions (plan 6.5)
+  "2.2": 7916a2aa66e36be7681537b84cea89ea80bbcbe1ef9e3a55dad7adb3c745d49c
+  "2.1": 553f662f6103743e13c1d19b63ab8691a84aaf480488266566464ce94e5d3d17
+adapter:
+  split_dirs_22: {dev: dev, held-out: test}   # MultiWOZ 2.2 directory per split
+splits:
+  dev:
+    kind: development
+    rule: "official MultiWOZ validation list (identical in 2.4 and 2.1; 2.2 dev holds the same 1,000 dialogues)"
+    counts: {histories: 1000, messages: 14748, read_tasks: 7374, gold: 22122}
+    history_list_file: MULTIWOZ2.4/valListFile.json
+  held-out:
+    kind: held-out
+    rule: "official MultiWOZ test list: 1,000 dialogues, 7,372 user turns (plan 6.5)"
+    counts: {histories: 1000, messages: 14744, read_tasks: 7372, gold: 22116}
+    history_list_file: MULTIWOZ2.4/testListFile.json
+metric: null   # scoring belongs to T004 / the Evaluation contract
