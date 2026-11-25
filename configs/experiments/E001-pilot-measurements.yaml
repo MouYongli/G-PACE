@@ -115,12 +115,23 @@ cells:
       - configs/engines/dense.yaml
       - configs/engines/rrf.yaml
       - configs/engines/summary-reuse.yaml
-      - configs/engines/summary-rewrite.yaml
-      - configs/engines/slot-table.yaml
     budget: 1024
     condition: apc-on
     histories: {locomo: all, longmemeval-s: 3, multiwoz: 50, halumem-medium: 1,
                 memoryagentbench: all, change-seq: 5}
+    shards: {}
+  # The two baselines with one sequential model call per written message (design change of
+  # 2026-11-25, before any baseline run): a halumem-medium user (about 3,400 messages) would take
+  # hours of sequential calls on the shared GPU, so halumem-medium is left out and longmemeval-s
+  # takes one history.
+  baselines-write:
+    engines:
+      - configs/engines/summary-rewrite.yaml
+      - configs/engines/slot-table.yaml
+    budget: 1024
+    condition: apc-on
+    histories: {locomo: all, longmemeval-s: 1, multiwoz: 50, memoryagentbench: all,
+                change-seq: 5}
     shards: {}
 
 summary:
@@ -135,6 +146,6 @@ judging:
   # waits for the user's approval of GPUs and spend.
   judge_config: configs/judges/blind.yaml
   judges: [primary, secondary]
-  cells: [full-cached, baselines]
+  cells: [full-cached, baselines, baselines-write]
   # Third-party price figures recorded in D006 (USD per million tokens), for the estimate only.
   secondary_price_usd_per_mtok: {input: 0.48, output: 1.94}
