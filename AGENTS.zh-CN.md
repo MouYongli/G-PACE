@@ -74,6 +74,7 @@ test -w "$PROJECT_ROOT/runs" && echo "runs: writable"
 | `src/grace/` | Python 包：`cli/`、`config/`、`llm/`、`context/`（GRACE 本身）、`eval/`（实验装置）；目录结构和导入规则见 `docs/work/plan/structure.md` | 任务负责人，限 `WRITE_SCOPE` 内 |
 | `envs/serve/`、`scripts/serve-model.sh` | GPU 推理环境（vLLM）及其启动脚本 | 集成负责人 |
 | `scripts/` | 只放 bash 入口脚本（`scripts/data/` 负责下载基准数据）；它们调用的 Python 代码放在 `src/grace/cli/` | 集成负责人 |
+| `web/human-reviewer/` | 供人工标注者使用的静态标注网页（通过本地 HTTP 服务打开；标签导出为 CSV） | 集成负责人 |
 | `tests/` | `contracts/`（接口测试）、`unit/`（单个包的纯逻辑）、`integration/`、`docs/`、`fixtures/`（合成数据） | 任务负责人 |
 | `paper/` | 论文稿件与图表脚本 | 论文负责人 |
 | `data/`、`runs/` | 仅在主 checkout，git 忽略；见"项目根目录与路径" | 数据维护者 / 运行负责人 |

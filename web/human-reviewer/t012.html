@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T012 · Fragment coverage annotation</title>
+<!--
+  Human annotation page for task T012 (docs/work/tasks/T012-fragment-coverage.md).
+  Serve the repository root and open this page:
+      uv run python -m http.server 8000 --bind 127.0.0.1
+      http://localhost:8000/web/human-reviewer/t012.html
+  It loads the sheet, the agent pre-annotation and the guideline from docs/research/. Opened as a
+  file:// page it cannot fetch them; choose the files by hand instead. Labels are kept in the
+  browser (localStorage) and exported as labels-<annotator>.csv in the format read by
+  src/grace/eval/analysis/annotation/fragment.py. Nothing leaves the machine.
+-->
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e3e0;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --ok: #1f7a4a; --ok-soft: #e4f3ea;
+    --warn: #9a5b00; --warn-soft: #fbf0dc; --bad: #b3261e; --bad-soft: #fbe6e4;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151517; --panel: #1e1e21; --ink: #ececee; --muted: #9a9aa2; --line: #333338;
+      --accent: #8aa9ff; --accent-soft: #233056; --ok: #6fd39a; --ok-soft: #1d3428;
+      --warn: #f0b660; --warn-soft: #3a2d17; --bad: #ff8a80; --bad-soft: #3d1f1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); display: flex; flex-direction: column; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 10px; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { button.primary { color: #10131c; } }
+  input[type=text], input[type=search], select, textarea {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 8px;
+  }
+  textarea { width: 100%; resize: vertical; min-height: 64px; }
+  code { font-family: var(--mono); font-size: 12.5px; background: var(--accent-soft); padding: 0 4px; border-radius: 4px; }
+  kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--muted); }
+
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .spacer { flex: 1; }
+  .progress { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .bar { width: 160px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--ok); width: 0; transition: width .2s; }
+
+  main { flex: 1; display: grid; grid-template-columns: 300px 1fr; min-height: 0; }
+  main.with-guide { grid-template-columns: 300px 1fr 520px; }
+  aside.list { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+  .filters { padding: 10px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
+  .filters .row { display: flex; gap: 6px; }
+  .filters select, .filters input { flex: 1; min-width: 0; }
+  ol.items { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
+  ol.items li { padding: 7px 10px; border-bottom: 1px solid var(--line); cursor: pointer; display: grid; grid-template-columns: 14px 1fr; gap: 8px; }
+  ol.items li:hover { background: var(--accent-soft); }
+  ol.items li.current { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  ol.items .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line); margin-top: 5px; }
+  ol.items .dot.done { background: var(--ok); border-color: var(--ok); }
+  ol.items .id { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  ol.items .q { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .list-foot { padding: 8px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+  section.work { overflow: auto; padding: 18px 24px 40px; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; max-width: 920px; }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .chip { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
+  .chip.overlap { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .chip.audit { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+  .question { font-size: 19px; font-weight: 600; margin: 4px 0 10px; }
+  .gold { display: flex; gap: 10px; align-items: baseline; }
+  .gold b { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; min-width: 90px; }
+  .turn { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; margin: 8px 0; }
+  .turn .who { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .turn .who strong { color: var(--ink); font-family: var(--sans); }
+  .caption { font-size: 13px; color: var(--muted); background: var(--bg); border-radius: 6px; padding: 6px 10px; margin-top: 6px; }
+  .h { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; margin: 14px 0 6px; }
+  .h:first-child { margin-top: 0; }
+
+  .labels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .labels label { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; display: block; }
+  .labels label:hover { border-color: var(--accent); }
+  .labels input { display: none; }
+  .labels label.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .labels .name { font-weight: 600; font-family: var(--mono); font-size: 12.5px; display: flex; justify-content: space-between; }
+  .labels .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opts label { border: 1px solid var(--line); border-radius: 14px; padding: 2px 10px; cursor: pointer; font-family: var(--mono); font-size: 12.5px; user-select: none; }
+  .opts label.on { background: var(--accent-soft); border-color: var(--accent); }
+  .opts input { display: none; }
+  fieldset { border: 0; padding: 0; margin: 0; }
+  fieldset:disabled { opacity: .4; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .error { color: var(--bad); font-size: 13px; }
+  .saved { color: var(--ok); font-size: 13px; }
+
+  .agent { border-style: dashed; }
+  .agent .verdict { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .agree { color: var(--ok); background: var(--ok-soft); }
+  .disagree { color: var(--bad); background: var(--bad-soft); }
+
+  aside.guide { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 16px 22px 40px; display: none; }
+  main.with-guide aside.guide { display: block; }
+  .guide h1 { font-size: 18px; } .guide h2 { font-size: 15px; margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; } .guide h3 { font-size: 14px; }
+  .guide table { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 8px 0; }
+  .guide th, .guide td { border: 1px solid var(--line); padding: 4px 6px; vertical-align: top; text-align: left; }
+  .guide th { background: var(--bg); }
+  .guide pre { background: var(--bg); padding: 8px; border-radius: 6px; overflow: auto; font-size: 12px; }
+  .guide pre code { background: none; padding: 0; }
+  .guide li { margin: 3px 0; }
+
+  #loader { max-width: 640px; margin: 40px auto; }
+  #loader p { color: var(--muted); }
+  #loader .files { display: grid; gap: 10px; margin: 14px 0; }
+  #loader .files label { display: grid; grid-template-columns: 220px 1fr; align-items: center; gap: 10px; }
+  .summary table { border-collapse: collapse; font-size: 13px; }
+  .summary td, .summary th { padding: 3px 10px 3px 0; text-align: left; }
+  .summary td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>T012 · Fragment coverage</h1>
+  <label>Annotator <input type="text" id="annotator" placeholder="your name" size="14" autocomplete="off"></label>
+  <label>Set
+    <select id="scope">
+      <option value="all">A: all 308 questions</option>
+      <option value="overlap">B: 100 overlap questions</option>
+    </select>
+  </label>
+  <div class="progress"><div class="bar"><i id="bar"></i></div><span id="progress-text">0 / 0</span></div>
+  <div class="spacer"></div>
+  <button id="btn-summary" title="Counts of your labels">Summary</button>
+  <button id="btn-guide" title="Show or hide the guideline (g)">Guideline <kbd>g</kbd></button>
+  <button id="btn-import" title="Load an earlier labels-*.csv to continue">Import labels</button>
+  <button id="btn-export" class="primary" title="Download labels-<annotator>.csv">Export CSV</button>
+  <input type="file" id="import-file" accept=".csv" class="hidden">
+</header>
+
+<div id="loader" class="card hidden">
+  <div class="h">Load the files</div>
+  <p>The page could not fetch the files from the repository (it was probably opened as a file). Either serve the repository root
+    (<code>uv run python -m http.server 8000 --bind 127.0.0.1</code>, then open
+    <code>http://localhost:8000/web/human-reviewer/t012.html</code>) or choose the files here.</p>
+  <div class="files">
+    <label>sheet.csv <input type="file" id="f-sheet" accept=".csv"></label>
+    <label>labels-agent-m01-T012.csv <input type="file" id="f-agent" accept=".csv"></label>
+    <label>fragment-coverage.md <input type="file" id="f-guide" accept=".md,.txt"></label>
+  </div>
+  <button id="btn-load" class="primary">Load</button> <span id="load-error" class="error"></span>
+</div>
+
+<main id="main" class="hidden">
+  <aside class="list">
+    <div class="filters">
+      <input type="search" id="search" placeholder="Search question, answer or ID">
+      <div class="row">
+        <select id="f-history"><option value="">All histories</option></select>
+        <select id="f-category"><option value="">All categories</option></select>
+      </div>
+      <div class="row">
+        <select id="f-status">
+          <option value="">Labelled and open</option>
+          <option value="open">Open only</option>
+          <option value="done">Labelled only</option>
+        </select>
+        <select id="f-label"><option value="">Any label</option></select>
+      </div>
+    </div>
+    <ol class="items" id="items"></ol>
+    <div class="list-foot" id="list-foot"></div>
+  </aside>
+
+  <section class="work" id="work">
+    <div class="card" id="qcard"></div>
+
+    <div class="card">
+      <form id="form" autocomplete="off">
+        <div class="h">Label <span style="text-transform:none;font-weight:400">· keys <kbd>1</kbd>–<kbd>5</kbd></span></div>
+        <div class="labels" id="labels"></div>
+
+        <fieldset id="fs-ops">
+          <div class="h">Operations beyond a single claim pattern <span style="text-transform:none;font-weight:400">(in_fragment only; leave empty for one pattern)</span></div>
+          <div class="opts" id="ops"></div>
+        </fieldset>
+
+        <fieldset id="fs-reason">
+          <div class="h">Reason <span style="text-transform:none;font-weight:400">(required for other)</span></div>
+          <div class="opts" id="reasons"></div>
+        </fieldset>
+
+        <fieldset id="fs-flags">
+          <div class="h">Flags <span style="text-transform:none;font-weight:400">(in_fragment only, optional)</span></div>
+          <div class="opts" id="flags"></div>
+        </fieldset>
+
+        <div class="h">Rationale <span style="text-transform:none;font-weight:400">(one sentence naming the claim pattern or the missing piece)</span></div>
+        <textarea id="rationale" rows="2"></textarea>
+
+        <div class="actions">
+          <button type="button" id="btn-prev">← Previous <kbd>k</kbd></button>
+          <button type="submit" class="primary">Save and next <kbd>Ctrl</kbd>+<kbd>Enter</kbd></button>
+          <button type="button" id="btn-next">Next <kbd>j</kbd></button>
+          <button type="button" id="btn-clear" title="Remove the label of this question">Clear</button>
+          <span id="msg"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="card agent" id="agent-card">
+      <div class="h">Agent pre-annotation (agent-m01-T012, not a human annotator)</div>
+      <div id="agent-body"></div>
+      <label style="display:block;margin-top:10px;font-size:12px;color:var(--muted)">
+        <input type="checkbox" id="blind" checked> Blind mode: show the agent label only after I have saved my own label for the question (guideline section 7: annotators work blind).
+      </label>
+    </div>
+
+    <div class="card summary hidden" id="summary"></div>
+  </section>
+
+  <aside class="guide" id="guide"></aside>
+</main>
+
+<script>
+"use strict";
+const PATHS = {
+  sheet: "../../docs/research/annotations/fragment-coverage/sheet.csv",
+  agent: "../../docs/research/annotations/fragment-coverage/labels-agent-m01-T012.csv",
+  guide: "../../docs/research/fragment-coverage.md",
+};
+// Vocabulary of src/grace/eval/analysis/annotation/fragment.py
+const LABELS = [
+  ["in_fragment", "A fragment query returns the answer"],
+  ["open_reasoning", "Inference, judgement, prediction, summary"],
+  ["date_arithmetic", "Arithmetic on dates or durations at read time"],
+  ["common_sense", "Exactly one missing world fact"],
+  ["other", "Annotation error, image only, beyond fragment"],
+];
+const OPERATIONS = ["filter", "join", "negation", "count", "latest"];
+const OTHER_REASONS = ["image_only", "annotation_error", "beyond_fragment"];
+const FLAGS = ["relative_time", "partial_image"];
+const ANNOTATOR_COLUMNS = ["annotator", "label", "operations", "other_reason", "flags", "rationale"];
+const STORE = "grace.t012.labels.v1";
+
+let sheet = [], sheetColumns = [], agent = {}, guideText = "";
+let labels = {};            // question_id -> {label, operations[], other_reason, flags[], rationale}
+let view = [], current = 0;
+
+// ---------- CSV ----------
+function parseCSV(text) {
+  const rows = []; let row = [], field = "", quoted = false;
+  text = text.replace(/^﻿/, "");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false; }
+      else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); rows.push(row); row = []; field = "";
+    } else field += c;
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  const header = rows.shift() || [];
+  return { header, records: rows.filter(r => r.length > 1 || r[0] !== "").map(r => Object.fromEntries(header.map((h, j) => [h, r[j] ?? ""]))) };
+}
+function csvCell(v) { v = String(v ?? ""); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function toCSV(header, records) { return [header, ...records.map(r => header.map(h => r[h]))].map(r => r.map(csvCell).join(",")).join("\r\n") + "\r\n"; }
+const splitList = v => (v || "").replace(/,/g, ";").split(";").map(s => s.trim()).filter(Boolean);
+
+// ---------- loading ----------
+async function fetchText(p) { const r = await fetch(p, { cache: "no-store" }); if (!r.ok) throw new Error(p + ": " + r.status); return r.text(); }
+async function boot() {
+  try {
+    const [s, a, g] = await Promise.all([fetchText(PATHS.sheet), fetchText(PATHS.agent), fetchText(PATHS.guide)]);
+    start(s, a, g);
+  } catch (e) { document.getElementById("loader").classList.remove("hidden"); }
+}
+document.getElementById("btn-load").onclick = async () => {
+  const read = id => { const f = document.getElementById(id).files[0]; return f ? f.text() : Promise.resolve(null); };
+  const [s, a, g] = await Promise.all([read("f-sheet"), read("f-agent"), read("f-guide")]);
+  if (!s) { document.getElementById("load-error").textContent = "sheet.csv is required."; return; }
+  document.getElementById("loader").classList.add("hidden");
+  start(s, a || "question_id,annotator,label\n", g || "# Guideline\n\nNot loaded.");
+};
+
+function start(sheetText, agentText, guide) {
+  const s = parseCSV(sheetText);
+  sheet = s.records; sheetColumns = s.header;
+  agent = Object.fromEntries(parseCSV(agentText).records.map(r => [r.question_id, r]));
+  guideText = guide;
+  try { labels = JSON.parse(localStorage.getItem(STORE) || "{}").labels || {}; } catch { labels = {}; }
+  const savedName = (() => { try { return JSON.parse(localStorage.getItem(STORE) || "{}").annotator || ""; } catch { return ""; } })();
+  document.getElementById("annotator").value = savedName;
+  document.getElementById("guide").innerHTML = renderMarkdown(guideText);
+  fillSelect("f-history", [...new Set(sheet.map(r => r.history_id))]);
+  fillSelect("f-category", [...new Map(sheet.map(r => [r.category, `${r.category} · ${r.category_name}`]))].sort());
+  fillSelect("f-label", LABELS.map(l => l[0]));
+  buildForm();
+  document.getElementById("main").classList.remove("hidden");
+  refresh(true);
+}
+function fillSelect(id, values) {
+  const sel = document.getElementById(id);
+  for (const v of values) { const [val, text] = Array.isArray(v) ? v : [v, v]; sel.add(new Option(text, val)); }
+}
+function persist() {
+  localStorage.setItem(STORE, JSON.stringify({ annotator: document.getElementById("annotator").value.trim(), labels }));
+}
+
+// ---------- list ----------
+function inScope(r) { return document.getElementById("scope").value === "all" || r.overlap === "yes"; }
+function refresh(keepId) {
+  const id = keepId && view[current] ? view[current].question_id : null;
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const h = document.getElementById("f-history").value, c = document.getElementById("f-category").value;
+  const st = document.getElementById("f-status").value, lb = document.getElementById("f-label").value;
+  view = sheet.filter(r => inScope(r)
+    && (!h || r.history_id === h) && (!c || r.category === c)
+    && (!st || (st === "done") === !!labels[r.question_id])
+    && (!lb || labels[r.question_id]?.label === lb)
+    && (!q || (r.question + " " + r.gold_answer + " " + r.question_id).toLowerCase().includes(q)));
+  const idx = id ? view.findIndex(r => r.question_id === id) : -1;
+  current = idx >= 0 ? idx : Math.min(current, Math.max(view.length - 1, 0));
+  renderList(); renderProgress(); show();
+}
+function renderList() {
+  const ol = document.getElementById("items");
+  ol.innerHTML = "";
+  view.forEach((r, i) => {
+    const li = document.createElement("li");
+    if (i === current) li.className = "current";
+    li.innerHTML = `<span class="dot ${labels[r.question_id] ? "done" : ""}"></span><div><div class="id">${esc(r.question_id)} · c${esc(r.category)}${r.overlap === "yes" ? " · overlap" : ""}${labels[r.question_id] ? " · " + esc(labels[r.question_id].label) : ""}</div><div class="q">${esc(r.question)}</div></div>`;
+    li.onclick = () => { current = i; renderList(); show(); };
+    ol.appendChild(li);
+  });
+  document.getElementById("list-foot").textContent = `${view.length} shown`;
+  const cur = ol.children[current]; if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+function renderProgress() {
+  const scope = sheet.filter(inScope), done = scope.filter(r => labels[r.question_id]).length;
+  document.getElementById("progress-text").textContent = `${done} / ${scope.length} labelled`;
+  document.getElementById("bar").style.width = (scope.length ? 100 * done / scope.length : 0) + "%";
+}
+
+// ---------- question ----------
+function show() {
+  const r = view[current], card = document.getElementById("qcard");
+  document.getElementById("summary").classList.add("hidden");
+  if (!r) { card.innerHTML = `<p style="color:var(--muted)">No question matches the filters.</p>`; return; }
+  const turns = (r.evidence_text || "").split(" || ").filter(Boolean).map(t => {
+    const m = t.match(/^\[([^|\]]+)\|([^|\]]+)\|([^\]]+)\]\s*([\s\S]*)$/);
+    return m ? `<div class="turn"><div class="who">${esc(m[1].trim())} · ${esc(m[2].trim())} · <strong>${esc(m[3].trim())}</strong></div>${esc(m[4])}</div>` : `<div class="turn">${esc(t)}</div>`;
+  }).join("");
+  card.innerHTML = `
+    <div class="meta">
+      <span class="chip">${esc(r.question_id)}</span>
+      <span class="chip">${esc(r.history_id)}</span>
+      <span class="chip">category ${esc(r.category)} · ${esc(r.category_name)}</span>
+      ${r.overlap === "yes" ? '<span class="chip overlap">overlap (annotator B)</span>' : ""}
+      ${r.evidence_status && r.evidence_status !== "complete" ? `<span class="chip audit">evidence ${esc(r.evidence_status)}</span>` : ""}
+      ${r.audit_error_type ? `<span class="chip audit">audit: ${esc(r.audit_error_type)}</span>` : ""}
+      <span style="flex:1"></span><span class="chip">${current + 1} of ${view.length}</span>
+    </div>
+    <div class="question">${esc(r.question)}</div>
+    <div class="gold"><b>Gold answer</b><span>${esc(r.gold_answer) || "<i>none</i>"}</span></div>
+    ${r.audit_correct_answer ? `<div class="gold"><b>Audit answer</b><span>${esc(r.audit_correct_answer)}</span></div>` : ""}
+    <div class="h">Evidence ${r.evidence_ids ? `<span style="text-transform:none;font-weight:400;font-family:var(--mono)">${esc(r.evidence_ids)}</span>` : ""}</div>
+    ${turns || '<p style="color:var(--muted)">No evidence turns (see the evidence status and the guideline, step 1).</p>'}
+    ${r.evidence_image_caption ? `<div class="caption">Image caption (not writer input, A1): ${esc(r.evidence_image_caption)}</div>` : ""}`;
+  loadForm(labels[r.question_id]);
+  renderAgent();
+  setMsg("");
+}
+
+// ---------- form ----------
+function buildForm() {
+  document.getElementById("labels").innerHTML = LABELS.map(([v, d], i) =>
+    `<label data-v="${v}"><input type="radio" name="label" value="${v}"><div class="name">${v}<kbd>${i + 1}</kbd></div><div class="desc">${d}</div></label>`).join("");
+  const chips = (id, name, values, type) => document.getElementById(id).innerHTML =
+    values.map(v => `<label data-v="${v}"><input type="${type}" name="${name}" value="${v}">${v}</label>`).join("");
+  chips("ops", "ops", OPERATIONS, "checkbox");
+  chips("reasons", "reason", OTHER_REASONS, "radio");
+  chips("flags", "flags", FLAGS, "checkbox");
+  document.getElementById("form").addEventListener("change", syncForm);
+}
+function formValue() {
+  const f = document.getElementById("form");
+  const label = f.querySelector("input[name=label]:checked")?.value || "";
+  return {
+    label,
+    operations: label === "in_fragment" ? [...f.querySelectorAll("input[name=ops]:checked")].map(i => i.value) : [],
+    other_reason: label === "other" ? (f.querySelector("input[name=reason]:checked")?.value || "") : "",
+    flags: label === "in_fragment" ? [...f.querySelectorAll("input[name=flags]:checked")].map(i => i.value) : [],
+    rationale: document.getElementById("rationale").value.trim(),
+  };
+}
+function loadForm(v) {
+  const f = document.getElementById("form");
+  f.querySelectorAll("input").forEach(i => { i.checked = false; });
+  v = v || { label: "", operations: [], other_reason: "", flags: [], rationale: "" };
+  const tick = (name, val) => { const el = f.querySelector(`input[name=${name}][value="${val}"]`); if (el) el.checked = true; };
+  if (v.label) tick("label", v.label);
+  v.operations.forEach(o => tick("ops", o));
+  if (v.other_reason) tick("reason", v.other_reason);
+  v.flags.forEach(o => tick("flags", o));
+  document.getElementById("rationale").value = v.rationale || "";
+  syncForm();
+}
+function syncForm() {
+  const f = document.getElementById("form"), label = f.querySelector("input[name=label]:checked")?.value || "";
+  f.querySelectorAll(".labels label, .opts label").forEach(l => l.classList.toggle("on", l.querySelector("input").checked));
+  document.getElementById("fs-ops").disabled = label !== "in_fragment";
+  document.getElementById("fs-flags").disabled = label !== "in_fragment";
+  document.getElementById("fs-reason").disabled = label !== "other";
+}
+function validate(v) {
+  if (!document.getElementById("annotator").value.trim()) return "Enter your name in the header first.";
+  if (/^agent-/i.test(document.getElementById("annotator").value.trim())) return "Names beginning with agent- mark a model pre-annotation.";
+  if (!v.label) return "Choose a label.";
+  if (v.label === "other" && !v.other_reason) return "Label other needs a reason.";
+  if (!v.rationale) return "Write a one-sentence rationale.";
+  return "";
+}
+function save(advance) {
+  const r = view[current]; if (!r) return;
+  const v = formValue(), err = validate(v);
+  if (err) { setMsg(err, true); return false; }
+  labels[r.question_id] = v; persist();
+  setMsg("Saved.");
+  if (advance) {
+    // next open question in the current view, else simply the next one
+    let next = view.findIndex((q, i) => i > current && !labels[q.question_id]);
+    if (next < 0) next = Math.min(current + 1, view.length - 1);
+    const keep = view[next]?.question_id;
+    refresh(false);
+    const idx = view.findIndex(q => q.question_id === keep);
+    current = idx >= 0 ? idx : current; renderList(); show();
+  } else { renderList(); renderProgress(); renderAgent(); }
+  return true;
+}
+function setMsg(t, bad) { const m = document.getElementById("msg"); m.textContent = t; m.className = bad ? "error" : "saved"; }
+document.getElementById("form").onsubmit = e => { e.preventDefault(); save(true); };
+document.getElementById("btn-prev").onclick = () => move(-1);
+document.getElementById("btn-next").onclick = () => move(1);
+document.getElementById("btn-clear").onclick = () => {
+  const r = view[current]; if (!r || !labels[r.question_id]) return;
+  if (!confirm(`Remove your label of ${r.question_id}?`)) return;
+  delete labels[r.question_id]; persist(); refresh(true);
+};
+function move(d) { if (!view.length) return; current = Math.max(0, Math.min(view.length - 1, current + d)); renderList(); show(); }
+
+// ---------- agent label ----------
+function renderAgent() {
+  const r = view[current], body = document.getElementById("agent-body");
+  if (!r) { body.innerHTML = ""; return; }
+  const a = agent[r.question_id], mine = labels[r.question_id];
+  if (!a) { body.innerHTML = `<p style="color:var(--muted)">No agent label for this question.</p>`; return; }
+  if (document.getElementById("blind").checked && !mine) {
+    body.innerHTML = `<p style="color:var(--muted)">Hidden until you save your own label.</p>`; return;
+  }
+  const same = mine && mine.label === a.label;
+  body.innerHTML = `
+    <div class="verdict">
+      <span class="chip"><code>${esc(a.label)}</code></span>
+      ${a.operations ? `<span class="chip">ops: ${esc(a.operations)}</span>` : ""}
+      ${a.other_reason ? `<span class="chip">reason: ${esc(a.other_reason)}</span>` : ""}
+      ${a.flags ? `<span class="chip">flags: ${esc(a.flags)}</span>` : ""}
+      ${mine ? `<span class="chip ${same ? "agree" : "disagree"}">${same ? "same label as yours" : "differs from yours (" + esc(mine.label) + ")"}</span>` : ""}
+    </div>
+    <p style="margin:8px 0 0">${esc(a.rationale)}</p>`;
+}
+document.getElementById("blind").onchange = renderAgent;
+
+// ---------- summary ----------
+document.getElementById("btn-summary").onclick = () => {
+  const box = document.getElementById("summary");
+  if (!box.classList.contains("hidden")) { box.classList.add("hidden"); return; }
+  const scope = sheet.filter(inScope), mine = scope.filter(r => labels[r.question_id]);
+  const count = k => mine.filter(r => labels[r.question_id].label === k).length;
+  const n = mine.length, pct = x => n ? (100 * x / n).toFixed(1) + "%" : "–";
+  const flagged = mine.filter(r => labels[r.question_id].label === "in_fragment" && labels[r.question_id].flags.length).length;
+  const agreeRows = mine.filter(r => agent[r.question_id]);
+  const agree = agreeRows.filter(r => agent[r.question_id].label === labels[r.question_id].label).length;
+  box.innerHTML = `<div class="h">Your labels in this set (${n} of ${scope.length})</div>
+    <table><tr><th>Label</th><th>Count</th><th>Share</th></tr>
+    ${LABELS.map(([k]) => `<tr><td><code>${k}</code></td><td class="n">${count(k)}</td><td class="n">${pct(count(k))}</td></tr>`).join("")}</table>
+    <p>Coverage (in_fragment share): <b>${pct(count("in_fragment"))}</b>; counting flagged questions as outside: <b>${pct(count("in_fragment") - flagged)}</b>.</p>
+    ${document.getElementById("blind").checked ? "" : `<p>Same label as the agent pre-annotation on ${agree} of ${agreeRows.length} (descriptive only; not human agreement).</p>`}
+    <p style="color:var(--muted)">Official figures and Cohen's kappa come from <code>scripts/annotation/fragment-coverage.sh</code> on the exported files.</p>`;
+  box.classList.remove("hidden"); box.scrollIntoView({ behavior: "smooth" });
+};
+
+// ---------- import / export ----------
+document.getElementById("btn-export").onclick = () => {
+  const name = document.getElementById("annotator").value.trim();
+  if (!name) { alert("Enter your name in the header first."); return; }
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) { alert("Use letters, digits, dot, dash or underscore in the name (it becomes the file name)."); return; }
+  const header = sheetColumns.length ? sheetColumns : ["question_id", ...ANNOTATOR_COLUMNS];
+  const rows = sheet.map(r => {
+    const v = labels[r.question_id], out = { ...r, annotator: name };
+    out.label = v ? v.label : ""; out.operations = v ? v.operations.join(";") : "";
+    out.other_reason = v ? v.other_reason : ""; out.flags = v ? v.flags.join(";") : ""; out.rationale = v ? v.rationale : "";
+    return out;
+  });
+  const blob = new Blob([toCSV(header, rows)], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `labels-${name}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+document.getElementById("btn-import").onclick = () => document.getElementById("import-file").click();
+document.getElementById("import-file").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const { records } = parseCSV(await f.text());
+  const known = new Set(sheet.map(r => r.question_id)), names = new Set();
+  const got = {};
+  for (const r of records) {
+    if (!r.label || !known.has(r.question_id)) continue;
+    names.add(r.annotator);
+    got[r.question_id] = { label: r.label, operations: splitList(r.operations), other_reason: r.other_reason || "", flags: splitList(r.flags), rationale: r.rationale || "" };
+  }
+  if ([...names].some(n => /^agent-/.test(n))) { alert("This is the agent pre-annotation, not a human label file. Not imported."); e.target.value = ""; return; }
+  const overwrite = Object.keys(got).filter(k => labels[k]).length;
+  if (!confirm(`Import ${Object.keys(got).length} labels${names.size ? " by " + [...names].join(", ") : ""}? ${overwrite} existing labels in this browser will be replaced.`)) { e.target.value = ""; return; }
+  Object.assign(labels, got);
+  if (names.size === 1) document.getElementById("annotator").value = [...names][0];
+  persist(); refresh(true); e.target.value = "";
+};
+
+// ---------- header controls, keys ----------
+document.getElementById("annotator").oninput = persist;
+["scope", "f-history", "f-category", "f-status", "f-label"].forEach(id => document.getElementById(id).onchange = () => refresh(true));
+document.getElementById("search").oninput = () => refresh(true);
+document.getElementById("btn-guide").onclick = () => document.getElementById("main").classList.toggle("with-guide");
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); save(true); return; }
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || (t === "INPUT" && !["radio", "checkbox"].includes(e.target.type)) || t === "SELECT" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key >= "1" && e.key <= "5") {
+    const el = document.querySelector(`input[name=label][value="${LABELS[+e.key - 1][0]}"]`);
+    el.checked = true; syncForm(); e.preventDefault();
+  } else if (e.key === "j" || e.key === "ArrowDown") { move(1); e.preventDefault(); }
+  else if (e.key === "k" || e.key === "ArrowUp") { move(-1); e.preventDefault(); }
+  else if (e.key === "g") { document.getElementById("btn-guide").click(); }
+  else if (e.key === "r") { document.getElementById("rationale").focus(); e.preventDefault(); }
+});
+window.addEventListener("beforeunload", persist);
+
+// ---------- small markdown renderer for the guideline ----------
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function inline(s) {
+  const parts = s.split(/(`[^`]*`)/);
+  return parts.map(p => p.startsWith("`") && p.endsWith("`") && p.length > 1 ? `<code>${esc(p.slice(1, -1))}</code>` :
+    esc(p).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>")
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")).join("");
+}
+function cells(line) {
+  const out = []; let cur = "", tick = false;
+  for (const ch of line.trim().replace(/^\|/, "").replace(/\|$/, "")) {
+    if (ch === "`") tick = !tick;
+    if (ch === "|" && !tick) { out.push(cur.trim()); cur = ""; } else cur += ch;
+  }
+  out.push(cur.trim()); return out;
+}
+function renderMarkdown(md) {
+  const lines = md.replace(/\r/g, "").split("\n"); let html = "", i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^```/.test(l)) { let code = []; i++; while (i < lines.length && !/^```/.test(lines[i])) code.push(lines[i++]); i++; html += `<pre><code>${esc(code.join("\n"))}</code></pre>`; continue; }
+    const h = l.match(/^(#{1,4})\s+(.*)/); if (h) { html += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; i++; continue; }
+    if (/^\s*\|/.test(l) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+      const head = cells(l); i += 2; let body = "";
+      while (i < lines.length && /^\s*\|/.test(lines[i])) body += "<tr>" + cells(lines[i++]).map(c => `<td>${inline(c)}</td>`).join("") + "</tr>";
+      html += `<table><tr>${head.map(c => `<th>${inline(c)}</th>`).join("")}</tr>${body}</table>`; continue;
+    }
+    if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      const ordered = /^\s*\d+\./.test(l); let items = [];
+      while (i < lines.length && (/^\s*([-*]|\d+\.)\s+/.test(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && items.length))) {
+        if (/^\s*([-*]|\d+\.)\s+/.test(lines[i])) items.push(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, "")); else items[items.length - 1] += " " + lines[i].trim();
+        i++;
+      }
+      html += (ordered ? "<ol>" : "<ul>") + items.map(t => `<li>${inline(t)}</li>`).join("") + (ordered ? "</ol>" : "</ul>"); continue;
+    }
+    if (!l.trim()) { i++; continue; }
+    let para = []; while (i < lines.length && lines[i].trim() && !/^(#|```|\s*\||\s*([-*]|\d+\.)\s)/.test(lines[i])) para.push(lines[i++]);
+    html += `<p>${inline(para.join(" "))}</p>`;
+  }
+  return html;
+}
+
+boot();
+</script>
+</body>
+</html>
