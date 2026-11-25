@@ -31,7 +31,7 @@ Written on 2026-11-25 before the first formal run. Config: `configs/experiments/
 
 ## Acceptance
 
-- [x] Every number traces to a run report: 12 runs (6 system, 6 score), each with `report.yaml`; paired statistics in the two `summary.json` files above.
+- [x] Every number traces to a run report: 12 runs (6 system, 6 score), each with `report.yaml`; paired statistics in the `summary.json` files of `E005-summary/` (`budget-1024`, `budget-512`, and the per-template and sensitivity files `budget-1024-by-template`, `budget-512-by-template`).
 
 ## Runs
 
@@ -76,16 +76,40 @@ From completed runs only (code `cb52b73`). Population: 955 questions about the s
 
 At 1024 the llm − template difference is negative in every family (−0.016 to −0.027) and in every leave-one-family-out estimate (−0.020 to −0.022). By question type (1024, llm − template): changed −0.055 (199 reads), uniform −0.018 (501), abstention 0.000 (171), presupposition 0.000 (84, descriptive). By template the LLM arm loses mainly on the constraints view V4 (0.845 against 0.974, 155 reads).
 
+**By view template** (llm vs template, paired; same score runs; family-cluster bootstrap; `E005-summary/budget-1024-by-template/summary.json` and `budget-512-by-template/summary.json`, written by `compare` at code `95552384` from the score runs above; templates with fewer than 100 reads are descriptive only):
+
+| Budget | Template family | Reads | Template | LLM | llm − template | 95% CI (family) | Discordant (llm only / template only) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1024 | V1 list | 128 | 1.000 | 1.000 | 0.000 | [0.000, 0.000] | 0 / 0 |
+| 1024 | V2 current | 179 | 0.514 | 0.520 | +0.006 | [−0.017, +0.032] | 2 / 1 |
+| 1024 | V3 count | 107 | 1.000 | 0.991 | −0.009 | [−0.029, 0.000] | 0 / 1 |
+| 1024 | V4 constraints | 155 | 0.974 | 0.845 | −0.129 | [−0.169, −0.098] | 0 / 20 |
+| 1024 | V5 pending | 205 | 0.990 | 0.990 | 0.000 | [0.000, 0.000] | 0 / 0 |
+| 1024 | V6 choice | 181 | 1.000 | 1.000 | 0.000 | [0.000, 0.000] | 0 / 0 |
+| 512 | V1 list | 128 | 0.914 | 0.992 | +0.078 | [+0.050, +0.102] | 10 / 0 |
+| 512 | V2 current | 179 | 0.492 | 0.497 | +0.006 | [0.000, +0.018] | 2 / 1 |
+| 512 | V3 count | 107 | 0.963 | 0.963 | 0.000 | [−0.028, +0.028] | 2 / 2 |
+| 512 | V4 constraints | 155 | 0.955 | 0.819 | −0.135 | [−0.193, −0.090] | 0 / 21 |
+| 512 | V5 pending | 205 | 0.980 | 0.971 | −0.010 | [−0.020, 0.000] | 1 / 3 |
+| 512 | V6 choice | 181 | 0.994 | 0.994 | 0.000 | [0.000, 0.000] | 0 / 0 |
+
+**Descriptive sensitivity analysis: excluding V4** (post hoc, not preregistered; named `sensitivity_excluding_V4` in the same summary files; 800 reads): at 1024 template 0.889, llm 0.889, llm − template 0.000 [−0.005, +0.006] (discordant 2 / 2); at 512 template 0.861, llm 0.873, llm − template +0.011 [+0.001, +0.020] (15 / 6). The V2 rows are low in both arms because of the presupposition questions (see below), not because of the view content.
+
 **Rendering** (llm arm, `views/view_events.jsonl` and `calls.jsonl` of the system runs): 1024: 639 units rendered, 13 of 638 checked LLM sentences failed the rendering check and fell back to the template (sentence failure rate 0.020, unit fallback rate 0.020); 602 render calls (all `ok`, ledger W), 247,580 input tokens (232,704 served from the prefix cache) and 30,643 output tokens on the write side, against 0 for the template arm. 512: 14 of 638 failed (0.022); 602 calls, 247,580 input and 30,626 output tokens. Mean context tokens at 1024: template 506, llm 521, raw 972; every view fits at 1024 in both view arms (15 of 15 views in every context); at 512 the mean number of views in context is 14.0 (template) and 13.8 (llm).
 
 **Other observations.** Presupposition questions ("my field of work is still education, isn't it?", 84 reads) score 0 in every arm: Qwen3-8B answers `unknown` (or an invalid `unknown` with citations) although the view states the current value; this is answering-model behaviour under the shared answer prompt, identical across arms, and it bounds every arm's accuracy. Historical questions (190 reads, descriptive, outside the population): template 0.284, llm 0.274, raw 0.274 at 1024. Inspection of the discordant V4 reads shows the mechanism of the LLM arm's loss: the rendered sentence often drops the task the constraint belongs to ("The constraint is arrive by 12:00." against the template's "Requested for train booking A: arrive by 12:00."), leaving the link only in the view title; the rendering check requires the row values, not the binding constants, so such sentences pass.
 
 ## Conclusion
 
-On gold graphs of the development families, LLM rendering of the result rows does not help the answering LLM more than template serialisation at equal display budget: it is 2.1 points worse at the primary budget (CI excludes zero at both cluster units) and 1.3 points worse at 512 (CI includes zero), while costing 602 render calls and about 278K tokens on the write side per pass over the 25 sequences. Both view arms beat the raw-text window by 27 to 29 points. This meets the overturn condition of the RQ3 premise as stated in plan 4.2 for the gold-graph setting ("template serialisation is not worse in answer accuracy"): on this evidence rendering, caching and maintaining rendered text are not needed, and the phase 2 gate (D008) should weigh the framing "a staleness criterion plus computing at query time". Limits: one answering and rendering model (Qwen3-8B), one seed, development data, gold graphs with surface entity labels, a scorer not yet registered in `configs/common/scorers.yaml`, and five families as clusters; the rerun on extracted graphs is E010.
+As measured, on gold graphs of the development families LLM rendering of the result rows did not help the answering LLM more than template serialisation at equal display budget: it was 2.1 points worse at the primary budget 1024 (CI [−0.024, −0.018], excluding zero at both cluster units) and 1.3 points worse at 512 (CI [−0.024, +0.001]), at a write-side cost of 602 render calls and about 278K tokens per pass over the 25 sequences. Both view arms beat the raw-text window by 27 to 29 points.
+
+The deficit is concentrated in one template family. On the constraints view V4 the LLM arm loses 12.9 points at 1024 (20 discordant reads, all in the template's favour), and on the other five families combined the difference is 0.000 [−0.005, +0.006] at 1024 and +0.011 [+0.001, +0.020] at 512 (descriptive sensitivity analysis, post hoc). The V4 deficit is attributable to a gap in the rendering check of T018 (`views/render.py`), not to rendering as such: the check requires every row value in a sentence but not the binding constants, so a sentence that drops the task it belongs to ("The constraint is arrive by 12:00.") passes, and the answering LLM can no longer tell which task the constraint belongs to. This is a fixable defect of the LLM arm. The overturn condition of the RQ3 premise (plan 4.2, "template serialisation is not worse in answer accuracy") is therefore **not established** by E005: it needs the rendering check to also require the binding constants (a change to T018's frozen view code, outside E005's scope) and E005 to be rerun with it. Until then the evidence for D008 is: template serialisation is at least as good as LLM rendering on gold graphs as implemented, and no family shows a benefit from rendering at the primary budget.
+
+Limits: one answering and rendering model (Qwen3-8B), one seed, development data, gold graphs with surface entity labels, a scorer not yet registered in `configs/common/scorers.yaml`, five families as clusters, presupposition questions at 0 in every arm (answering-model behaviour), and a post hoc exclusion analysis; the rerun on extracted graphs is E010.
 
 ## Log
 
 - 2026-11-23: created from the full project DAG.
 - 2026-11-25: manager session `m01-E005` started on `task/E005-ablation-c-gold` from `63f9d4fff7021651c9626af18bdc0a25ce50e557`; Issue #95. Design and config written before the first formal run; CPU pre-checks (view answers against gold, template context sizes) on the development set.
 - 2026-11-25: formal runs at `cb52b73` (Qwen3-8B, vLLM 0.34, GPU 3, port 8106): six system runs (template, llm, raw at 1024 and 512) and six score runs, all completed, with reports; comparisons in `E005-summary/budget-1024` and `budget-512`. Result: llm − template −0.021 [−0.024, −0.018] at 1024. Server stopped by PID and the compute.yaml entry removed. No judge run.
+- 2026-11-25: amendment requested by the integration owner (PR #97): the Conclusion overstated the result. Added the per-template table and a descriptive sensitivity analysis excluding V4, both computed by `compare` (code `95552384`, new option `--exclude-template`) from the existing score runs, without new model runs; Conclusion rewritten: the main deficit is attributable to the rendering-check gap (binding constants not required), so the RQ3 overturn condition is not established until the check is fixed and E005 rerun. E005 stays `active`.
