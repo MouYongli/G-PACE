@@ -183,7 +183,7 @@ Valid time $\tau$ says when a fact holds in the world; knowledge and supersessio
 
 ### 3.3 Query fragment
 
-Views and reads use the same restricted query fragment. Its atom is a **claim pattern** $(s,p,o,\omega)[u,f]$. The first four positions match a claim and are constants or variables. The attribution constraint in brackets is optional and requires an attribution on that claim with speaker $u$ and communicative function $f$. A pattern with an attribution constraint can be matched by a new claim, and also by a new attribution on an existing claim.
+Views and reads use the same restricted query fragment. Its atom is a **claim pattern** $(s,p,o,\omega)[u,f]$. The first four positions match a claim and are constants or variables. The attribution constraint in brackets is optional and requires an attribution on that claim with speaker $u$ and communicative function $f$. By default that attribution must also be the speaker's own statement (report mode own), positive and not derived, so quotes, hypotheticals, denials and inferred attributions do not satisfy the constraint; a query may relax these defaults explicitly. A pattern with an attribution constraint can be matched by a new claim, and also by a new attribution on an existing claim.
 
 The fragment allows six kinds of operation:
 
