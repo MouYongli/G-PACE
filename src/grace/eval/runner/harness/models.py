@@ -216,6 +216,11 @@ def fake_responder(messages: Sequence[dict[str, str]]) -> str:
         return " ".join(words[:40]) or "nothing"
     if "slot table" in system:
         return '{"entries": []}'
+    if "## New Messages\n" in user:  # Mem0's extraction call: one memory, the new message's words
+        new = user.split("## New Messages\n", 1)[1].split("\n\n## ", 1)[0]
+        words = _WORD.findall(new.split(": ", 2)[-1])
+        return json.dumps({"memory": [{"id": "0", "text": " ".join(words[:40])}]} if words
+                          else {"memory": []})
     if is_answer_call(messages):
         context = user.split("Context:\n", 1)[-1].split("\n\nCurrent date:", 1)[0]
         context = context.split(f"\n\n{FURTHER_HEADING}:\n", 1)[0]
