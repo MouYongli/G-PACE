@@ -183,7 +183,9 @@ class ContentTest(Fixture):
         roles = [d.role for d in pending.dependencies]
         self.assertEqual(roles, [POSITIVE, NEGATED])
         neg = pending.dependencies[1].to_record()
-        self.assertEqual(neg["attribution"], {"speaker": {"entity": "user"}, "function": None})
+        self.assertEqual(neg["attribution"], {"speaker": {"entity": "user"}, "function": None,
+                                              "report_mode": "own", "polarity": "positive",
+                                              "derived": False})
         count = self.view_at("count:melanie:playsInstrument", 7)
         self.assertTrue(all(d.aggregated for d in count.dependencies))
         choice = self.view_at("choice:request1", 6)

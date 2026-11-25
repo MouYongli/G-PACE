@@ -55,9 +55,14 @@ class DependencyPattern:
         p = self.pattern
         attribution = None
         if p.attribution is not None:
-            attribution = {"speaker": _term(p.attribution.speaker),
-                           "function": (p.attribution.function.value
-                                        if p.attribution.function is not None else None)}
+            a = p.attribution
+            # None is a relaxed field (any value), so the record keeps the relaxations.
+            attribution = {"speaker": _term(a.speaker),
+                           "function": a.function.value if a.function is not None else None,
+                           "report_mode": a.report_mode.value if a.report_mode is not None
+                           else None,
+                           "polarity": a.polarity.value if a.polarity is not None else None,
+                           "derived": a.derived}
         return {"role": self.role, "aggregated": self.aggregated, "selected": self.selected,
                 "subject": _term(p.subject), "predicate": _term(p.predicate),
                 "object": _term(p.object), "scope": _term(p.scope), "attribution": attribution,

@@ -9,10 +9,12 @@ A runs every strategy over the same stored change sets (docs/work/plan/structure
 through one dependency pattern, following the conditions of the soundness proposition (plan 3.4):
 
 - a new claim matches the pattern (patterns without an attribution constraint only);
-- a new attribution satisfies the attribution constraint of the pattern, on a claim (old or new)
-  that matches it: "a pattern with an attribution constraint can be matched by a new claim, and
-  also by a new attribution on an existing claim". A new claim of a constrained pattern matches
-  through its attribution, which is a trigger in its own right;
+- a new attribution satisfies the attribution constraint of the pattern (speaker, function, and
+  report mode own, positive polarity and not derived unless the query relaxes them, plan 3.3, as
+  the compiler applies them), on a claim (old or new) that matches it: "a pattern with an
+  attribution constraint can be matched by a new claim, and also by a new attribution on an
+  existing claim". A new claim of a constrained pattern matches through its attribution, which
+  is a trigger in its own right;
 - a supersession event points to a claim that matches the pattern (any role);
 - an evidence link points to a claim that matches a *positive* pattern: citation level only,
   since negated patterns contribute no witness and therefore no evidence.
@@ -134,7 +136,15 @@ def _satisfies(p: ClaimPattern, a: Attribution, index: Index) -> bool:
     if isinstance(constraint.speaker, Entity) and not _entity_eq(index, a.speaker,
                                                                  constraint.speaker.id):
         return False
-    return constraint.function is None or a.function is constraint.function
+    if constraint.function is not None and a.function is not constraint.function:
+        return False
+    # Defaults of [u, f] (plan 3.3), as the compiler applies them: own, positive, not derived;
+    # a field set to None is relaxed and accepts any value.
+    if constraint.report_mode is not None and a.report_mode is not constraint.report_mode:
+        return False
+    if constraint.polarity is not None and a.polarity is not constraint.polarity:
+        return False
+    return constraint.derived is None or a.derived is constraint.derived
 
 
 # ---------------------------------------------------------------------------------------------
