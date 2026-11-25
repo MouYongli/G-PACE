@@ -170,33 +170,33 @@ nodes:
     type: task
     title: Benchmark adapters
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T001, D013]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 34
+    owner: m01-T002
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T002-benchmark-adapters.md
   - id: T003
     type: task
     title: Baseline runners
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T001, D013]
-    issue: null
-    owner: null
-    start: null
+    issue: 31
+    owner: m01-T003
+    start: 2026-11-25
     finish: null
     file: ../tasks/T003-baseline-runners.md
   - id: T004
     type: task
     title: Prompts, counters, judges
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T001, D013]
-    issue: null
-    owner: null
-    start: null
+    issue: 32
+    owner: m01-T004
+    start: 2026-11-25
     finish: null
     file: ../tasks/T004-prompts-counters-judges.md
   - id: E001
@@ -313,12 +313,12 @@ nodes:
     type: decision
     title: Model line-up and judge snapshot
     milestone: M1
-    status: proposed
+    status: accepted
     depends_on: [T009]
     issue: null
-    owner: null
+    owner: user
     start: 2026-11-23
-    finish: null
+    finish: 2026-11-25
     file: ../decisions/D006-model-lineup.md
   - id: D007
     type: decision
@@ -336,12 +336,12 @@ nodes:
     type: task
     title: Claim model and bitemporal store
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T001, D013]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 33
+    owner: m01-T014
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T014-claim-model.md
   - id: T015
     type: task

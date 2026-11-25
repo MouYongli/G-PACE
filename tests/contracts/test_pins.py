@@ -60,8 +60,18 @@ class PromptPinTest(unittest.TestCase):
                     self.assertEqual(registry[item["prompt"]]["sha256"], item["sha256"])
                 self.assertEqual(config["decoding"]["temperature"], 0.0)
                 self.assertEqual(config["judged_outputs"], ["answer"])
-                # D006 is proposed: no judge model may be pinned before the decision
-                self.assertIsNone(config["model"])
+                # D006: every judge names its model; Azure keys come only from the environment
+                for model in (config["model"], config.get("comparison_model")):
+                    if model is None:
+                        continue
+                    self.assertIn(model["provider"], {"vllm", "azure-openai"})
+                    if model["provider"] == "vllm":
+                        self.assertEqual(len(model["revision"]), 40)
+                    else:
+                        self.assertEqual(model["auth_header"], "api-key")
+                        self.assertTrue(model["api_key_env"].isupper())
+                expected = {"blind": "vllm", "longmemeval-official": "azure-openai"}
+                self.assertEqual(config["model"]["provider"], expected[path.stem])
 
 
 class ScorerRegistryTest(unittest.TestCase):
@@ -89,15 +99,19 @@ class BudgetAndModelPinTest(unittest.TestCase):
         self.assertEqual(budgets["answer"]["further_retrieval_per_read"], 1)
         self.assertEqual(budgets["pipeline"]["repairs_per_read"], 1)
 
-    def test_model_pins_are_candidates_only(self):
-        for path in sorted((CONFIGS / "models").glob("*.yaml")):
+    def test_model_pins_match_d006(self):
+        roles = {"qwen3-8b": "primary", "qwen3.5-9b": "contemporary",
+                 "qwen3.5-27b": "long-context", "gemma-4-31b-it": "long-context",
+                 "qwen3-32b": "writer-scale"}
+        paths = sorted((CONFIGS / "models").glob("*.yaml"))
+        self.assertEqual({p.stem for p in paths}, set(roles))
+        for path in paths:
             with self.subTest(model=path.stem):
                 config = yaml_file(path)
-                self.assertEqual(config["status"], "candidate")  # D006 is proposed
+                self.assertEqual((config["status"], config["role"]), ("selected", roles[path.stem]))
                 pin = TokenizerPin.from_config(config)
                 self.assertEqual(pin.template_kwargs.get("enable_thinking"), False)
                 self.assertEqual(config["decoding"]["temperature"], 0.0)
-
 
 if __name__ == "__main__":
     unittest.main()

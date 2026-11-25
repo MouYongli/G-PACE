@@ -1,6 +1,7 @@
 """llm/tokens.py: pins are enforced; real counting is checked only if the HF cache holds a model."""
 
 import hashlib
+import json
 import shutil
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from grace.llm.tokens import (
     TokenizerPin,
     TokenizerPinError,
     locate_snapshot,
+    read_chat_template,
     verify_snapshot,
 )
 
@@ -69,6 +71,21 @@ class PinTest(unittest.TestCase):
         pin = pin_for({"chat_template.jinja": b""})
         with self.assertRaises(TokenizerPinError):
             locate_snapshot(TokenizerPin(**{**pin.__dict__, "hf_repo": "grace-test/absent"}))
+
+
+class ChatTemplateFileTest(unittest.TestCase):
+    def test_jinja_file_and_embedded_json_template(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            jinja = Path(tmp) / "chat_template.jinja"
+            jinja.write_text("{{ messages }}", encoding="utf-8")
+            self.assertEqual(read_chat_template(jinja), "{{ messages }}")
+            config = Path(tmp) / "tokenizer_config.json"
+            config.write_text(json.dumps({"chat_template": "{% for m in messages %}{% endfor %}"}),
+                              encoding="utf-8")
+            self.assertEqual(read_chat_template(config), "{% for m in messages %}{% endfor %}")
+            config.write_text(json.dumps({"model_max_length": 8}), encoding="utf-8")
+            with self.assertRaises(TokenizerPinError):
+                read_chat_template(config)
 
 
 class CachedModelTest(unittest.TestCase):

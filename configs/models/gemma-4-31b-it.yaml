@@ -1,0 +1,24 @@
+# Tokenizer and chat-template pin of a model chosen in decision D006 (long-context second answering model).
+# Checksums are SHA-256 of the files in the Hugging Face snapshot of `revision`; grace.llm.tokens
+# refuses to count when a file differs.
+model: gemma-4-31b-it
+status: selected                  # D006 accepted
+role: long-context
+hf_repo: google/gemma-4-31B-it
+revision: 842da3794eaa0b77d5f08bae87a17459d91ff475
+served_name: google/gemma-4-31B-it
+thinking: false                   # explicit per model (plan 7.1: disabled); sent to the server as
+                                  # chat_template_kwargs, so thinking never lands in `content`
+config_max_position_embeddings: 262144   # from config.json; check the model card before relying on it
+tokenizer:
+  chat_template: chat_template.jinja
+  template_kwargs:
+    enable_thinking: false        # plan 7.1: thinking disabled in the main configuration
+  files:
+    chat_template.jinja: ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4
+    tokenizer.json: cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f
+    tokenizer_config.json: 9f4fec4b1dc6ecddf8f4a92e9caea5971c0e67d81309f3f9066a2bee8c362633
+    generation_config.json: d4226bbe3117d2d253ba4609720ba82c6c4ce4627a9a6ae05387c78983ac03de
+decoding:
+  temperature: 0.0                # plan 7.1; the recommended setting is a sensitivity run
+  top_p: 1.0

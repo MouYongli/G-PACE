@@ -16,8 +16,16 @@ upstream:
   file: src/evaluation/evaluate_qa.py
   revision: null                  # to pin when the file is compared with upstream
   verified: false
-  judge_model: gpt-4o-2024-08-06  # upstream's judge; whether GRACE uses it is decision D006
-model: null                       # decision D006 (proposed)
+  judge_model: gpt-4o-2024-08-06  # upstream's judge; GRACE uses gpt-4.1-mini instead (D006)
+model:                            # deviation: upstream judges with gpt-4o-2024-08-06 (D006)
+  provider: azure-openai          # D006: secondary judge, budget EUR 50 for the whole project
+  model: gpt-4.1-mini
+  version: "2025-04-14"           # Azure lifecycle page: retires 2027-04-14 (deployments 2027-10-14)
+  deployment: Sweden Central, standard (not batch)
+  base_url_env: AZURE_OPENAI_ENDPOINT     # https://<resource>.openai.azure.com/openai/v1
+  deployment_env: AZURE_OPENAI_DEPLOYMENT # sent as `model`
+  api_key_env: AZURE_OPENAI_API_KEY       # never written to the repository
+  auth_header: api-key
 decoding:
   temperature: 0.0
   max_tokens: 10
