@@ -1,0 +1,10 @@
+# Template family "member count" (plan 5.4; change-sequences.md 6.2, V3). {count} is the value of
+# the counted column. The aggregate sentence is bound to the count and to its member rows.
+family: count
+reference: V3
+binding: entity_predicate
+predicates: multi_valued
+title: "number of {predicate} values of {subject}"
+query: |
+  SELECT COUNT(DISTINCT ?value) WHERE { ($subject, $predicate, ?value) [$state_speaker, inform] }
+sentence: "Number of distinct values of {subject} {predicate}: {count}."

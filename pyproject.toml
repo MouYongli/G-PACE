@@ -23,6 +23,7 @@ dependencies = [
   "nltk>=3.9",           # Porter stemmer of the official LoCoMo token-F1 scorer (T004)
   "regex>=2022.10.31",   # article removal of the LoCoMo scorer; upstream's \b differs from re's (T004)
   "jinja2>=3.1",         # renders the chat template for token counting (transformers needs it)
+  "mem0ai==2.2.1",       # Mem0 baseline (T029); exact pin, plain install (CPU-only, in-process Qdrant)
 ]
 
 [project.optional-dependencies]

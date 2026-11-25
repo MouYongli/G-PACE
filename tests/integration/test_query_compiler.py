@@ -154,12 +154,14 @@ LATEST_CHOICE = """SELECT ?train WHERE { (request1, selectedService, ?train) [us
 LATEST BY version OF ?c"""
 LATEST_INSTRUMENT = """SELECT ?i WHERE { (melanie, playsInstrument, ?i) AS ?c }
 LATEST BY valid OF ?c"""
+LATEST_RESTATED = """SELECT ?i WHERE { (melanie, playsInstrument, ?i) [melanie, inform] AS ?c }
+LATEST BY version OF ?c"""
 CITY = "SELECT ?city WHERE { (lina, livesIn, ?city) }"
 ARRIVAL = "SELECT ?a WHERE { (TR7143, scheduledArrival, ?a) }"
 
 # Every query of the suite, used by the time-travel tests.
 SUITE = (ACCEPTED, ACCEPTED_3, OPEN_OFFERS, INSTRUMENTS, COUNT, COUNT_BY, LATEST_OFFER,
-         LATEST_CHOICE, LATEST_INSTRUMENT, CITY, ARRIVAL,
+         LATEST_CHOICE, LATEST_INSTRUMENT, LATEST_RESTATED, CITY, ARRIVAL,
          CITY + " AT(state=historical)",
          CITY + ' AT(valid="2022-06-01"^^date, state=historical)',
          ARRIVAL + " AT(state=historical)",
@@ -335,6 +337,19 @@ class LatestTest(ModeTest):
         self.assertEqual(self.answers(LATEST_INSTRUMENT, 2), {(E("violin"),): (W("c_violin"),)})
         self.assertEqual(self.answers(LATEST_INSTRUMENT, 6),
                          {(E("clarinet"),): (W("c_clarinet"),)})
+
+    def test_latest_keeps_every_witness_of_the_selected_claim(self):
+        # c_violin is informed at version 2 (a_violin) and restated at version 6 (a_violin2).
+        # The latest claim is selected first, then all its witnesses are kept: the earlier
+        # witness {c_violin, a_violin} survives the restatement (plan 3.4; T015 finding F2).
+        self.assertEqual(self.answers(LATEST_RESTATED, 2),
+                         {(E("violin"),): (W("c_violin", "a_violin"),)})
+        self.assertEqual(self.answers(LATEST_RESTATED, 6), {
+            (E("violin"),): (W("c_violin", "a_violin"), W("c_violin", "a_violin2")),
+            (E("clarinet"),): (W("c_clarinet", "a_clarinet"),)})
+        only_violin = LATEST_RESTATED.replace("AS ?c", "AS ?c FILTER(?i = violin)")
+        self.assertEqual(self.answers(only_violin, 6),
+                         {(E("violin"),): (W("c_violin", "a_violin"), W("c_violin", "a_violin2"))})
 
     def test_ties_keep_every_tied_answer(self):
         text = """SELECT ?p WHERE { (lina, prefers, ?p) AS ?c } LATEST BY version OF ?c"""

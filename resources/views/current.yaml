@@ -1,0 +1,17 @@
+# Template family "current single-valued state of an entity" (plan 5.4; change-sequences.md 6.2,
+# V2). The filter on end(?c) keeps claims with a stated valid end (past states) out of the current
+# state without comparing with the time of reading (plan 3.3): an open end is later than every
+# time. Latest-state selection by version makes the definition total when parallel claims exist
+# (the reference encoding of src/grace/cli/data/changeseq_crosscheck.py).
+family: current
+reference: V2
+binding: entity_predicate
+predicates: exclusive
+title: "current {predicate} of {subject}"
+query: |
+  SELECT ?value WHERE {
+    ($subject, $predicate, ?value) [$state_speaker, inform] AS ?c
+    FILTER(end(?c) > "9999-12-31"^^date)
+  }
+  LATEST BY version OF ?c
+sentence: "Currently, {subject} {predicate} {value}."

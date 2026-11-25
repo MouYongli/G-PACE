@@ -1,0 +1,14 @@
+# Query planner of the read path (task T023; plan 5.3, 5.6). Loaded by
+# grace.context.pipeline.query.planner.PlannerConfig.load. Development settings; the values are
+# frozen at the configuration lock (D012), and any later change is a recorded deviation.
+version: 1
+rules: true                        # rule templates first (rules.py); no LLM call when one fires
+prompt: plan-query                 # resources/prompts/plan-query, pinned in prompts.yaml
+repair_prompt: plan-query-repair   # the one compile repair of a read (plan 5.6, "Constraints")
+schema: plan-query                 # resources/schemas/llm/plan-query.json
+max_compile_repairs: 1             # plan 5.6: at most one compilation repair per read
+fallback_channels: [bm25, dense]   # text retrieval when no query compiles (channels: T025)
+mode: rdf11                        # claim serialisation the queries are compiled for
+decoding:
+  temperature: 0.0
+  max_tokens: 768

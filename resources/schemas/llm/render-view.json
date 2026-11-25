@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grace/llm/render-view.json",
+  "title": "Output of view rendering (plan 5.4): sentences, each labelled with the result rows it states",
+  "type": "object",
+  "properties": {
+    "sentences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rows": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "text": {"type": "string", "minLength": 1}
+        },
+        "required": ["rows", "text"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["sentences"],
+  "additionalProperties": false
+}

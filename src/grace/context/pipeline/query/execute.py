@@ -11,7 +11,8 @@ Witness rules (plan 3.4):
   and the attributions that satisfy their constraints); an answer keeps its minimal witnesses;
 - negation contributes no witness (its pattern is not projected);
 - distinct count: one witness, the union of the witnesses of the counted members;
-- latest state: the witnesses of the selected answer, from the rows that reach the maximum key.
+- latest state: the latest claim is selected first (its key is the latest version at which it
+  was confirmed, the maximum key over its rows), then every witness of that claim is kept.
 
 Entities are evaluated on the representative of their equivalence class at the cut-off
 (contracts.md, "Claim graph"): entity constants match every member of their class, and entity
@@ -108,6 +109,7 @@ def execute(compiled: CompiledQuery, store: ClaimStore, version: int | None = No
     main, _ = compiled.bind(classes)
     query = compiled.query
 
+    latest = None if query.latest is None else query.latest.label.name
     rows = []
     for sol in store.query(main, cutoff):
         values = tuple(_value(sol[v], reps) for v in compiled.answer_vars)
@@ -115,17 +117,17 @@ def execute(compiled: CompiledQuery, store: ClaimStore, version: int | None = No
         atts = [_local(sol[s.attribution], _ATT_PREFIX) for s in compiled.slots
                 if s.attribution]
         key = _key(sol[compiled.key]) if compiled.key else None
-        rows.append((values, Witness.of(claims, atts), key))
+        selected = _local(sol[latest], _CLAIM_PREFIX) if latest else None
+        rows.append((values, Witness.of(claims, atts), key, selected))
 
-    if query.latest is not None and rows:
-        top = max(r[2] for r in rows)
-        rows = [r for r in rows if r[2] == top]
+    if latest is not None and rows:
+        rows = _latest_rows(rows)
 
     if query.count is not None:
         answers = _count_answers(query, rows)
     else:
         grouped: dict[tuple, list[Witness]] = defaultdict(list)
-        for values, witness, _ in rows:
+        for values, witness, *_ in rows:
             grouped[values].append(witness)
         answers = [Answer(values, minimal(ws)) for values, ws in grouped.items()]
 
@@ -142,10 +144,28 @@ def execute(compiled: CompiledQuery, store: ClaimStore, version: int | None = No
                        evidence=evidence)
 
 
+def _latest_rows(rows: list) -> list:
+    """LATEST: select the latest claim(s) first, then keep every row (witness) of them.
+
+    A claim's key is the maximum row key over its rows: the latest version at which it was
+    confirmed (claim or constraining attribution stamp). Ties between claims keep all tied claims.
+    Every row of a selected claim is kept, so an earlier witness of a restated claim survives
+    (plan 3.4, change-sequences.md 6.2). Only rows visible at the cut-off exist, so the selection
+    is time-travel stable.
+    """
+    claim_key: dict[str, tuple] = {}
+    for _, _, key, claim in rows:
+        if claim not in claim_key or key > claim_key[claim]:
+            claim_key[claim] = key
+    top = max(claim_key.values())
+    chosen = {c for c, k in claim_key.items() if k == top}
+    return [r for r in rows if r[3] in chosen]
+
+
 def _count_answers(query: Query, rows) -> list[Answer]:
     n_groups = len(query.select)
     members: dict[tuple, dict] = defaultdict(lambda: defaultdict(list))
-    for values, witness, _ in rows:
+    for values, witness, *_ in rows:
         members[values[:n_groups]][values[n_groups]].append(witness)
     if not members and n_groups == 0:
         return [Answer((Value("0", "integer"),), ())]
