@@ -1,0 +1,12 @@
+# Text retrieval over message chunks, channel dense (plan 7.2). top_k is a placeholder until it is
+# fixed on development data; the read budget decides how many of the top_k fit.
+engine: retrieval
+description: Text retrieval, channel dense
+prefix_caching: false
+params:
+  channel: dense
+  top_k: 20
+  rrf_k: 60
+  bm25_k1: 1.5
+  bm25_b: 0.75
+  order: chronological
