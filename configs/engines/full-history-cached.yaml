@@ -1,0 +1,7 @@
+# Raw text: the full history with prefix caching on the serving side (plan 7.2, 8.2).
+engine: raw
+description: Full history with prefix caching
+prefix_caching: true
+params:
+  last_k: null
+  window_tokens: 32768

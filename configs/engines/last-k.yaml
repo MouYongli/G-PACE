@@ -1,0 +1,8 @@
+# Raw text: the last k messages; the read budget applies on top (plan 7.2).
+# k is a placeholder until it is fixed on development data.
+engine: raw
+description: Last-k messages
+prefix_caching: false
+params:
+  last_k: 20
+  window_tokens: 32768
