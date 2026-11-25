@@ -1,7 +1,7 @@
 """E004 scale experiment: push, pull and hybrid staleness decisions on scaled synthetic graphs.
 
     uv run python -m grace.cli.scale plan --config configs/experiments/E004-scale-experiment.yaml
-    uv run python -m grace.cli.scale run --config <config> --mix five --blocks 64 --seed 1 \\
+    uv run python -m grace.cli.scale run --config <config> --mix four --blocks 64 --seed 1 \\
         --views 48
     uv run python -m grace.cli.scale summary --config <config> --runs <run-id> <run-id>...
 
@@ -159,8 +159,9 @@ def run_one(config_path: Path, mix: str, blocks: int, seed: int, views: int, *,
         families = config["mixes"][mix]
         admitted = scale.admitted(graph.bindings, families)
         diag = config["diagnostics"]
-        compiled = [f for f in families
-                    if f != "pending" or blocks <= diag["compiled_pending_max_blocks"]]
+        compiled = [f for f in scale.FAMILY.values()
+                    if f not in diag["slow_families"]
+                    or blocks <= diag["compiled_slow_max_blocks"]]
         diagnostics = scale.query_diagnostics(
             graph, scale.admitted(made[0].bindings, scale.FAMILY.values()),
             compiled_families=compiled, repeats=int(diag["repeats"]))

@@ -67,7 +67,7 @@ class GraphTest(unittest.TestCase):
         self.assertEqual(g.size()["bindings"], 15 * B)
         self.assertEqual(sum(scale.BINDINGS_PER_BLOCK.values()), 15)
         self.assertEqual(len(scale.admitted(g.bindings, ["list", "current", "count",
-                                                         "constraints", "choice"])), 12 * B)
+                                                         "constraints"])), 9 * B)
 
     def test_views_agree_with_the_block_alone(self):
         config = ViewConfig(state_speaker="user")
@@ -182,7 +182,8 @@ class DriverTest(unittest.TestCase):
             generator={**config["generator"], "block_length": 60, "prefix_length": 30},
             graphs=[{"mix": "six", "blocks": [2], "views": [6]}], seeds=[5], repetitions=2,
             reads=3, grid={"read_scope": [4, "all"], "writes_per_read": [1, 8, 64]},
-            diagnostics={"repeats": 1, "compiled_pending_max_blocks": 16})
+            diagnostics={"repeats": 1, "slow_families": ["pending", "choice"],
+                         "compiled_slow_max_blocks": 16})
         with tempfile.TemporaryDirectory() as tmp:
             run_dir, status = cli.run_one(CONFIG, "six", 2, 5, 6, root=Path(tmp),
                                           code=CodeState("0" * 40, False), command="test",
@@ -214,7 +215,7 @@ class DriverTest(unittest.TestCase):
         lines = cli.plan_lines(CONFIG)
         config = cli.load_experiment(CONFIG)
         self.assertEqual(len(lines), len(cli.runs(config)))
-        self.assertEqual(len(lines), 2 * (3 * 4 - 1 + 2 * 2))  # 768 views need 64 blocks
+        self.assertEqual(len(lines), 2 * (3 * 4 - 1 + 2 * 2))  # 512 views need 57 blocks
 
 
 if __name__ == "__main__":
