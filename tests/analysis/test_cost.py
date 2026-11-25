@@ -351,6 +351,18 @@ class AmortisationTest(HandBuiltRuns, unittest.TestCase):
         self.assertEqual(shuffled.points[-1], system.points[-1])
         self.assertEqual(shuffled.points[0], 2110)
 
+    def test_gpu_ledger_is_undefined_when_a_call_has_no_gpu_time(self):
+        reads = [Read("x", "h", 1)]
+        recs = [record("a", read="x", gpu=None), record("b", read="x", gpu=2.0)]
+        run = load_run(write_run(self.tmp / "nogpu", "R-1", recs, reads))
+        self.assertIsNone(am.cost(run.records, "gpu_seconds"))
+        self.assertIsNone(am.mean_cost_per_read(run)["gpu_seconds"])
+        self.assertIsNone(am.cost_per_success(run, {"x": True})["cost_per_success"]
+                          ["gpu_seconds"])
+        with self.assertRaises(LedgerError):
+            am.cumulative(run, "x", ledger="gpu_seconds")
+        self.assertEqual(am.cumulative(run, "x", ledger="logical")[0].points, [220])
+
     def test_cost_per_success(self):
         result = am.cost_per_success(self.system, {"q0": True, "q1": False, "q2": True})
         self.assertEqual(result["n_success"], 2)
@@ -434,6 +446,13 @@ class ReportCliTest(HandBuiltRuns, unittest.TestCase):
             f"sys={self.tmp / 'sys'}:{judge}"]), 0)
         rows = json.loads((out / "s" / "cost-per-success.json").read_text())
         self.assertEqual(rows[0]["n_success"], 1)
+
+    def test_payback_without_a_system_writes_the_row_only(self):
+        out = self.runs_root / "row"
+        self.assertEqual(report.main(["payback", "--out", str(out), "--full-history",
+                                      str(self.tmp / "full")]), 0)
+        self.assertEqual(sorted(p.name for p in out.iterdir()),
+                         ["full-history-row.json", "inputs.json"])
 
     def test_quality_command(self):
         score = self.tmp / "score"

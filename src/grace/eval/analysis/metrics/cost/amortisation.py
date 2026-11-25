@@ -47,15 +47,18 @@ def price(records: Iterable[CallRecord], c: float) -> float:
                      for r in records))
 
 
-def cost(records: Iterable[CallRecord], ledger: str) -> float:
-    """One of the three ledgers of plan 8.1 over records."""
+def cost(records: Iterable[CallRecord], ledger: str) -> float | None:
+    """One of the three ledgers of plan 8.1 over records. GPU seconds are None when any record
+    has no GPU time: a partial sum would read as a measured total."""
     records = list(records)
     if ledger == "logical":
         return price(records, 1.0)
     if ledger == "computed":
         return price(records, 0.0)
     if ledger == "gpu_seconds":
-        return float(sum(r.gpu_seconds or 0.0 for r in records))
+        if any(r.gpu_seconds is None for r in records):
+            return None
+        return float(sum(r.gpu_seconds for r in records))
     raise ValueError(f"unknown ledger {ledger!r}; one of {LEDGERS}")
 
 
@@ -106,6 +109,8 @@ def cumulative(run: RunCost, label: str, *, ledger: str = "computed", c: float |
     instead of using `ledger`. `seed` draws the read order with a fixed seed (plan 8.3: different
     numbers of independent questions on one snapshot); the default keeps the measured run order,
     which is the only order in which cache-dependent costs were actually measured."""
+    if c is None and cost(run.records, ledger) is None:
+        raise LedgerError(f"{run.run_id}: calls without GPU time; no {ledger} curve")
     per_read = records_by_read(run)
     curves = []
     for history_id in histories(run):
@@ -321,7 +326,8 @@ def cost_per_success(run: RunCost, success: Mapping[str, bool]) -> dict:
         "n_unscored": sum(1 for rid in reads if rid not in success),
         "success_rate": n_success / len(reads) if reads else None,
         "total": totals,
-        "cost_per_success": {ledger: (value / n_success if n_success else None)
+        "cost_per_success": {ledger: (value / n_success if n_success and value is not None
+                                      else None)
                              for ledger, value in totals.items()},
     }
 
@@ -346,4 +352,8 @@ def mean_cost_per_read(run: RunCost) -> dict:
     """Mean system cost per read in each ledger, the ingestion included."""
     system = [r for r in run.records if r.category in SYSTEM]
     n = len(run.reads)
-    return {ledger: (cost(system, ledger) / n if n else None) for ledger in LEDGERS}
+    out = {}
+    for ledger in LEDGERS:
+        total = cost(system, ledger)
+        out[ledger] = total / n if n and total is not None else None
+    return out

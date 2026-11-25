@@ -3,7 +3,7 @@
     python -m grace.cli.cost.report ledger RUN_DIR [--json OUT.json]
     python -m grace.cli.cost.report amortise --out DIR --run LABEL=RUN_DIR ... \
         [--ledger computed|logical|gpu_seconds | --price C] [--seed N] [--baseline LABEL]
-    python -m grace.cli.cost.report payback --out DIR --system LABEL=RUN_DIR ... \
+    python -m grace.cli.cost.report payback --out DIR [--system LABEL=RUN_DIR ...] \
         --full-history RUN_DIR [--uncached RUN_DIR] [--steps 20]
     python -m grace.cli.cost.report quality --out DIR --score LABEL=SCORE_RUN_DIR ... \
         --metric NAME [--annotation NAME] [--ledger computed]
@@ -110,9 +110,14 @@ def cmd_amortise(args, command: str) -> int:
     _require_completed(runs, args.allow_failed)
     out = out_dir(args.out)
     write_inputs(out, command, runs)
-    curves = [curve for label, run in runs.items()
-              for curve in am.cumulative(run, label, ledger=args.ledger, c=args.price,
-                                         seed=args.seed)]
+    curves = []
+    for label, run in runs.items():
+        try:
+            curves += am.cumulative(run, label, ledger=args.ledger, c=args.price, seed=args.seed)
+        except LedgerError as exc:
+            print(f"{label} left out: {exc}")
+    if not curves:
+        raise SystemExit("no curve to draw")
     rows = [(c.label, c.history_id, c.ledger, c.order, m, value)
             for c in curves for m, value in enumerate(c.points, start=1)]
     plots.write_csv(out / "cumulative.csv",
@@ -159,6 +164,10 @@ def cmd_payback(args, command: str) -> int:
         if gpu["value"] is not None:
             marks["c (GPU s, upper)"] = gpu["value"]
     _dump(out, "full-history-row.json", rows)
+    if not systems:
+        print(f"wrote {out}")
+        print(json.dumps(rows, indent=2))
+        return 0
     cs = sorted(set(am.grid(args.steps)) | set(marks.values()))
     series = {label: am.payback_curve(run, full, cs) for label, run in systems.items()}
     table = [(label, p.c, p.w, p.system_per_read, p.baseline_per_read, p.delta, p.m_star)
@@ -273,7 +282,8 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("payback", help="M* over the cache ratio, measured c marked")
     common(p)
-    p.add_argument("--system", type=labelled, action="append", required=True)
+    p.add_argument("--system", type=labelled, action="append", default=[],
+                   help="LABEL=RUN_DIR; without it only the full-history row is written")
     p.add_argument("--full-history", type=Path, required=True,
                    help="full-history run measured with prefix caching")
     p.add_argument("--uncached", type=Path, default=None,
