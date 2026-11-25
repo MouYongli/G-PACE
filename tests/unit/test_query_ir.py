@@ -8,7 +8,13 @@ from __future__ import annotations
 import datetime as dt
 import unittest
 
-from grace.context.memory.graph.entries import CommunicativeFunction, Entity, Value
+from grace.context.memory.graph.entries import (
+    CommunicativeFunction,
+    Entity,
+    Polarity,
+    ReportMode,
+    Value,
+)
 from grace.context.pipeline.query.compile import absolutize, compile_query
 from grace.context.pipeline.query.grammar import parse, to_text
 from grace.context.pipeline.query.ir import (
@@ -48,7 +54,55 @@ VALID = [
     'SELECT ?x WHERE { (s, p, ?x, default) . (?x, q, "a \\"quoted\\" text") . (?x, r, 42) '
     "FILTER(?x != Atlas) }",
     "SELECT ?p WHERE { (lina, ?p, true) }",
+    "SELECT ?t WHERE { (r, sel, ?t) [system, offer, derived=_, mode=_] "
+    "NOT EXISTS { (r, sel, ?t) [user, reject, polarity=_] } }",
 ]
+
+
+class AttributionDefaultTest(unittest.TestCase):
+    """[u, f] defaults to an own, positive, not derived attribution (plan 3.3)."""
+
+    def test_defaults(self):
+        a = AttributionConstraint(Entity("user"), CommunicativeFunction.ACCEPT)
+        self.assertEqual((a.report_mode, a.polarity, a.derived),
+                         (ReportMode.OWN, Polarity.POSITIVE, False))
+        self.assertEqual(a.relaxed(), ())
+        self.assertEqual(parse(ACCEPTED).where[0].attribution, a)
+
+    def test_relaxation_parses_and_prints_in_canonical_order(self):
+        q = parse("SELECT ?x WHERE { (a, p, ?x) [u, inform, derived=_, MODE=_] }")
+        a = q.where[0].attribution
+        self.assertEqual((a.report_mode, a.polarity, a.derived), (None, Polarity.POSITIVE, None))
+        self.assertIn("[u, inform, mode=_, derived=_]", to_text(q))
+        self.assertEqual(parse(to_text(q)), q)
+
+    def test_only_relaxation_is_in_the_fragment(self):
+        rejects(self, "SELECT ?x WHERE { (a, p, ?x) [u, inform, polarity=negative] }",
+                "can only be relaxed")
+        rejects(self, "SELECT ?x WHERE { (a, p, ?x) [u, inform, mode=_, mode=_] }",
+                "relaxed twice")
+        rejects(self, "SELECT ?x WHERE { (a, p, ?x) [u, inform, certainty=_] }",
+                "relaxed default")
+        for field, value in (("report_mode", ReportMode.QUOTE),
+                             ("polarity", Polarity.NEGATIVE), ("derived", True),
+                             ("report_mode", "own"), ("derived", 0)):
+            att = AttributionConstraint(Entity("u"), CommunicativeFunction.INFORM,
+                                        **{field: value})
+            with self.assertRaisesRegex(QueryTypeError, "only relax"):
+                typecheck(Query((X,), (ClaimPattern(Entity("a"), "p", X, attribution=att),)))
+
+    def test_compiled_filters_follow_the_relaxation(self):
+        main = compile_query(parse(ACCEPTED)).main
+        self.assertIn("g:reportMode g:OwnStatement", main)
+        self.assertIn("g:polarity g:Positive", main)
+        self.assertIn('g:derived "false"^^<http://www.w3.org/2001/XMLSchema#boolean>', main)
+        relaxed = compile_query(parse(ACCEPTED.replace("[user, accept]",
+                                                       "[user, accept, mode=_, polarity=_, "
+                                                       "derived=_]"))).main
+        for term in ("g:reportMode", "g:polarity", "g:derived"):
+            self.assertNotIn(term, relaxed)
+        unconstrained = compile_query(parse("SELECT ?x WHERE { (a, p, ?x) }")).main
+        self.assertNotIn("g:reportMode", unconstrained)
 
 
 def rejects(test: unittest.TestCase, text: str, fragment: str) -> None:

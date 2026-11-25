@@ -5,7 +5,7 @@ them on the gold graph at every version. These tests run it on the hand-written 
 design section 6.5, on a generated development sequence, and on two small extensions of the worked
 example that pin down the known compiler-side gaps (an open gap is marked `expectedFailure`: when
 T017 closes it the test reports an unexpected success and must be updated; the LATEST witness gap
-F2 is closed). Negative controls show that a broken
+F2 and the attribution-default gap F1 are closed). Negative controls show that a broken
 IR template is caught.
 """
 
@@ -93,13 +93,14 @@ class KnownGapTest(unittest.TestCase):
                                  Stance("a11", "c9", "inform", report_mode="quote")]))
         full, projected = checks(log, WORLD, BINDINGS)
         self.assertEqual(projected.mismatches, [])
-        self.assertEqual(set(full.value_mismatch), {"V1", "V3"})
-        self.assertEqual(explain(full, projected), (2, 0))
+        # Since F1 was closed, the full graph agrees too: nothing is left to explain.
+        self.assertEqual(set(full.value_mismatch), set())
+        self.assertEqual(explain(full, projected), (0, 0))
 
-    @unittest.expectedFailure
     def test_gap_attribution_constraint_ignores_report_mode(self):
-        """[u, f] matches speaker and function only (query-ir.md 6, 7.2); the design's V1-V3
-        require report mode own, positive polarity and not derived (change-sequences.md 6.2)."""
+        """F1, closed in T017: [u, f] by default requires report mode own, positive polarity and
+        not derived (plan 3.3; query-ir.md 2), as the design's V1-V3 do (change-sequences.md
+        6.2)."""
         log = extended(("user", [NewClaim("c9", "user", "playsInstrument", "cello", "string"),
                                  Stance("a11", "c9", "inform", report_mode="quote")]))
         self.assertEqual(checks(log, WORLD, BINDINGS)[0].mismatches, [])

@@ -493,5 +493,93 @@ class RelativeTimeTest(ModeTest):
         self.assertEqual([a.values for a in result.answers], [(E("clarinet"),)])
 
 
+def stance(aid, cid, v, speaker, fn, mode=ReportMode.OWN, polarity=Polarity.POSITIVE,
+           derived=False):
+    return Attribution(aid, cid, speaker, CommunicativeFunction(fn), mode, polarity,
+                       Certainty.CERTAIN, derived, f"m{v}", v)
+
+
+def non_default_changeset() -> ChangeSet:
+    """Version 9: one claim per non-default attribution axis, and a hypothetical rejection."""
+    return ChangeSet(
+        HISTORY, 9,
+        claims=(claim("c_cello", "melanie", "playsInstrument", "cello", 9),
+                claim("c_piano", "melanie", "playsInstrument", "piano", 9),
+                claim("c_harp", "melanie", "playsInstrument", "harp", 9),
+                claim("c_drums", "melanie", "playsInstrument", "drums", 9)),
+        attributions=(stance("a_cello", "c_cello", 9, "melanie", "inform", ReportMode.QUOTE),
+                      stance("a_piano", "c_piano", 9, "melanie", "inform",
+                             ReportMode.HYPOTHETICAL),
+                      stance("a_harp", "c_harp", 9, "melanie", "inform",
+                             polarity=Polarity.NEGATIVE),
+                      stance("a_drums", "c_drums", 9, "melanie", "inform", derived=True),
+                      stance("a_rej", "c_offer2", 9, "user", "reject", ReportMode.HYPOTHETICAL)),
+        evidence_links=(ev("e_cello", "c_cello", 9), ev("e_piano", "c_piano", 9),
+                        ev("e_harp", "c_harp", 9), ev("e_drums", "c_drums", 9)))
+
+
+PLAYS = "SELECT ?i WHERE {{ (melanie, playsInstrument, ?i) [melanie, inform{relax}] }}"
+PENDING = """SELECT ?train WHERE {{
+  (request1, selectedService, ?train) [system, offer]
+  NOT EXISTS {{ (request1, selectedService, ?train) [user, reject{relax}] }}
+}}"""
+
+
+class AttributionDefaultTest(unittest.TestCase):
+    """[u, f] requires an own, positive, not derived attribution unless relaxed (plan 3.3)."""
+
+    def setUp(self):
+        self.stores = {}
+        for mode in MODES:
+            store = build_store(mode)
+            store.commit(non_default_changeset())
+            self.stores[mode] = store
+
+    def answers(self, text, version=9):
+        out = None
+        for mode in MODES:
+            got = {a.values[0].id for a in run(parse(text), self.stores[mode], version).answers}
+            if out is not None:
+                self.assertEqual(got, out, f"modes disagree on {text}")
+            out = got
+        return out
+
+    def test_quotes_hypotheticals_denials_and_derived_do_not_satisfy_the_default(self):
+        self.assertEqual(self.answers(PLAYS.format(relax="")), {"violin", "clarinet"})
+
+    def test_each_default_is_relaxed_on_its_own(self):
+        base = {"violin", "clarinet"}
+        self.assertEqual(self.answers(PLAYS.format(relax=", mode=_")),
+                         base | {"cello", "piano"})
+        self.assertEqual(self.answers(PLAYS.format(relax=", polarity=_")), base | {"harp"})
+        self.assertEqual(self.answers(PLAYS.format(relax=", derived=_")), base | {"drums"})
+        self.assertEqual(self.answers(PLAYS.format(relax=", mode=_, polarity=_, derived=_")),
+                         base | {"cello", "piano", "harp", "drums"})
+
+    def test_relaxed_witness_is_the_non_default_attribution(self):
+        result = run(parse(PLAYS.format(relax=", polarity=_")), self.stores["rdf11"], 9)
+        harp = next(a for a in result.answers if a.values == (E("harp"),))
+        self.assertEqual(harp.witnesses, (W("c_harp", "a_harp"),))
+
+    def test_negated_constraint_carries_the_default(self):
+        # The hypothetical rejection of TR9999 does not count as a rejection by default.
+        self.assertEqual(self.answers(PENDING.format(relax="")), {"TR7143", "TR9999"})
+        self.assertEqual(self.answers(PENDING.format(relax=", mode=_")), {"TR7143"})
+
+    def test_fixed_cutoff_reads_are_unchanged_by_the_non_default_append(self):
+        texts = [PLAYS.format(relax=r) for r in ("", ", mode=_", ", polarity=_", ", derived=_")]
+        texts += [PENDING.format(relax=r) for r in ("", ", mode=_")]
+        for mode in MODES:
+            past = build_store(mode)
+            for text in texts:
+                q = parse(text)
+                fixed = Query(q.select, q.where, q.filters, q.negation, q.count, q.latest,
+                              At(HEAD, q.at.valid, q.at.state), q.provenance)
+                expected = run(q, past, HEAD)
+                got = run(fixed, self.stores[mode], 9)
+                self.assertEqual(got.answers, expected.answers, (mode, text))
+                self.assertEqual(got.fingerprints(), expected.fingerprints())
+
+
 if __name__ == "__main__":
     unittest.main()
