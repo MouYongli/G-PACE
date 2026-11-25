@@ -7,7 +7,7 @@ Registry and cards for every benchmark in `docs/research/plan.md` (sections 6.3 
 | Slug | Benchmark | Tier | Read protocol | Role in the plan | Status |
 | --- | --- | --- | --- | --- | --- |
 | `change-seq` | Controlled change sequences (built here; design in T008) | Main text (core) | Interleaved | RQ2 primary (per-message staleness ground truth); RQ3 maintenance surface | to build |
-| `multiwoz` | MultiWOZ 2.4 (main); 2.2 and 2.1 score the same predictions | Main text (core) | Per turn | RQ1 primary for roles (turns after an offer, T006); natural over-marking, no cost claims | verified |
+| `multiwoz` | MultiWOZ 2.4 (main); 2.2 and 2.1 score the same predictions | Main text (core) | Per turn | RQ1 primary for the attribution guard (turns after an offer, T006); natural over-marking, no cost claims | verified |
 | `locomo` | LoCoMo, categories 1 to 4 | Main text (core) | End of history; evidence-anchored streaming (T007) | RQ1 slices; RQ2 false positives under streaming; RQ3 amortisation | verified |
 | `longmemeval-s` | LongMemEval S (cleaned); main text uses the knowledge-update, temporal-reasoning and multi-session strata | Main text | End of history, one question per history | RQ1 and RQ3 adverse setting | verified |
 | `halumem-medium` | HaluMem-Medium | Summary table (optional) | Session by session | Graph quality (write path); RQ2 support | verified |

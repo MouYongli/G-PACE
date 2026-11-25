@@ -8,13 +8,13 @@ created: 2026-11-23
 
 ## Goal
 
-Mem0 running under this project's protocol with the same reader, answer prompt, budgets and ledger (plan section 7.2), with the adaptation, version and failure rate recorded.
+Mem0 running under this project's protocol with the same answering LLM, answer prompt, budgets and ledger (plan section 7.2), with the adaptation, version and failure rate recorded.
 
 ## Scope
 
 - In scope:
   - Pin the version; publish the adapter patch.
-  - Record how the evidence set shown to the reader is extracted.
+  - Record how the evidence set shown to the answering LLM is extracted.
 - Out of scope: Mem0g and Graphiti (T034).
 - Candidate worker subtasks and write scopes: to be set by the manager.
 

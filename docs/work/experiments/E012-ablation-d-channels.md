@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-What does each channel contribute that the others do not, and is the graph gain due to retrieval or to role and time verification? Serves RQ1 and component claim C1.
+What does each channel contribute that the others do not, and is the graph gain due to retrieval or to attribution-and-time verification? Serves RQ1 and component claim C1.
 
 ## Design
 

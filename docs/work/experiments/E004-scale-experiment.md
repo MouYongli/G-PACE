@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Question
 
-At what number of standing views, write rate and graph size does push filtering become cheaper than re-querying at read time? Serves RQ2. If re-querying is never more expensive in the tested range, RQ2 narrows to 'freshness checks are cheap'.
+At what number of standing views, write rate and graph size does push filtering become cheaper than re-querying at read time? Serves RQ2. If re-querying is never more expensive in the tested range, RQ2 narrows to 'exact staleness checks are cheap'.
 
 ## Design
 

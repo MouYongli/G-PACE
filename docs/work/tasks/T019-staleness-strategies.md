@@ -21,7 +21,7 @@ The eight staleness strategies of plan section 5.4 as interchangeable modules ov
 
 ## Acceptance
 
-- [ ] Claim-pattern strategies report no miss against re-querying on fixtures for all seven change classes.
+- [ ] Claim-pattern strategies report no miss against re-querying on fixtures for all seven change types.
 - [ ] Each strategy logs dirty marks, rebuilds and database time separately.
 - [ ] `make test` and `make lint` pass.
 
