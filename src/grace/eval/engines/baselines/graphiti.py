@@ -211,6 +211,20 @@ def features() -> dict[str, Any]:
     return out
 
 
+def available() -> bool:
+    """Whether the pinned graphiti-core is importable (only in the envs/graphiti environment)."""
+    return features()["graphiti-core"] == GRAPHITI_VERSION
+
+
+def runnable(config_path: Path) -> bool:
+    """Whether an engine config can be built in this environment: every config but Graphiti's,
+    and Graphiti's where the pinned graphiti-core is installed. For tests that run every config."""
+    import yaml
+
+    engine = yaml.safe_load(Path(config_path).read_text(encoding="utf-8")).get("engine")
+    return engine != GraphitiEngine.kind or available()
+
+
 # ---------------------------------------------------------------------------------------------
 # Graphiti, imported lazily (only the envs/graphiti environment has it)
 

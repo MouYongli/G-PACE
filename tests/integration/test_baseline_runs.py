@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from grace.eval.engines.baselines import graphiti
 from grace.eval.runner.harness import drive
 from grace.eval.runner.harness.answer import is_answer_call, is_final_call
 from grace.eval.runner.harness.models import FakeBackend, fake_responder
@@ -21,7 +22,9 @@ from tests.contracts.test_experiment_run import ARTEFACTS, check_run
 
 ROOT = Path(__file__).resolve().parents[2]
 BENCHMARKS = ROOT / "tests" / "fixtures" / "benchmarks"
-ENGINES = sorted((ROOT / "configs" / "engines").glob("*.yaml"))
+ALL_ENGINES = sorted((ROOT / "configs" / "engines").glob("*.yaml"))
+# Graphiti's config needs the envs/graphiti environment; there every config runs.
+ENGINES = [config for config in ALL_ENGINES if graphiti.runnable(config)]
 CODE = CodeState("0123456789abcdef0123456789abcdef01234567", False)
 
 
@@ -80,7 +83,7 @@ class BaselineRunsTest(unittest.TestCase):
             self.assertTrue(set(w["call_ids"]) <= call_ids)
 
     def test_every_baseline_on_every_fixture(self):
-        self.assertEqual(len(ENGINES), 10)
+        self.assertEqual(len(ALL_ENGINES), 11)
         for config in ENGINES:
             for benchmark in sorted(p.name for p in BENCHMARKS.iterdir()):
                 for budget in (None, 24):

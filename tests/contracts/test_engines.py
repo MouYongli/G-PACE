@@ -54,8 +54,7 @@ class EngineSuite(unittest.TestCase):
         item = load(BENCHMARKS / "locomo", "streaming").histories[0]
         for config in ENGINES:
             with self.subTest(engine=config.stem):
-                if load_engine_config(config)["engine"] == "graphiti" and \
-                        graphiti.features()["graphiti-core"] is None:
+                if not graphiti.runnable(config):
                     continue  # needs the envs/graphiti environment; tests/integration covers it
                 engine = self.engine(config)
                 with self.assertRaises(RuntimeError):
