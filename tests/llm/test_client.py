@@ -1,16 +1,19 @@
 """ChatClient against a fake OpenAI-compatible server: records, retries, failures, accounting."""
 
+import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
 
 from grace.llm.client import ChatClient, Endpoint, LLMCallFailed
 from grace.llm.records import CallContext, CallLedger, read_calls
+from grace.llm.tokens import TokenizerPin
 from tests.contracts.records import read_jsonl
 from tests.contracts.test_cost_ledger import check_calls
 from tests.llm.fakes import FakeServer, WordCounter, completion
 
 RUN = "E000-20261125T000000Z-abcd"
+MODELS = Path(__file__).resolve().parents[2] / "configs" / "models"
 MESSAGES = [{"role": "system", "content": "fixed prefix"},
             {"role": "user", "content": "what is my commute now"}]  # 4+2 + 4+5 = 15 words
 READ = CallContext("answer", "read", history_id="h1", read_id="q1@4", version=4)
@@ -96,6 +99,24 @@ class ClientTest(unittest.TestCase):
         record = read_calls(self.calls)[0]
         self.assertEqual((record.gpu_seconds, record.latency_ms), (4.0, 2000.0))
         self.assertEqual(srv.requests[0]["auth"], "Bearer secret")
+
+    def test_template_kwargs_of_the_pin_reach_the_server(self):
+        pin = TokenizerPin.from_file(MODELS / "qwen3.5-9b.yaml")
+        with FakeServer([(200, completion("x"))]) as srv:
+            endpoint = Endpoint.for_model(pin, srv.base_url, "served", timeout_s=5.0)
+            ChatClient(endpoint, self.ledger, WordCounter()).chat(MESSAGES, READ,
+                                                                  prompt_sha256=None)
+        self.assertEqual(srv.requests[0]["body"]["chat_template_kwargs"],
+                         {"enable_thinking": False})
+        self.assertEqual(read_calls(self.calls)[0].model, f"{pin.hf_repo}@{pin.revision}")
+
+    def test_ledger_offers_the_interim_harness_names(self):
+        with FakeServer([(200, completion("x"))]) as srv:
+            self.client(srv).chat(MESSAGES, READ, prompt_sha256=None)
+        self.assertEqual(len(self.ledger.records), 1)
+        record = dataclasses.replace(self.ledger.records[0], call_id=self.ledger.new_id())
+        self.ledger.append(record)
+        self.assertEqual(len(read_calls(self.calls)), 2)
 
     def test_judge_calls_are_evaluation_overhead(self):
         context = CallContext("judge", "evaluation", history_id="h1", read_id="q1@4", version=4)

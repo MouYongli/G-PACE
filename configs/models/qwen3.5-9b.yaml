@@ -7,6 +7,8 @@ status: candidate                 # D006 proposed
 hf_repo: Qwen/Qwen3.5-9B
 revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
 served_name: Qwen/Qwen3.5-9B      # `model` sent to the OpenAI-compatible server
+thinking: false                   # explicit per model (plan 7.1: disabled); sent to the server as
+                                  # chat_template_kwargs, so thinking never lands in `content`
 config_max_position_embeddings: 262144   # from config.json; check the model card before relying on it
 tokenizer:
   chat_template: chat_template.jinja

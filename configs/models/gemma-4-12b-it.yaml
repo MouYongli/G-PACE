@@ -7,6 +7,8 @@ status: candidate                 # D006 proposed
 hf_repo: google/gemma-4-12B-it
 revision: 43c9d014b231474fa7212dbb48a762566c2b255d
 served_name: google/gemma-4-12B-it
+thinking: false                   # explicit per model (plan 7.1: disabled); sent to the server as
+                                  # chat_template_kwargs, so thinking never lands in `content`
 config_max_position_embeddings: 262144   # from config.json; check the model card before relying on it
 tokenizer:
   chat_template: chat_template.jinja

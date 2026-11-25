@@ -31,7 +31,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from grace.llm.records import CallContext, CallLedger, CallRecord
-from grace.llm.tokens import Message, TokenCounter
+from grace.llm.tokens import Message, TokenCounter, TokenizerPin
 
 
 class LLMCallFailed(RuntimeError):
@@ -53,6 +53,17 @@ class Endpoint:
     timeout_s: float = 600.0
     gpu_accounting: str = "none"  # "none" or "wall_clock"
     gpus: int = 0  # GPUs of the server, for wall_clock accounting
+    # Sent as `chat_template_kwargs` (vLLM), so the server renders the prompt with the same
+    # template arguments the local counter uses, e.g. {"enable_thinking": false}.
+    chat_template_kwargs: Mapping = field(default_factory=dict)
+
+    @classmethod
+    def for_model(cls, pin: TokenizerPin, base_url: str, served_model: str,
+                  **kwargs) -> Endpoint:
+        """Endpoint whose model label and template arguments come from the model's pin."""
+        return cls(base_url=base_url, served_model=served_model,
+                   model_label=f"{pin.hf_repo}@{pin.revision}",
+                   chat_template_kwargs=dict(pin.template_kwargs), **kwargs)
 
     def __post_init__(self):
         if self.gpu_accounting not in ("none", "wall_clock"):
@@ -133,6 +144,8 @@ class ChatClient:
         input_tokens = self.counter.count_messages(messages)
         payload = {"model": self.endpoint.served_model, "messages": messages,
                    **dict(decoding or {})}
+        if self.endpoint.chat_template_kwargs:
+            payload["chat_template_kwargs"] = dict(self.endpoint.chat_template_kwargs)
         url = self.endpoint.base_url.rstrip("/") + "/chat/completions"
         headers = self._headers()
         records: list[CallRecord] = []

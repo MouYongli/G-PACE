@@ -47,17 +47,28 @@ class TokenizerPin:
     files: dict[str, str]  # file name in the snapshot -> SHA-256
     chat_template: str  # file name of the chat template in the snapshot
     template_kwargs: dict = field(default_factory=dict)  # e.g. {"enable_thinking": false}
+    thinking: bool = False
 
     @classmethod
     def from_config(cls, config: Mapping) -> TokenizerPin:
+        """Parse a model config. `thinking` (a top-level boolean) is required: a reasoning model
+        such as Qwen3.5 writes its thinking into `content` unless thinking is disabled in the
+        template or the server runs a reasoning parser, so the setting is never left implicit.
+        `enable_thinking` in the template kwargs, when present, must agree with it."""
         try:
             tok = config["tokenizer"]
             pin = cls(model=config["model"], hf_repo=config["hf_repo"],
                       revision=config["revision"], files=dict(tok["files"]),
                       chat_template=tok["chat_template"],
-                      template_kwargs=dict(tok.get("template_kwargs") or {}))
+                      template_kwargs=dict(tok.get("template_kwargs") or {}),
+                      thinking=config["thinking"])
         except (KeyError, TypeError) as exc:
             raise TokenizerPinError(f"model config lacks tokenizer pin field: {exc}") from exc
+        if not isinstance(pin.thinking, bool):
+            raise TokenizerPinError(f"{pin.model}: `thinking` must be true or false")
+        if pin.template_kwargs.get("enable_thinking", pin.thinking) != pin.thinking:
+            raise TokenizerPinError(f"{pin.model}: template_kwargs.enable_thinking disagrees "
+                                    "with `thinking`")
         if len(pin.revision) != 40:
             raise TokenizerPinError(f"{pin.model}: revision must be a full 40-character SHA")
         if pin.chat_template not in pin.files:

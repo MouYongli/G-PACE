@@ -42,6 +42,9 @@ class PinTest(unittest.TestCase):
             {**config, "tokenizer": {**config["tokenizer"], "chat_template": "other.jinja"}},
             {**config, "tokenizer": {**config["tokenizer"], "files": {"chat_template.jinja": "x"}}},
             {k: v for k, v in config.items() if k != "tokenizer"},
+            {k: v for k, v in config.items() if k != "thinking"},  # thinking must be explicit
+            {**config, "thinking": True},  # disagrees with enable_thinking: false
+            {**config, "thinking": "no"},
         ]
         for item in broken:
             with self.assertRaises(TokenizerPinError):

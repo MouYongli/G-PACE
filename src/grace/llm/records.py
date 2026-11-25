@@ -159,6 +159,7 @@ class CallLedger:
         self._lock = threading.Lock()
         self._ids: set[str] = set()
         self._next = 1
+        self.records: list[CallRecord] = []  # records written by this process
         if self.path.exists():
             for record in read_calls(self.path):
                 if record.run_id != run_id:
@@ -183,6 +184,15 @@ class CallLedger:
             with self.path.open("a", encoding="utf-8") as handle:
                 handle.write(record.to_json() + "\n")
             self._ids.add(record.call_id)
+            self.records.append(record)
+
+    # Names of the interim writer `eval/runner/harness/ledger.py` (T003), so that switching the
+    # harness to this module is a drop-in: `new_id()`, `append(record)` and `records`.
+    def new_id(self) -> str:
+        return self.new_call_id()
+
+    def append(self, record: CallRecord) -> None:
+        self.write(record)
 
 
 def read_calls(path: Path) -> list[CallRecord]:
