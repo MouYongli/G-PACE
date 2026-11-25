@@ -5,10 +5,14 @@ including patterns inside negated conditions and aggregations, the attribution c
 pattern, and any local filter on a pattern that involves only that pattern's own variables."
 
 `pipeline/query/patterns.py` is named for this in structure.md, but T017 left it unimplemented
-(docs/research/query-ir.md, open question 3) and its owner is open. The function lives here, in
-the views package that stores the patterns, and depends only on `query/ir.py`; the staleness
-strategies of T019 (`views/staleness/`) read the patterns from the stored views. Matching a change
-set against these patterns is T019's work, not this module's.
+(docs/research/query-ir.md, open question 3). The integration owner assigned the dependency
+patterns to T019, which keeps them here, in the views package that stores them; the module depends
+only on `query/ir.py`. The staleness strategies (`views/staleness/`) read the patterns from the
+stored views; matching a change set against them is `views/staleness/matching.py`.
+
+Not represented, and therefore ignored by matching (sound, since dropping a condition only widens
+the match): filters that involve variables of more than one pattern, `AT(valid=d)`, and the state
+of the query (current or historical).
 """
 
 from __future__ import annotations

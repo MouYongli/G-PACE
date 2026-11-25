@@ -32,6 +32,9 @@ is not done here. A strategy
    repair (pull, hybrid); `confirm=False` regenerates every sentence of an answer-stale mark (pure
    push, which regenerates over-marked views as well).
 
+A strategy that re-queries first uses `evaluate(view_id, graph, version)` and passes the result to
+`maintain(..., evaluation=...)`, so the view's query runs once per check (hooks added by T019).
+
 `note_changeset` must still see every change set, whatever the strategy, because vocabulary
 changes and entity merges invalidate every resident view of the history (plan 5.2).
 """
@@ -269,17 +272,42 @@ class ViewStore:
             self.invalidate_all("; ".join(reasons))
         return bool(reasons)
 
+    def evaluate(self, view_id: str, graph: ClaimStore, version: int | None = None
+                 ) -> tuple[Evaluation, float]:
+        """Re-query a resident view at `version` without changing it; returns the evaluation and
+        the database time in ms (hook for read-time re-query, T019)."""
+        version = graph.head if version is None else version
+        view = self._views[view_id]
+        start = time.perf_counter()
+        evaluation = evaluate(self._compile(view_id, view.query, graph.mode), graph, version)
+        return evaluation, (time.perf_counter() - start) * 1000
+
     def maintain(self, view_id: str, graph: ClaimStore, version: int | None = None, *,
-                 read_id: str | None = None, confirm: bool = True) -> MaintenanceEvent:
-        """Re-evaluate a resident view at `version` and repair it (module docstring)."""
+                 read_id: str | None = None, confirm: bool = True,
+                 evaluation: Evaluation | None = None) -> MaintenanceEvent:
+        """Re-evaluate a resident view at `version` and repair it (module docstring).
+
+        `evaluation`: the result of `evaluate(view_id, graph, version)` already obtained by a
+        strategy's fingerprint check; it is reused, and the event then books no database time
+        (the strategy has booked it to its check).
+        """
         version = graph.head if version is None else version
         view, flags = self._views[view_id], self._flags[view_id]
         if version < view.cutoff:
             raise ViewError(f"view {view_id} has cut-off {view.cutoff}; cannot maintain it at "
                             f"{version}")
-        start = time.perf_counter()
-        evaluation = evaluate(self._compile(view_id, view.query, graph.mode), graph, version)
-        db_ms = (time.perf_counter() - start) * 1000
+        if evaluation is None:
+            start = time.perf_counter()
+            evaluation = evaluate(self._compile(view_id, view.query, graph.mode), graph,
+                                  version)
+            db_ms = (time.perf_counter() - start) * 1000
+        else:
+            expected = version if view.query.at.known is None else view.query.at.known
+            if evaluation.result.cutoff != expected:
+                raise ViewError(f"view {view_id}: evaluation at cut-off "
+                                f"{evaluation.result.cutoff} given for a maintenance at "
+                                f"{expected}")
+            db_ms = 0.0
         fresh = self._make(view_id, view.binding, view.title, view.query, evaluation,
                            Lifecycle.RESIDENT, _placeholder(evaluation.rows))
         context = self._context(version, read_id)
