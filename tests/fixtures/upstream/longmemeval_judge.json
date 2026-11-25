@@ -1,0 +1,92 @@
+{
+ "provenance": {
+  "upstream": "https://github.com/xiaowu0162/LongMemEval",
+  "revision": "9e0b455f4ef0e2ab8f2e582289761153549043fc",
+  "file": "src/evaluation/evaluate_qa.py (get_anscheck_prompt; abstention='_abs' in question_id)",
+  "environment": "Python 3.9.25, openai 1.35.1, backoff 2.2.1, tqdm 4.66.4, numpy 1.26.3 (requirements-lite.txt pins); no model called",
+  "licence": "Questions, answers and responses are synthetic. upstream_prompt embeds the judge templates of LongMemEval, MIT License, Copyright (c) 2024 Di Wu.",
+  "evidence": "runs/T004/artifacts/scorer-upstream/ (T004, Issue #32)"
+ },
+ "cases": [
+  {
+   "question_id": "synthetic0",
+   "question_type": "single-session-user",
+   "question": "What did I say about topic 0? {braces} stay",
+   "answer": "Answer 0, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no. If the response is equivalent to the correct answer or contains all the intermediate steps to get the correct answer, you should also answer yes. If the response only contains a subset of the information required by the answer, answer no. \n\nQuestion: What did I say about topic 0? {braces} stay\n\nCorrect Answer: Answer 0, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nIs the model response correct? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic0_abs",
+   "question_type": "single-session-user",
+   "question": "What did I say about topic 0? {braces} stay",
+   "answer": "Answer 0, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you an unanswerable question, an explanation, and a response from a model. Please answer yes if the model correctly identifies the question as unanswerable. The model could say that the information is incomplete, or some other information is given but the asked information is not.\n\nQuestion: What did I say about topic 0? {braces} stay\n\nExplanation: Answer 0, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nDoes the model correctly identify the question as unanswerable? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic1",
+   "question_type": "single-session-assistant",
+   "question": "What did I say about topic 1? {braces} stay",
+   "answer": "Answer 1, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no. If the response is equivalent to the correct answer or contains all the intermediate steps to get the correct answer, you should also answer yes. If the response only contains a subset of the information required by the answer, answer no. \n\nQuestion: What did I say about topic 1? {braces} stay\n\nCorrect Answer: Answer 1, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nIs the model response correct? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic2",
+   "question_type": "multi-session",
+   "question": "What did I say about topic 2? {braces} stay",
+   "answer": "Answer 2, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no. If the response is equivalent to the correct answer or contains all the intermediate steps to get the correct answer, you should also answer yes. If the response only contains a subset of the information required by the answer, answer no. \n\nQuestion: What did I say about topic 2? {braces} stay\n\nCorrect Answer: Answer 2, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nIs the model response correct? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic2_abs",
+   "question_type": "multi-session",
+   "question": "What did I say about topic 2? {braces} stay",
+   "answer": "Answer 2, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you an unanswerable question, an explanation, and a response from a model. Please answer yes if the model correctly identifies the question as unanswerable. The model could say that the information is incomplete, or some other information is given but the asked information is not.\n\nQuestion: What did I say about topic 2? {braces} stay\n\nExplanation: Answer 2, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nDoes the model correctly identify the question as unanswerable? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic3",
+   "question_type": "temporal-reasoning",
+   "question": "What did I say about topic 3? {braces} stay",
+   "answer": "Answer 3, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no. If the response is equivalent to the correct answer or contains all the intermediate steps to get the correct answer, you should also answer yes. If the response only contains a subset of the information required by the answer, answer no. In addition, do not penalize off-by-one errors for the number of days. If the question asks for the number of days/weeks/months, etc., and the model makes off-by-one errors (e.g., predicting 19 days when the answer is 18), the model's response is still correct. \n\nQuestion: What did I say about topic 3? {braces} stay\n\nCorrect Answer: Answer 3, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nIs the model response correct? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic3_abs",
+   "question_type": "temporal-reasoning",
+   "question": "What did I say about topic 3? {braces} stay",
+   "answer": "Answer 3, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you an unanswerable question, an explanation, and a response from a model. Please answer yes if the model correctly identifies the question as unanswerable. The model could say that the information is incomplete, or some other information is given but the asked information is not.\n\nQuestion: What did I say about topic 3? {braces} stay\n\nExplanation: Answer 3, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nDoes the model correctly identify the question as unanswerable? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic4",
+   "question_type": "knowledge-update",
+   "question": "What did I say about topic 4? {braces} stay",
+   "answer": "Answer 4, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no. If the response contains some previous information along with an updated answer, the response should be considered as correct as long as the updated answer is the required answer.\n\nQuestion: What did I say about topic 4? {braces} stay\n\nCorrect Answer: Answer 4, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nIs the model response correct? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic4_abs",
+   "question_type": "knowledge-update",
+   "question": "What did I say about topic 4? {braces} stay",
+   "answer": "Answer 4, with 100% {0}",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you an unanswerable question, an explanation, and a response from a model. Please answer yes if the model correctly identifies the question as unanswerable. The model could say that the information is incomplete, or some other information is given but the asked information is not.\n\nQuestion: What did I say about topic 4? {braces} stay\n\nExplanation: Answer 4, with 100% {0}\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nDoes the model correctly identify the question as unanswerable? Answer yes or no only."
+  },
+  {
+   "question_id": "synthetic5",
+   "question_type": "single-session-preference",
+   "question": "What did I say about topic 5? {braces} stay",
+   "answer": "The rubric: mention the user's café in Köln.",
+   "hypothesis": "I believe it was answer {k}.\nSecond line “quoted”.",
+   "upstream_prompt": "I will give you a question, a rubric for desired personalized response, and a response from a model. Please answer yes if the response satisfies the desired response. Otherwise, answer no. The model does not need to reflect all the points in the rubric. The response is correct as long as it recalls and utilizes the user's personal information correctly.\n\nQuestion: What did I say about topic 5? {braces} stay\n\nRubric: The rubric: mention the user's café in Köln.\n\nModel Response: I believe it was answer {k}.\nSecond line “quoted”.\n\nIs the model response correct? Answer yes or no only."
+  }
+ ]
+}

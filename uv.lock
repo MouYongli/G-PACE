@@ -196,6 +196,7 @@ dependencies = [
     { name = "pyshacl" },
     { name = "pyyaml" },
     { name = "rdflib" },
+    { name = "regex" },
     { name = "transformers" },
 ]
 
@@ -225,6 +226,7 @@ requires-dist = [
     { name = "pyshacl", specifier = ">=0.26" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "rdflib", specifier = ">=7" },
+    { name = "regex", specifier = ">=2022.10.31" },
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.6" },
     { name = "scipy", marker = "extra == 'analysis'", specifier = ">=1.13" },
     { name = "statsmodels", marker = "extra == 'analysis'", specifier = ">=0.14" },

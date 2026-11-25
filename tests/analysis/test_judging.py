@@ -86,7 +86,8 @@ class JudgeTest(unittest.TestCase):
             self.assertEqual(parse_label(text), verdict)
         self.assertEqual(parse_yes("Yes."), "correct")
         self.assertEqual(parse_yes("no"), "incorrect")
-        self.assertEqual(parse_yes(" "), "invalid")
+        self.assertEqual(parse_yes(" "), "incorrect")  # upstream: '' contains no "yes"
+        self.assertEqual(parse_yes(None), "invalid")
 
     def test_only_answers_are_judged(self):
         for output in ("unknown", "invalid"):

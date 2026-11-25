@@ -1,0 +1,1302 @@
+{
+ "provenance": {
+  "upstream": "https://github.com/snap-research/locomo",
+  "revision": "3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376",
+  "file": "task_eval/evaluation.py (eval_question_answering, eval_key='prediction')",
+  "environment": "Python 3.9.25, nltk 3.8.1, regex 2022.10.31, numpy 1.26.0 (upstream requirements.txt pins)",
+  "licence": "Cases are synthetic strings written for GRACE (no LoCoMo data). Expected scores are outputs of upstream code (CC BY-NC 4.0); no upstream code or data is copied.",
+  "evidence": "runs/T004/artifacts/scorer-upstream/ (T004, Issue #32)"
+ },
+ "cases": [
+  {
+   "category": 1,
+   "reference": "violin and clarinet",
+   "prediction": "The violin and a clarinet",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "violin and clarinet",
+   "prediction": "The violin and a clarinet",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "violin and clarinet; with an explanation",
+   "prediction": "The violin and a clarinet",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "violin and clarinet",
+   "prediction": "The violin and a clarinet",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "violin and clarinet",
+   "prediction": "The violin and a clarinet",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "run",
+   "prediction": "running fast",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 2,
+   "reference": "run",
+   "prediction": "running fast",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 3,
+   "reference": "run; with an explanation",
+   "prediction": "running fast",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 4,
+   "reference": "run",
+   "prediction": "running fast",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 5,
+   "reference": "run",
+   "prediction": "running fast",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "7 May 2023",
+   "prediction": "7 May, 2023",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 2,
+   "reference": "7 May 2023",
+   "prediction": "7 May, 2023",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "7 May 2023; with an explanation",
+   "prediction": "7 May, 2023",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "7 May 2023",
+   "prediction": "7 May, 2023",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "7 May 2023",
+   "prediction": "7 May, 2023",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Paris",
+   "prediction": "",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "Paris",
+   "prediction": "",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "Paris; with an explanation",
+   "prediction": "",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "Paris",
+   "prediction": "",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "Paris",
+   "prediction": "",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Paris",
+   "prediction": "Berlin",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "Paris",
+   "prediction": "Berlin",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "Paris; with an explanation",
+   "prediction": "Berlin",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "Paris",
+   "prediction": "Berlin",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "Paris",
+   "prediction": "Berlin",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Paris",
+   "prediction": "she went to Paris in May",
+   "upstream_score": 0.2857142857142857
+  },
+  {
+   "category": 2,
+   "reference": "Paris",
+   "prediction": "she went to Paris in May",
+   "upstream_score": 0.2857142857142857
+  },
+  {
+   "category": 3,
+   "reference": "Paris; with an explanation",
+   "prediction": "she went to Paris in May",
+   "upstream_score": 0.2857142857142857
+  },
+  {
+   "category": 4,
+   "reference": "Paris",
+   "prediction": "she went to Paris in May",
+   "upstream_score": 0.2857142857142857
+  },
+  {
+   "category": 5,
+   "reference": "Paris",
+   "prediction": "she went to Paris in May",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "I think it was pottery, painting, camping.",
+   "upstream_score": 0.5833333333333334
+  },
+  {
+   "category": 2,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "I think it was pottery, painting, camping.",
+   "upstream_score": 0.5454545454545454
+  },
+  {
+   "category": 3,
+   "reference": "Pottery, painting, camping, hiking; with an explanation",
+   "prediction": "I think it was pottery, painting, camping.",
+   "upstream_score": 0.5454545454545454
+  },
+  {
+   "category": 4,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "I think it was pottery, painting, camping.",
+   "upstream_score": 0.5454545454545454
+  },
+  {
+   "category": 5,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "I think it was pottery, painting, camping.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "hiking, pottery",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 2,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "hiking, pottery",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 3,
+   "reference": "Pottery, painting, camping, hiking; with an explanation",
+   "prediction": "hiking, pottery",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 4,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "hiking, pottery",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 5,
+   "reference": "Pottery, painting, camping, hiking",
+   "prediction": "hiking, pottery",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "2022",
+   "prediction": "2022",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "2022",
+   "prediction": "2022",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "2022; with an explanation",
+   "prediction": "2022",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "2022",
+   "prediction": "2022",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "2022",
+   "prediction": "2022",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "2022",
+   "prediction": "last year, 2022",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "2022",
+   "prediction": "last year, 2022",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 3,
+   "reference": "2022; with an explanation",
+   "prediction": "last year, 2022",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 4,
+   "reference": "2022",
+   "prediction": "last year, 2022",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 5,
+   "reference": "2022",
+   "prediction": "last year, 2022",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Yes; she likes dogs",
+   "prediction": "Yes",
+   "upstream_score": 0.4
+  },
+  {
+   "category": 2,
+   "reference": "Yes; she likes dogs",
+   "prediction": "Yes",
+   "upstream_score": 0.4
+  },
+  {
+   "category": 3,
+   "reference": "Yes; she likes dogs",
+   "prediction": "Yes",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "Yes; she likes dogs",
+   "prediction": "Yes",
+   "upstream_score": 0.4
+  },
+  {
+   "category": 5,
+   "reference": "Yes; she likes dogs",
+   "prediction": "Yes",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "x",
+   "prediction": "Not mentioned in the conversation",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "x",
+   "prediction": "Not mentioned in the conversation",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "x; with an explanation",
+   "prediction": "Not mentioned in the conversation",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "x",
+   "prediction": "Not mentioned in the conversation",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "x",
+   "prediction": "Not mentioned in the conversation",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 1,
+   "reference": "y",
+   "prediction": "No information available.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "y",
+   "prediction": "No information available.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "y; with an explanation",
+   "prediction": "No information available.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "y",
+   "prediction": "No information available.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "y",
+   "prediction": "No information available.",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 1,
+   "reference": "z",
+   "prediction": "Paris",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "z",
+   "prediction": "Paris",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "z; with an explanation",
+   "prediction": "Paris",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "z",
+   "prediction": "Paris",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "z",
+   "prediction": "Paris",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "USA",
+   "prediction": "U.S.A.",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "USA",
+   "prediction": "U.S.A.",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "USA; with an explanation",
+   "prediction": "U.S.A.",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "USA",
+   "prediction": "U.S.A.",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "USA",
+   "prediction": "U.S.A.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "rock climbing",
+   "prediction": "rock-climbing",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "rock climbing",
+   "prediction": "rock-climbing",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "rock climbing; with an explanation",
+   "prediction": "rock-climbing",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "rock climbing",
+   "prediction": "rock-climbing",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "rock climbing",
+   "prediction": "rock-climbing",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "C",
+   "prediction": "C++ and C#",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 2,
+   "reference": "C",
+   "prediction": "C++ and C#",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 3,
+   "reference": "C; with an explanation",
+   "prediction": "C++ and C#",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 4,
+   "reference": "C",
+   "prediction": "C++ and C#",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 5,
+   "reference": "C",
+   "prediction": "C++ and C#",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "5000",
+   "prediction": "$5,000",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "5000",
+   "prediction": "$5,000",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "5000; with an explanation",
+   "prediction": "$5,000",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "5000",
+   "prediction": "$5,000",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "5000",
+   "prediction": "$5,000",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "1030 am",
+   "prediction": "10:30 am",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "1030 am",
+   "prediction": "10:30 am",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "1030 am; with an explanation",
+   "prediction": "10:30 am",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "1030 am",
+   "prediction": "10:30 am",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "1030 am",
+   "prediction": "10:30 am",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "café",
+   "prediction": "café",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "café",
+   "prediction": "café",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "café; with an explanation",
+   "prediction": "café",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "café",
+   "prediction": "café",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "café",
+   "prediction": "café",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "the cafe",
+   "prediction": "́the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "the cafe",
+   "prediction": "́the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "the cafe; with an explanation",
+   "prediction": "́the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "the cafe",
+   "prediction": "́the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "the cafe",
+   "prediction": "́the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "and",
+   "prediction": "éand",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "and",
+   "prediction": "éand",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "and; with an explanation",
+   "prediction": "éand",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "and",
+   "prediction": "éand",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "and",
+   "prediction": "éand",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "an apple",
+   "prediction": "á b",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "an apple",
+   "prediction": "á b",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "an apple; with an explanation",
+   "prediction": "á b",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "an apple",
+   "prediction": "á b",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "an apple",
+   "prediction": "á b",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "́the",
+   "prediction": "ań",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "́the",
+   "prediction": "ań",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "́the; with an explanation",
+   "prediction": "ań",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "́the",
+   "prediction": "ań",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "́the",
+   "prediction": "ań",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "x",
+   "prediction": "x‍and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "x",
+   "prediction": "x‍and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "x; with an explanation",
+   "prediction": "x‍and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "x",
+   "prediction": "x‍and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "x",
+   "prediction": "x‍and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "cat",
+   "prediction": "the​ cat",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 2,
+   "reference": "cat",
+   "prediction": "the​ cat",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 3,
+   "reference": "cat; with an explanation",
+   "prediction": "the​ cat",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 4,
+   "reference": "cat",
+   "prediction": "the​ cat",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 5,
+   "reference": "cat",
+   "prediction": "the​ cat",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "and",
+   "prediction": "and²",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "and",
+   "prediction": "and²",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "and; with an explanation",
+   "prediction": "and²",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "and",
+   "prediction": "and²",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "and",
+   "prediction": "and²",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "the",
+   "prediction": "٣the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "the",
+   "prediction": "٣the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "the; with an explanation",
+   "prediction": "٣the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "the",
+   "prediction": "٣the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "the",
+   "prediction": "٣the",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "fi",
+   "prediction": "ﬁ and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "fi",
+   "prediction": "ﬁ and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "fi; with an explanation",
+   "prediction": "ﬁ and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "fi",
+   "prediction": "ﬁ and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "fi",
+   "prediction": "ﬁ and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "and",
+   "prediction": "_and_",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "and",
+   "prediction": "_and_",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "and; with an explanation",
+   "prediction": "_and_",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "and",
+   "prediction": "_and_",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "and",
+   "prediction": "_and_",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "theatre",
+   "prediction": "Theater",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "theatre",
+   "prediction": "Theater",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "theatre; with an explanation",
+   "prediction": "Theater",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "theatre",
+   "prediction": "Theater",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "theatre",
+   "prediction": "Theater",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "generous",
+   "prediction": "generously, generous, generosity",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "generous",
+   "prediction": "generously, generous, generosity",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 3,
+   "reference": "generous; with an explanation",
+   "prediction": "generously, generous, generosity",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 4,
+   "reference": "generous",
+   "prediction": "generously, generous, generosity",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 5,
+   "reference": "generous",
+   "prediction": "generously, generous, generosity",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Mel & Caroline",
+   "prediction": "Melanie and Caroline",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 2,
+   "reference": "Mel & Caroline",
+   "prediction": "Melanie and Caroline",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 3,
+   "reference": "Mel & Caroline; with an explanation",
+   "prediction": "Melanie and Caroline",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 4,
+   "reference": "Mel & Caroline",
+   "prediction": "Melanie and Caroline",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 5,
+   "reference": "Mel & Caroline",
+   "prediction": "Melanie and Caroline",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "party",
+   "prediction": "emoji 🎉 party",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 2,
+   "reference": "party",
+   "prediction": "emoji 🎉 party",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 3,
+   "reference": "party; with an explanation",
+   "prediction": "emoji 🎉 party",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 4,
+   "reference": "party",
+   "prediction": "emoji 🎉 party",
+   "upstream_score": 0.5
+  },
+  {
+   "category": 5,
+   "reference": "party",
+   "prediction": "emoji 🎉 party",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "tab separated newline",
+   "prediction": "tab\tseparated\nnewline",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "tab separated newline",
+   "prediction": "tab\tseparated\nnewline",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "tab separated newline; with an explanation",
+   "prediction": "tab\tseparated\nnewline",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "tab separated newline",
+   "prediction": "tab\tseparated\nnewline",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "tab separated newline",
+   "prediction": "tab\tseparated\nnewline",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Uber Strasse",
+   "prediction": "über straße",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "Uber Strasse",
+   "prediction": "über straße",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "Uber Strasse; with an explanation",
+   "prediction": "über straße",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "Uber Strasse",
+   "prediction": "über straße",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "Uber Strasse",
+   "prediction": "über straße",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "東京",
+   "prediction": "東京",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "東京",
+   "prediction": "東京",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 3,
+   "reference": "東京; with an explanation",
+   "prediction": "東京",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 4,
+   "reference": "東京",
+   "prediction": "東京",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 5,
+   "reference": "東京",
+   "prediction": "東京",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "1st, 3rd",
+   "prediction": "1st, 2nd, 3rd",
+   "upstream_score": 1.0
+  },
+  {
+   "category": 2,
+   "reference": "1st, 3rd",
+   "prediction": "1st, 2nd, 3rd",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 3,
+   "reference": "1st, 3rd; with an explanation",
+   "prediction": "1st, 2nd, 3rd",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 4,
+   "reference": "1st, 3rd",
+   "prediction": "1st, 2nd, 3rd",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 5,
+   "reference": "1st, 3rd",
+   "prediction": "1st, 2nd, 3rd",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Norway, Sweden, Finland",
+   "prediction": "Sweden, Norway",
+   "upstream_score": 0.6666666666666666
+  },
+  {
+   "category": 2,
+   "reference": "Norway, Sweden, Finland",
+   "prediction": "Sweden, Norway",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 3,
+   "reference": "Norway, Sweden, Finland; with an explanation",
+   "prediction": "Sweden, Norway",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 4,
+   "reference": "Norway, Sweden, Finland",
+   "prediction": "Sweden, Norway",
+   "upstream_score": 0.8
+  },
+  {
+   "category": 5,
+   "reference": "Norway, Sweden, Finland",
+   "prediction": "Sweden, Norway",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "the",
+   "prediction": "a an the and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 2,
+   "reference": "the",
+   "prediction": "a an the and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 3,
+   "reference": "the; with an explanation",
+   "prediction": "a an the and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 4,
+   "reference": "the",
+   "prediction": "a an the and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 5,
+   "reference": "the",
+   "prediction": "a an the and",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Alpha, beta, gamma, delta, epsilon, zeta",
+   "prediction": "I think it was alpha, beta, gamma, delta, epsilon, zeta.",
+   "upstream_score": 0.888888888888889
+  },
+  {
+   "category": 2,
+   "reference": "Alpha, beta, gamma, delta, epsilon, zeta",
+   "prediction": "I think it was alpha, beta, gamma, delta, epsilon, zeta.",
+   "upstream_score": 0.7499999999999999
+  },
+  {
+   "category": 3,
+   "reference": "Alpha, beta, gamma, delta, epsilon, zeta; with an explanation",
+   "prediction": "I think it was alpha, beta, gamma, delta, epsilon, zeta.",
+   "upstream_score": 0.7499999999999999
+  },
+  {
+   "category": 4,
+   "reference": "Alpha, beta, gamma, delta, epsilon, zeta",
+   "prediction": "I think it was alpha, beta, gamma, delta, epsilon, zeta.",
+   "upstream_score": 0.7499999999999999
+  },
+  {
+   "category": 5,
+   "reference": "Alpha, beta, gamma, delta, epsilon, zeta",
+   "prediction": "I think it was alpha, beta, gamma, delta, epsilon, zeta.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "Red, green, blue, cyan, magenta",
+   "prediction": "I think it was red, green, blue, cyan, magenta.",
+   "upstream_score": 0.8666666666666668
+  },
+  {
+   "category": 2,
+   "reference": "Red, green, blue, cyan, magenta",
+   "prediction": "I think it was red, green, blue, cyan, magenta.",
+   "upstream_score": 0.7142857142857143
+  },
+  {
+   "category": 3,
+   "reference": "Red, green, blue, cyan, magenta; with an explanation",
+   "prediction": "I think it was red, green, blue, cyan, magenta.",
+   "upstream_score": 0.7142857142857143
+  },
+  {
+   "category": 4,
+   "reference": "Red, green, blue, cyan, magenta",
+   "prediction": "I think it was red, green, blue, cyan, magenta.",
+   "upstream_score": 0.7142857142857143
+  },
+  {
+   "category": 5,
+   "reference": "Red, green, blue, cyan, magenta",
+   "prediction": "I think it was red, green, blue, cyan, magenta.",
+   "upstream_score": 0.0
+  },
+  {
+   "category": 1,
+   "reference": "singing a song, dancing, painting, cooking, swimming",
+   "prediction": "sang a song, danced, painted, cooked, swam, ran, read",
+   "upstream_score": 0.7
+  },
+  {
+   "category": 2,
+   "reference": "singing a song, dancing, painting, cooking, swimming",
+   "prediction": "sang a song, danced, painted, cooked, swam, ran, read",
+   "upstream_score": 0.5714285714285715
+  },
+  {
+   "category": 3,
+   "reference": "singing a song, dancing, painting, cooking, swimming; with an explanation",
+   "prediction": "sang a song, danced, painted, cooked, swam, ran, read",
+   "upstream_score": 0.5714285714285715
+  },
+  {
+   "category": 4,
+   "reference": "singing a song, dancing, painting, cooking, swimming",
+   "prediction": "sang a song, danced, painted, cooked, swam, ran, read",
+   "upstream_score": 0.5714285714285715
+  },
+  {
+   "category": 5,
+   "reference": "singing a song, dancing, painting, cooking, swimming",
+   "prediction": "sang a song, danced, painted, cooked, swam, ran, read",
+   "upstream_score": 0.0
+  }
+ ]
+}
