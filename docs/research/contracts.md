@@ -247,7 +247,7 @@ Owner: T014 manager (`m01-T014`) · Version: 0.1 · Producer: `context/memory/` 
 
 > Replaces the sample-level v0.1. Scoring is keyed by `read_id` and scored against one gold `annotation` at a time, following the T001 records.
 
-Owner: T004 manager (`m01-T004`; assigned by the user's dispatch of the 2026-11-25 round) · Version: 0.3 (aggregation added by decision D002) · Producer: `judge` and `score` stages (`eval/analysis/judging/`, `eval/analysis/metrics/`) · Consumers: reporting (T035, T036)
+Owner: T004 manager (`m01-T004`; assigned by the user's dispatch of the 2026-11-25 round) · Version: 0.3.1 (aggregation added by decision D002; `verified` and `deviation` defined by the T004 upstream comparison) · Producer: `judge` and `score` stages (`eval/analysis/judging/`, `eval/analysis/metrics/`) · Consumers: reporting (T035, T036)
 
 ### Registration
 
@@ -256,7 +256,7 @@ Before any formal comparison every metric is registered in `configs/common/score
 | Key | Rules |
 | --- | --- |
 | `name`, `direction` | Registered metric name; `higher` or `lower`. |
-| `code` | `module:function` of the scorer. Official scorers name `upstream` (`repo`, `file`, `revision`, `verified`); `verified` stays `false` until the scorer reproduces upstream's numbers on upstream's published examples. |
+| `code` | `module:function` of the scorer. Official scorers name `upstream` (`repo`, `file`, `revision`, `verified`). `verified` becomes `true` only when upstream's own code, run at `revision`, and the scorer give identical values (exact equality, not a tolerance) on upstream's published examples where upstream publishes any, and otherwise on development-split and synthetic inputs; a regression test with upstream-produced expected values keeps it so. Where no upstream implements the registered definition, or the two differ by design, `verified` stays `false` and `deviation` states the difference. |
 | `annotation` or `annotations` | The gold annotation(s) scored ([Gold](#gold)). One set of predictions is scored against each annotation separately (MultiWOZ 2.4, 2.2, 2.1). |
 | `population` | The denominator: all reads of the read-task file, or those whose gold `labels` match `include` (LoCoMo categories 1 to 4). |
 | `judge` | For judged metrics, the judge config in `configs/judges/`. |

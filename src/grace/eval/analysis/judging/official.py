@@ -6,7 +6,7 @@ counts the reply as correct when it contains "yes" (case-insensitive). The five 
 
 | Gold labels | Template |
 | --- | --- |
-| `abstention: true` (question ID ending in `_abs`) | `abstention` |
+| `abstention: true` (upstream: `_abs` in the question ID) | `abstention` |
 | `question_type` = `temporal-reasoning` | `temporal-reasoning` |
 | `question_type` = `knowledge-update` | `knowledge-update` |
 | `question_type` = `single-session-preference` | `single-session-preference` |
@@ -32,7 +32,7 @@ TEMPLATES = ("default", *TYPED, "abstention")
 def template_for(labels: Mapping, task_id: str) -> str:
     abstention = labels.get("abstention")
     if abstention is None:
-        abstention = task_id.endswith("_abs")
+        abstention = "_abs" in task_id  # upstream's test
     if abstention:
         return "abstention"
     question_type = labels.get("question_type")
@@ -44,10 +44,14 @@ def template_for(labels: Mapping, task_id: str) -> str:
 
 
 def parse_yes(text: str | None) -> str:
-    """Upstream rule: correct iff "yes" occurs in the lower-cased reply."""
-    if text is None or not text.strip():
+    """Upstream rule: correct iff "yes" occurs in the stripped, lower-cased reply.
+
+    As upstream, an empty or blank reply is `incorrect` (it stays in the denominator). Only a
+    reply without text content (None) is `invalid` and leaves the denominator; upstream would
+    fail on it (`None.strip()`) (documented deviation, configs/judges/longmemeval-official.yaml)."""
+    if text is None:
         return "invalid"
-    return "correct" if "yes" in text.lower() else "incorrect"
+    return "correct" if "yes" in text.strip().lower() else "incorrect"
 
 
 def longmemeval_judge(name: str, client: ChatClient, prompts: Mapping[str, Prompt],

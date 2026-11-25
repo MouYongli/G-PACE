@@ -1,7 +1,7 @@
 """Official LoCoMo F1, DST metrics and human-label agreement on hand-computed cases.
 
-The LoCoMo cases follow the rules of task_eval/evaluation.py (snap-research/locomo); they are
-hand-computed, not upstream's own published numbers (see the T004 PR for that gap).
+The LoCoMo cases follow the rules of task_eval/evaluation.py (snap-research/locomo) and are
+hand-computed; exact agreement with upstream's code is tested in test_upstream_scorers.py.
 """
 
 import tempfile

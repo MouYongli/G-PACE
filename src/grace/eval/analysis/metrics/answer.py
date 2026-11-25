@@ -18,15 +18,18 @@ is an empty output for categories 1 to 4 (F1 0) and a correct abstention for cat
 
 from __future__ import annotations
 
-import re
 import string
 from collections import Counter
 from collections.abc import Mapping
 from functools import lru_cache
 
+import numpy as np
+import regex
 from nltk.stem import PorterStemmer
 
-_ARTICLES = re.compile(r"\b(a|an|the|and)\b")
+# The third-party `regex` module, as upstream: its \b treats combining marks (\p{M}) as word
+# characters, unlike `re`, so "\u0301the" keeps "the" (found by the T004 upstream comparison).
+_ARTICLES = regex.compile(r"\b(a|an|the|and)\b")
 _PUNCTUATION = set(string.punctuation)
 _STEMMER = PorterStemmer()
 LOCOMO_ABSTAIN = ("no information available", "not mentioned")
@@ -55,9 +58,13 @@ def token_f1(prediction: str, reference: str) -> float:
 
 
 def multi_answer_f1(prediction: str, reference: str) -> float:
+    """Mean over reference parts of the best F1 against any prediction part.
+
+    The mean is `numpy.mean`, as upstream: numpy's pairwise summation can differ from `sum()`
+    in the last bit, and the scores are compared with upstream exactly."""
     preds = [p.strip() for p in prediction.split(",")]
     golds = [g.strip() for g in reference.split(",")]
-    return sum(max(token_f1(p, g) for p in preds) for g in golds) / len(golds)
+    return float(np.mean([max(token_f1(p, g) for p in preds) for g in golds]))
 
 
 def output_text(prediction) -> str:

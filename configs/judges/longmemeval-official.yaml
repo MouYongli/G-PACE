@@ -1,7 +1,8 @@
 # Official LongMemEval judge (T004; plan 7.1: "LongMemEval additionally uses its official judge").
 # Code: grace.eval.analysis.judging.official (longmemeval_judge). Templates are transcriptions of
-# get_anscheck_prompt in src/evaluation/evaluate_qa.py of the LongMemEval repository; they have not
-# yet been compared byte for byte with upstream (no offline copy), see `upstream.verified`.
+# get_anscheck_prompt in src/evaluation/evaluate_qa.py of the LongMemEval repository; the rendered
+# messages equal upstream's byte for byte on all 98 development questions and synthetic responses,
+# and the reply rule matches (T004 evidence, tests/analysis/test_upstream_scorers.py).
 judge: longmemeval-official
 version: 1
 prompts:                          # template -> prompt name and pin (configs/common/prompts.yaml)
@@ -10,12 +11,16 @@ prompts:                          # template -> prompt name and pin (configs/com
   knowledge-update: {prompt: judge-longmemeval-knowledge-update, sha256: 85a7addabfe5fd7bf4b09fcbabdc6ae8bdd52e9447f10d1679e180780f1c2e92}
   single-session-preference: {prompt: judge-longmemeval-single-session-preference, sha256: 81d481dee43ef97c304befbbd3387bf85f3ac5c7f38c9c320ccc6d9f57e3e862}
   abstention: {prompt: judge-longmemeval-abstention, sha256: 3802acec6c18e3095a6223b6855e25aa2a3c2761b9f79a65e75783e9175bf0c2}
-parse: contains_yes               # upstream: 'yes' in reply.lower() (official.parse_yes)
+parse: contains_yes               # upstream: 'yes' in reply.strip().lower() (official.parse_yes)
 upstream:
   repo: xiaowu0162/LongMemEval
   file: src/evaluation/evaluate_qa.py
-  revision: null                  # to pin when the file is compared with upstream
-  verified: false
+  revision: 9e0b455f4ef0e2ab8f2e582289761153549043fc
+  verified: true                  # prompt choice, prompt bytes and the yes-rule; not the model
+  deviations:                     # everything else equals upstream
+    - judge model gpt-4.1-mini instead of gpt-4o-2024-08-06 (D006)
+    - unknown and invalid outputs are scored by rule, not judged (judged_outputs)
+    - a reply without content (None) is invalid and leaves the denominator; upstream would raise
   judge_model: gpt-4o-2024-08-06  # upstream's judge; GRACE uses gpt-4.1-mini instead (D006)
 model:                            # deviation: upstream judges with gpt-4o-2024-08-06 (D006)
   provider: azure-openai          # D006: secondary judge, budget EUR 50 for the whole project
