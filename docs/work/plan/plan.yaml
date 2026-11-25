@@ -39,7 +39,10 @@ milestones:           # research plan section 9; one milestone per implementatio
       If template serialisation ties with LLM rendering on answer accuracy, the paper becomes
       "a staleness criterion plus computing at query time" and view maintenance is no longer a
       cost claim. If re-querying at read time is not more expensive anywhere in the range of
-      the scale experiment, narrow RQ2 to "exact staleness checks are cheap".
+      the scale experiment, narrow RQ2 to "exact staleness checks are cheap". If claim-pattern-level
+      decisions over-mark as much as predicate-level decisions on the controlled sequences, the
+      RQ2 hypothesis on dependency granularity is overturned and no benefit is claimed for the
+      finer dependency.
   - id: M3
     title: End-to-end extraction and planning
     due: null

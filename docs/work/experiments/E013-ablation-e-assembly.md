@@ -40,3 +40,4 @@ Pending.
 ## Log
 
 - 2026-11-23: created from the full project DAG.
+- 2026-11-25: confirmed as optional (user, 2026-11-25); plan sections 7.3, 9 and 9.3 now say so.
