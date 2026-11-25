@@ -247,6 +247,37 @@ def _predicates_of(query: Query) -> set[str]:
     return {p.predicate for p in patterns if isinstance(p.predicate, str)}
 
 
+def canonical_entities(query: Query, ctx: PlanningContext) -> Query:
+    """Rewrite entity constants that differ from a listed ID only in case (`caroline`)."""
+    ids = {e.id for e in ctx.entities} | set(ctx.speakers)
+    folded: dict[str, str] = {}
+    for i in ids:
+        folded.setdefault(i.lower(), i)
+    folded = {k: v for k, v in folded.items()
+              if sum(1 for i in ids if i.lower() == k) == 1}
+
+    def fix(term):
+        if isinstance(term, Entity) and term.id not in ids and term.id.lower() in folded:
+            return Entity(folded[term.id.lower()])
+        return term
+
+    def pattern(p):
+        att = p.attribution
+        if att is not None:
+            att = replace(att, speaker=fix(att.speaker))
+        return replace(p, subject=fix(p.subject), object=fix(p.object), attribution=att)
+
+    def filters(fs):
+        return tuple(replace(f, right=fix(f.right)) for f in fs)
+
+    negation = query.negation
+    if negation is not None:
+        negation = replace(negation, pattern=pattern(negation.pattern),
+                           filters=filters(negation.filters))
+    return replace(query, where=tuple(pattern(p) for p in query.where),
+                   filters=filters(query.filters), negation=negation)
+
+
 def check_vocabulary(query: Query, ctx: PlanningContext) -> None:
     """Every predicate and entity constant must come from the context (when it lists any)."""
     errors = []
@@ -340,6 +371,7 @@ def _parse_ir(text: str, what: str) -> Query:
 
 
 def _check(query: Query, ctx: PlanningContext, mode: str, what: str) -> CompiledQuery:
+    """Type-check, check against the vocabulary fragment and compile (entities canonical)."""
     try:
         typecheck(query)
     except QueryTypeError as exc:
@@ -369,7 +401,7 @@ def interpret(value: Mapping[str, Any], ctx: PlanningContext, *, mode: str = "rd
     reason = value.get("reason")
     if value.get("ir") is None:
         return Interpreted(None, None, None, None, (), channels, reason or "declined")
-    query = _parse_ir(value["ir"], "ir")
+    query = canonical_entities(_parse_ir(value["ir"], "ir"), ctx)
     window = None
     if tw := value.get("time_window"):
         try:
@@ -386,7 +418,7 @@ def interpret(value: Mapping[str, Any], ctx: PlanningContext, *, mode: str = "rd
     compiled = _check(query, ctx, mode, "ir")
     anchor = None
     if a := value.get("anchor"):
-        anchor_query = _parse_ir(a["ir"], "anchor")
+        anchor_query = canonical_entities(_parse_ir(a["ir"], "anchor"), ctx)
         _check(anchor_query, ctx, mode, "anchor")
         anchor = Anchor(anchor_query, tuple(a["bind"]))
         if "known" in anchor.bind and query.at.known is not None:

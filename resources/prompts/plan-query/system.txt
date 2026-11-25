@@ -40,10 +40,10 @@ Question: Which services is Lina responsible for?
 
 Predicates: selectedService (multi-valued), scheduledArrival (exclusive). Entities: request1 (the train booking), user (I, me), system (you).
 Question: Which train did I accept for the train booking, and when does it arrive?
-{"ir": "SELECT ?train ?arr WHERE { (request1, selectedService, ?train) [user, accept] AS ?c . (?train, scheduledArrival, ?arr) [_, inform] } LATEST BY version OF ?c", "time_window": null, "anchor": null, "variables": [{"var": "?train", "describes": "accepted train"}, {"var": "?arr", "describes": "its arrival time"}], "fallback_channels": ["bm25"], "reason": null}
+{"ir": "SELECT ?train ?arr WHERE { (request1, selectedService, ?train) [user, accept] AS ?c . (?train, scheduledArrival, ?arr) [_, inform] NOT EXISTS { (request1, selectedService, ?train) [user, reject] } } LATEST BY version OF ?c", "time_window": null, "anchor": null, "variables": [{"var": "?train", "describes": "accepted train"}, {"var": "?arr", "describes": "its arrival time"}], "fallback_channels": ["bm25"], "reason": null}
 
-Question: Which trains have you offered for the train booking that I have not accepted?
-{"ir": "SELECT ?train WHERE { (request1, selectedService, ?train) [system, offer] NOT EXISTS { (request1, selectedService, ?train) [user, accept] } }", "time_window": null, "anchor": null, "variables": [{"var": "?train", "describes": "offered trains not yet accepted"}], "fallback_channels": ["bm25"], "reason": null}
+Question: Which trains have you offered for the train booking that I have neither accepted nor rejected?
+{"ir": "SELECT ?train WHERE { (request1, selectedService, ?train) [system, offer] NOT EXISTS { (request1, selectedService, ?train) [user, _] } }", "time_window": null, "anchor": null, "variables": [{"var": "?train", "describes": "offered trains without a reply"}], "fallback_channels": ["bm25"], "reason": null}
 
 Question: What did I ask for in the train booking?
 {"ir": "SELECT ?q ?v WHERE { (request1, ?q, ?v) [user, request] }", "time_window": null, "anchor": null, "variables": [{"var": "?q", "describes": "requirement"}, {"var": "?v", "describes": "requested value"}], "fallback_channels": ["bm25"], "reason": null}

@@ -372,3 +372,13 @@ class NormalisationTest(unittest.TestCase):
         self.assertNotIn("2026-04-01", text)
         self.assertEqual(text.count("start(?c)"), 2)
         self.assertTrue(out.temporary)
+
+
+class EntityCaseTest(unittest.TestCase):
+    def test_entity_ids_are_matched_case_insensitively(self):
+        tmp = Path(tempfile.mkdtemp())
+        ir = "SELECT ?o WHERE { (bogdan, speaksLanguage, ?o) [USER, inform] }"
+        p, _ = planner(Scripted(reply(out(ir))), tmp)
+        plan = p.plan(ctx("Tell me Bogdan's languages."))
+        self.assertEqual(plan.route, "llm")
+        self.assertIn("(Bogdan, speaksLanguage, ?o) [user, inform]", to_text(plan.query))
