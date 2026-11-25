@@ -19,9 +19,9 @@ Establish from the data how much evidence MultiWOZ can give the attribution-guar
 
 ## Acceptance
 
-- [ ] Counts of accept and reject offer turns in the test set, per version and per domain, recorded in a run directory with code SHA, data checksums and command.
+- [x] Counts of accept and reject offer turns in the test set, per version and per domain, recorded in a run directory with code SHA, data checksums and command.
 - [ ] The share of offer turns where 2.2 and 2.4 disagree on the offered slot value, with at least 50 manually checked examples and the precision of the identification rule.
-- [ ] The 95% interval half-width implied by the counts at 70% accuracy, and the resulting recommendation under the rule in plan section 6.5.
+- [x] The 95% interval half-width implied by the counts at 70% accuracy, and the resulting recommendation under the rule in plan section 6.5.
 
 ## Deliverables
 
@@ -37,3 +37,4 @@ Report: [`docs/research/multiwoz-offer-turns.md`](../../research/multiwoz-offer-
 - 2026-11-25: rule and census committed (`e771234`, fix `8780c2f`). Formal runs at `8780c2f`: test `T006-20261125T010248Z-25f5`, dev `T006-20261125T010238Z-7565` (both `completed`, model-free, manifests verified). Test: 2,022 offer turns, 1,104 accept and 45 reject (2.1 acts); 2.2/2.4 disagree on the offered value in 21.7% of accept/reject turns (26.3% exact); half-width 2.65 points at 70%, so MultiWOZ remains primary evidence (reject-only slice: 13.4 points, descriptive only). The 2.2-writes/2.4-does-not convention does not hold in general.
 - 2026-11-25: manual precision check on 60 development turns (30 accept, 30 reject): 56/60 = 93.3%, checked by the agent session, pending human confirmation. The two-annotator check on 200 turns with Cohen's kappa (plan 6.5) is still open.
 - 2026-11-25: merged `origin/main` (D007, PR #50). The 60-turn agent check stays labelled "checked by the agent session, pending human confirmation"; human confirmation, and the two-annotator check with kappa, are done by the second annotator the user names under D007. The precision is not human-verified.
+- 2026-11-25: PR #53 merged. Acceptance items 1 and 3 met; item 2 waits for the human check by the D007 annotator.

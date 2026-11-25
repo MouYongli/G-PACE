@@ -19,9 +19,9 @@ Decide whether the evidence-anchored streaming protocol for LoCoMo (plan section
 
 ## Acceptance
 
-- [ ] Read-point list ($v(q)$ per question) and summary statistics recorded in a run directory with code SHA, data checksum and command.
-- [ ] Exclusions listed with reasons and counts.
-- [ ] A threshold for promoting streaming to the main text, set on development histories and stated before held-out statistics are inspected.
+- [x] Read-point list ($v(q)$ per question) and summary statistics recorded in a run directory with code SHA, data checksum and command.
+- [x] Exclusions listed with reasons and counts.
+- [x] A threshold for promoting streaming to the main text, set on development histories and stated before held-out statistics are inspected.
 
 ## Deliverables
 
@@ -40,3 +40,4 @@ Bash entry point under `scripts/` calling Python under `src/grace/cli/`, the rea
 - 2026-11-25: promotion threshold fixed from the development histories only, before any held-out statistic was computed (`configs/benchmarks/read-points/locomo.yaml#promotion_threshold`). Streaming enters the main text if, on held-out streaming questions, all hold: pooled share with $v(q)<N$ ≥ 0.5; median distinct read points per history (N included) ≥ 5; median tokens between adjacent read points ≥ 256. Rationale in the config: majority reading of "substantial share"; several read-invalidate-read cycles per view; new text per gap at least the smallest answer memory budget (256 tokens). Values set by principle, not fitted to the dev values.
 - 2026-11-25: all stage run at code `d77ab6344eb6c3ccf7e1d229be209efad8a64ee1` (`$PROJECT_ROOT/runs/T007/artifacts/read-points-all-20261125T005549Z`), held-out annotations read with `--held-out-annotation-only` (counting only, no system run). 1,540 questions: 13 excluded (evidence missing 4, unresolved 9), 53 reported separately (audit `WRONG_CITATION`; 4 more are among the 13), 1,474 streaming; 99 audit answer errors carried as a label. Held-out: share with $v(q)<N$ 0.968, median 29.5 distinct read points per history, median 579 tokens between adjacent read points. All three threshold criteria hold: streaming qualifies for the main text. Dev numbers reproduced exactly. Report: `docs/research/locomo-read-points.md`.
 - 2026-11-25: acceptance: read-point list and statistics with code SHA, data checksum and command in the run directories (met); exclusions with reasons and counts (met); threshold set on dev and committed in `d77ab63` before held-out statistics (met). `make test` and `make lint` green. Status for plan.yaml: `T007: active -> review`.
+- 2026-11-25: PR #51 reviewed and merged; acceptance met.

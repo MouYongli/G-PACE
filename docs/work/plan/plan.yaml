@@ -228,23 +228,23 @@ nodes:
     type: task
     title: MultiWOZ offer-turn census
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T002, T010]
-    issue: null
-    owner: null
-    start: null
+    issue: 46
+    owner: m01-T006
+    start: 2026-11-25
     finish: null
     file: ../tasks/T006-multiwoz-offer-turns.md
   - id: T007
     type: task
     title: LoCoMo evidence-anchored read points
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T002, T010]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 48
+    owner: m01-T007
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T007-locomo-read-points.md
   - id: T008
     type: task
@@ -283,11 +283,11 @@ nodes:
     type: task
     title: Fragment coverage annotation
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T002, T010]
-    issue: null
-    owner: null
-    start: null
+    issue: 47
+    owner: m01-T012
+    start: 2026-11-25
     finish: null
     file: ../tasks/T012-fragment-coverage.md
   - id: T013
