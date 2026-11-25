@@ -1,0 +1,11 @@
+Predicates:
+{{predicates}}
+
+Entities (ID: names):
+{{entities}}
+
+Speakers: {{speakers}}
+
+Reference date of this read: {{reference_date}}
+
+Question: {{request}}
