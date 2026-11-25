@@ -350,12 +350,12 @@ nodes:
     type: task
     title: Controlled change-sequence generator
     milestone: M2
-    status: active
+    status: done
     depends_on: [T008, T014]
     issue: 59
     owner: m01-T015
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T015-change-sequence-generator.md
   - id: T016
     type: task
