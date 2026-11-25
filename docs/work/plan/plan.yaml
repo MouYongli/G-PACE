@@ -214,12 +214,12 @@ nodes:
     type: decision
     title: Evaluation aggregation
     milestone: M1
-    status: proposed
+    status: accepted
     depends_on: []
     issue: null
-    owner: null
+    owner: user
     start: 2026-11-21
-    finish: null
+    finish: 2026-11-25
     file: ../decisions/D002-evaluation-aggregation.md
   - id: T006
     type: task

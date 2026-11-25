@@ -247,7 +247,7 @@ Owner: T014 manager (`m01-T014`) · Version: 0.1 · Producer: `context/memory/` 
 
 > Replaces the sample-level v0.1. Scoring is keyed by `read_id` and scored against one gold `annotation` at a time, following the T001 records.
 
-Owner: T004 manager (`m01-T004`; assigned by the user's dispatch of the 2026-11-25 round) · Version: 0.2 · Producer: `judge` and `score` stages (`eval/analysis/judging/`, `eval/analysis/metrics/`) · Consumers: reporting (T035, T036)
+Owner: T004 manager (`m01-T004`; assigned by the user's dispatch of the 2026-11-25 round) · Version: 0.3 (aggregation added by decision D002) · Producer: `judge` and `score` stages (`eval/analysis/judging/`, `eval/analysis/metrics/`) · Consumers: reporting (T035, T036)
 
 ### Registration
 
@@ -272,7 +272,7 @@ Before any formal comparison every metric is registered in `configs/common/score
 
 ### Judges
 
-- A judge config (`configs/judges/<judge>.yaml`) pins the prompt by its hash in `configs/common/prompts.yaml`, the parsing rule, decoding (temperature 0) and the judge model snapshot. The snapshot is decision D006; until it is taken `model` is `null` and no judge run is formal.
+- A judge config (`configs/judges/<judge>.yaml`) pins the prompt by its hash in `configs/common/prompts.yaml`, the parsing rule, decoding (temperature 0) and the judge model snapshot. The snapshot is decision D006: DeepSeek-V4-Flash-0731 (local, pinned revision) as the primary judge, Azure gpt-4.1-mini (version 2025-04-14) for the E001 comparison and the LongMemEval templates.
 - The judge is blind: its input is exactly the question, the reference of the scored annotation and the prediction as text (lists joined with `; `). It never receives run, engine or config names, the working context, citations, `raw_output` or `metadata`.
 - Judge calls are call records with `call_type: judge`, `trigger: evaluation` ([Cost ledger](#cost-ledger)); each judgement is one `judgements.jsonl` record ([Experiment run](#experiment-run)) naming its judge config. One `judge` run MAY run several judges over the same predictions (LongMemEval: the blind and the official judge); `(read_id, judge)` is unique.
 - Judge reruns are new `judge` runs and are reported as their own source of uncertainty (plan 6.9).
@@ -313,7 +313,18 @@ One JSON object `{"metrics": [...]}`, written exclusively by a `score` run, with
 
 - Report every benchmark, split, annotation and seed separately, with counts.
 - Multi-seed summaries give the mean, the sample standard deviation and the number of runs.
-- Cross-benchmark averages follow `docs/work/decisions/D002-evaluation-aggregation.md`; never average without a recorded normalization and weighting.
+- No score is averaged or combined across benchmarks ([Aggregation](#aggregation)).
+
+### Aggregation
+
+Decision D002; the machine-readable form is the `aggregation` block and the per-benchmark `cluster_unit` of `configs/common/scorers.yaml`.
+
+- **No cross-benchmark score.** Benchmarks differ in metric, scale and role, and each research question names its own evidence (plan 6.6). Results are reported per benchmark; no overall, normalised or weighted score is computed, in the main text or the supplementary material.
+- **Point estimate.** `value` in `metrics.json` is the micro mean over the reads of the population: questions, or turns for MultiWOZ. This follows each benchmark's official convention. Where clusters differ in size (MultiWOZ dialogues, controlled-sequence families), the macro mean of cluster means is reported in the supplementary material as a sensitivity analysis.
+- **Strata.** The overall value pools all reads of the population; it is not a mean of stratum values. Each registered stratum is reported separately. A stratum with fewer than 100 reads is descriptive only: it gets counts and an interval, but no test and no claim (plan 6.9).
+- **Annotations.** Each annotation is reported separately (MultiWOZ 2.4 main; 2.2 and 2.1 alongside) and never combined.
+- **Missing values.** Every registered metric uses `invalid_policy: count_as_wrong`. `unknown` follows the abstention rule. A run that failed leaves its cell empty with the reason; nothing is imputed. `n_total` and `n_scored` are always shown.
+- **Uncertainty.** Intervals are 95% percentile intervals from a cluster bootstrap (10,000 resamples) over the `cluster_unit` of the benchmark. For differences between two systems the bootstrap is paired: the same clusters are drawn for both. Tests follow plan 6.9: question-level paired tests with history as a random effect, with per-cluster differences and leave-one-cluster-out as sensitivity analyses. Judge reruns are a separate source of uncertainty and are summarised as mean, sample standard deviation and number of runs.
 
 Required regression tests (`tests/contracts/test_evaluation.py`): empty prediction file, duplicate key, missing key, extra key, mixed splits, shuffled order, unparsable prediction; also snapshot mismatches, both invalid-output policies, the abstention rule and the `metrics.json` record.
 
