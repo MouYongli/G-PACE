@@ -48,7 +48,8 @@ def _context(d: mo.DialogueInput, user_index: int) -> str:
     texts = d.texts or []
     lines = []
     for i in range(max(0, user_index - 2), user_index + 1):
-        lines.append(f"[{i}] {'USER' if i % 2 == 0 else 'SYSTEM'}: {texts[i]}")
+        text = " ".join(texts[i].split())   # tabs and newlines would break the TSV
+        lines.append(f"[{i}] {'USER' if i % 2 == 0 else 'SYSTEM'}: {text}")
     return " || ".join(lines)
 
 
