@@ -76,3 +76,23 @@ prompts:
       line per rendering unit, "[row ID] name = value; ...", members of a count indented). Output:
       sentences, each labelled with the row IDs it states; checked by
       src/grace/context/views/render.py, failed sentences fall back to the template.
+  plan-query:
+    call_type: plan
+    sha256: 02d112490e5fd01feb6fe3ccee7cef13eb8ef6fcea373522b0019c06c8407c07
+    schema: llm/plan-query    # resources/schemas/llm/plan-query.json
+    schema_sha256: e0eb10bff9dd1c9e303deef835385895f113432cb0571c4d85fae1cc1e11eb3c
+    note: >-
+      Query planner of the read path (T023, plan 5.3 and 5.6), called only when no rule template
+      covers the task. Variables: predicates, entities and speakers (the vocabulary fragment of
+      the history, stable, first), reference_date (asked_at, else the date of the last visible
+      message), request (the question, last). Output: IR text, variables to fill, fallback
+      channels, optional time window and anchor (configs/common/planner.yaml).
+  plan-query-repair:
+    call_type: repair
+    sha256: 996e842d27085600e8ea56053e90d8caac433030575a3fe317e025d2f5e0c797
+    schema: llm/plan-query
+    schema_sha256: e0eb10bff9dd1c9e303deef835385895f113432cb0571c4d85fae1cc1e11eb3c
+    note: >-
+      The one compile repair of a read (T023, plan 5.6). Sent as a follow-up user message after
+      the plan-query conversation and the rejected reply; no system message of its own.
+      Variable: error (the parse, type or time error of the rejected reply).

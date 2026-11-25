@@ -1,0 +1,248 @@
+# LoCoMo part of the T023 planner development subset.
+#
+# Annotator: agent session m01-T023 (manager of T023). Not a human annotator.
+# Source: snap-research/locomo @ 3eb6f2c (CC BY-NC 4.0), development histories conv-26 and
+# conv-49 only (configs/benchmarks/locomo.yaml); manifest checksum verified before reading.
+#
+# Each history holds a PARTIAL claim graph written by hand under the ideal-writer assumptions of
+# docs/research/fragment-coverage.md section 1 (text only, stated propositions only, write-time
+# time normalisation against the session date). It contains the claims the questions below need
+# and distractors from the same or nearby turns that a complete extraction would also contain
+# (other trips, other suggestions by the other speaker, other started activities). It is not a
+# full extraction of the histories. Questions were picked only where the answer would not change
+# under a fuller extraction of the cited turns for reasons outside the query fragment.
+#
+# Modelling choices (the agent's, for this subset):
+# - A suggestion or recommendation by a speaker is an attribution with function `offer` on the
+#   claim of what the addressee should do or read (`shouldTry`, `reads`).
+# - A trip is an event entity; `tookRoadTrip` links the person to it, with the trip's valid time.
+# - Versions are turn positions (1-based, in session order); `messages` maps dia_id to
+#   [version, session date]. `reference_date` is the date of the last message of the history (the
+#   LoCoMo read tasks carry no asked_at); reads happen at the end of the history (`read_version`).
+#
+# Claim fields: s, p, o (string literal, or {entity: ID}), start/end/expression (valid time),
+# attributions [[speaker, function, dia_id], ...]; evidence defaults to the attribution turns.
+histories:
+  conv-26:
+    reference_date: "2023-10-22"   # D19:15, the last turn
+    read_version: 419
+    speakers: [Caroline, Melanie]
+    entities:
+      - {id: Caroline, names: [Caroline], kind: person}
+      - {id: Melanie, names: [Melanie, Mel], kind: person}
+    predicates:
+      - {name: playsInstrument, exclusive: false, aliases: [instruments, play]}
+      - {name: movedFrom, exclusive: false, aliases: [moved from, move from]}
+      - {name: reads, exclusive: false, aliases: [read, book], description: "subject reads or should read the book (object)"}
+      - {name: researches, exclusive: false, aliases: [research, researching]}
+      - {name: painted, exclusive: false, aliases: [paint, painting]}
+    messages:
+      D1:14: [14, "2023-05-08"]
+      D2:5: [23, "2023-05-25"]
+      D2:8: [26, "2023-05-25"]
+      D3:13: [48, "2023-06-09"]
+      D4:3: [61, "2023-06-27"]
+      D7:11: [119, "2023-07-12"]
+      D8:6: [141, "2023-07-15"]
+      D15:26: [332, "2023-08-28"]
+      D17:10: [364, "2023-10-13"]
+    claims:
+      - {id: c_violin, s: Melanie, p: playsInstrument, o: violin, attributions: [[Melanie, inform, "D2:5"]]}
+      - {id: c_clarinet, s: Melanie, p: playsInstrument, o: clarinet, attributions: [[Melanie, inform, "D15:26"]]}
+      - {id: c_moved, s: Caroline, p: movedFrom, o: Sweden, start: "2019-06-09", expression: "4 years ago (since I moved from my home country)",
+         attributions: [[Caroline, inform, "D3:13"]], evidence: ["D3:13", "D4:3"]}
+      - {id: c_nicole, s: Melanie, p: reads, o: Becoming Nicole,
+         attributions: [[Caroline, offer, "D7:11"], [Melanie, inform, "D17:10"]]}
+      - {id: c_adoption, s: Caroline, p: researches, o: adoption agencies, attributions: [[Caroline, inform, "D2:8"]]}
+      - {id: c_sunrise, s: Melanie, p: painted, o: lake sunrise, start: "2022-01-01", end: "2023-01-01", expression: last year,
+         attributions: [[Melanie, inform, "D1:14"]]}
+      - {id: c_nature, s: Melanie, p: painted, o: nature painting, start: "2023-07-08", expression: last weekend,
+         attributions: [[Melanie, inform, "D8:6"]]}
+  conv-49:
+    reference_date: "2024-01-11"   # D25:20, the last turn
+    read_version: 509
+    speakers: [Evan, Sam]
+    entities:
+      - {id: Evan, names: [Evan], kind: person}
+      - {id: Sam, names: [Sam], kind: person}
+      - {id: old_prius, names: [old Prius], kind: car}
+      - {id: new_prius, names: [new Prius], kind: car}
+      - {id: trip_rockies_may, names: [trip to the Rockies], kind: trip}
+      - {id: trip_jasper, names: [road trip to Jasper], kind: trip}
+      - {id: trip_rockies_jul, names: [road trip to the Rocky Mountains], kind: trip}
+      - {id: trip_cactus, names: [road trip of the cactus painting], kind: trip}
+      - {id: trip_mountains_dec, names: [drive to the mountains], kind: trip}
+      - {id: flavored_seltzer_water, names: [flavored seltzer water], kind: drink}
+    predicates:
+      - {name: owns, exclusive: false, aliases: [own, owned, has]}
+      - {name: carModel, exclusive: true, aliases: [model], description: "model of a car"}
+      - {name: tookRoadTrip, exclusive: false, aliases: [road trip, roadtrips, took a road trip]}
+      - {name: takesClass, exclusive: false, aliases: [class, classes, taking]}
+      - {name: startedActivity, exclusive: false, aliases: [started, start], description: "an activity the subject started; valid time is when it started"}
+      - {name: shouldTry, exclusive: false, aliases: [try], description: "something the subject should try; the suggester is the offer attribution"}
+      - {name: category, exclusive: false, aliases: [kind, type]}
+    messages:
+      D1:2: [2, "2023-05-18"]
+      D1:4: [4, "2023-05-18"]
+      D2:1: [23, "2023-05-24"]
+      D2:11: [33, "2023-05-24"]
+      D3:5: [44, "2023-06-06"]
+      D4:8: [65, "2023-07-27"]
+      D4:10: [67, "2023-07-27"]
+      D7:4: [125, "2023-08-15"]
+      D8:12: [149, "2023-08-19"]
+      D8:18: [155, "2023-08-19"]
+      D9:8: [178, "2023-08-27"]
+      D10:9: [198, "2023-09-11"]
+      D11:10: [213, "2023-10-06"]
+      D12:2: [225, "2023-10-08"]
+      D18:8: [350, "2023-12-05"]
+      D22:2: [413, "2023-12-31"]
+    claims:
+      - {id: c_new_prius, s: Evan, p: owns, o: {entity: new_prius}, attributions: [[Evan, inform, "D1:2"]]}
+      - {id: c_new_model, s: new_prius, p: carModel, o: Prius, attributions: [[Evan, inform, "D1:2"]]}
+      - {id: c_old_prius, s: Evan, p: owns, o: {entity: old_prius}, attributions: [[Evan, inform, "D1:4"]]}
+      - {id: c_old_model, s: old_prius, p: carModel, o: Prius, attributions: [[Evan, inform, "D1:4"]]}
+      - {id: c_trip_rockies_may, s: Evan, p: tookRoadTrip, o: {entity: trip_rockies_may}, start: "2023-05-18", expression: just got back,
+         attributions: [[Evan, inform, "D1:2"]], evidence: ["D1:2", "D1:4"]}
+      - {id: c_trip_jasper, s: Evan, p: tookRoadTrip, o: {entity: trip_jasper}, start: "2023-05-20", expression: last weekend,
+         attributions: [[Evan, inform, "D2:1"]]}
+      - {id: c_trip_rockies_jul, s: Evan, p: tookRoadTrip, o: {entity: trip_rockies_jul}, start: "2023-07-01", end: "2023-08-01", expression: last month,
+         attributions: [[Evan, inform, "D9:8"]]}
+      - {id: c_trip_cactus, s: Evan, p: tookRoadTrip, o: {entity: trip_cactus}, start: "2023-09-01", end: "2023-10-01", expression: last month,
+         attributions: [[Evan, inform, "D11:10"]]}
+      - {id: c_trip_mountains_dec, s: Evan, p: tookRoadTrip, o: {entity: trip_mountains_dec}, start: "2023-12-23", expression: last weekend,
+         attributions: [[Evan, inform, "D22:2"]]}
+      - {id: c_class_evan, s: Evan, p: takesClass, o: watercolor painting classes, start: "2023-08-16", expression: few days ago,
+         attributions: [[Evan, inform, "D8:12"]], evidence: ["D8:12", "D8:18"]}
+      - {id: c_class_sam, s: Sam, p: takesClass, o: cooking class, attributions: [[Sam, inform, "D7:4"]]}
+      - {id: c_weights, s: Evan, p: startedActivity, o: lifting weights, start: "2022-10-08", expression: one year ago,
+         attributions: [[Evan, inform, "D12:2"]]}
+      - {id: c_watercolor, s: Evan, p: startedActivity, o: watercolor painting, expression: a few years ago,
+         attributions: [[Evan, inform, "D2:11"]]}
+      - {id: c_seltzer, s: Sam, p: shouldTry, o: {entity: flavored_seltzer_water},
+         attributions: [[Evan, offer, "D3:5"], [Evan, offer, "D4:8"]]}
+      - {id: c_seltzer_kind, s: flavored_seltzer_water, p: category, o: water, attributions: [[Evan, inform, "D3:5"]]}
+      - {id: c_popcorn, s: Sam, p: shouldTry, o: air-popped popcorn, attributions: [[Evan, offer, "D4:10"]]}
+      - {id: c_painting, s: Sam, p: shouldTry, o: painting, attributions: [[Evan, offer, "D10:9"]]}
+      - {id: c_yoga, s: Evan, p: shouldTry, o: yoga, attributions: [[Sam, offer, "D18:8"]]}
+    supersessions:
+      # "My old prius broke down, decided to get it repaired and sell it": the old car leaves the
+      # current state (a change); it stays in the past state.
+      - {claim: c_old_prius, kind: change, message: "D1:4", licence: [c_old_prius, 0]}
+cases:
+  - case_id: "locomo:conv-26:q60"
+    source: locomo
+    history_id: conv-26
+    question_id: "conv-26:q60"
+    read_version: 419
+    reference_date: "2023-10-22"
+    question: What instruments does Melanie play?
+    gold_answer: [clarinet, violin]
+    gold_ir: "SELECT ?i WHERE { (Melanie, playsInstrument, ?i) }"
+    attribution: [[], ["+Melanie/inform"], ["+_/inform"]]
+    time: {state: current, known: r, valid: null, window: null, temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-26:q11"
+    source: locomo
+    history_id: conv-26
+    question_id: "conv-26:q11"
+    read_version: 419
+    reference_date: "2023-10-22"
+    question: Where did Caroline move from 4 years ago?
+    gold_answer: [Sweden]
+    gold_ir: "SELECT ?x WHERE { (Caroline, movedFrom, ?x) AS ?c } AT(state=historical)"
+    gold_window: {phrase: 4 years ago, label: "?c"}
+    attribution: [[], ["+Caroline/inform"], ["+_/inform"]]
+    time: {state: historical, known: r, valid: null, window: ["2019-04-22", "2020-04-22"], temporary: true, latest_valid: false, open_end: false}
+    note: "state=current gives the same answer; historical is the annotation because the question asks about the past"
+  - case_id: "locomo:conv-26:q104"
+    source: locomo
+    history_id: conv-26
+    question_id: "conv-26:q104"
+    read_version: 419
+    reference_date: "2023-10-22"
+    question: What book did Caroline recommend to Melanie?
+    gold_answer: [Becoming Nicole]
+    gold_ir: "SELECT ?b WHERE { (Melanie, reads, ?b) [Caroline, offer] }"
+    attribution: [["+Caroline/offer"]]
+    time: {state: current, known: r, valid: null, window: null, temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-26:q71"
+    source: locomo
+    history_id: conv-26
+    question_id: "conv-26:q71"
+    read_version: 419
+    reference_date: "2023-10-22"
+    question: What book did Melanie read from Caroline's suggestion?
+    gold_answer: [Becoming Nicole]
+    gold_ir: "SELECT ?b WHERE { (Melanie, reads, ?b) [Caroline, offer] . (Melanie, reads, ?b) [Melanie, inform] }"
+    attribution: [["+Caroline/offer", "+Melanie/inform"], ["+Caroline/offer"]]
+    time: {state: current, known: r, valid: null, window: null, temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-26:q3"
+    source: locomo
+    history_id: conv-26
+    question_id: "conv-26:q3"
+    read_version: 419
+    reference_date: "2023-10-22"
+    question: What did Caroline research?
+    gold_answer: [adoption agencies]
+    gold_ir: "SELECT ?x WHERE { (Caroline, researches, ?x) }"
+    attribution: [[], ["+Caroline/inform"], ["+_/inform"]]
+    time: {state: current, known: r, valid: null, window: null, temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-49:q6"
+    source: locomo
+    history_id: conv-49
+    question_id: "conv-49:q6"
+    read_version: 509
+    reference_date: "2024-01-11"
+    question: How many roadtrips did Evan take in May 2023?
+    gold_answer: ["2"]
+    gold_ir: "SELECT COUNT(DISTINCT ?t) WHERE { (Evan, tookRoadTrip, ?t) AS ?c }"
+    gold_window: {phrase: in May 2023, label: "?c"}
+    attribution: [[], ["+Evan/inform"], ["+_/inform"]]
+    time: {state: current, known: r, valid: null, window: ["2023-05-01", "2023-06-01"], temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-49:q105"
+    source: locomo
+    history_id: conv-49
+    question_id: "conv-49:q105"
+    read_version: 509
+    reference_date: "2024-01-11"
+    question: What type of painting classes did Evan start taking in 2023?
+    gold_answer: [watercolor painting classes]
+    gold_ir: "SELECT ?x WHERE { (Evan, takesClass, ?x) AS ?c }"
+    gold_window: {phrase: in 2023, label: "?c"}
+    attribution: [[], ["+Evan/inform"], ["+_/inform"]]
+    time: {state: current, known: r, valid: null, window: ["2023-01-01", "2024-01-01"], temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-49:q119"
+    source: locomo
+    history_id: conv-49
+    question_id: "conv-49:q119"
+    read_version: 509
+    reference_date: "2024-01-11"
+    question: What activity did Evan start one year ago?
+    gold_answer: [lifting weights]
+    gold_ir: "SELECT ?x WHERE { (Evan, startedActivity, ?x) AS ?c }"
+    gold_window: {phrase: one year ago, label: "?c"}
+    attribution: [[], ["+Evan/inform"], ["+_/inform"]]
+    time: {state: current, known: r, valid: null, window: ["2022-07-11", "2023-07-11"], temporary: true, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-49:q3"
+    source: locomo
+    history_id: conv-49
+    question_id: "conv-49:q3"
+    read_version: 509
+    reference_date: "2024-01-11"
+    question: How many Prius has Evan owned?
+    gold_answer: ["2"]
+    gold_ir: "SELECT COUNT(DISTINCT ?car) WHERE { (Evan, owns, ?car) . (?car, carModel, \"Prius\") } AT(state=historical)"
+    attribution: [[], ["+Evan/inform"], ["+_/inform"]]
+    time: {state: historical, known: r, valid: null, window: null, temporary: false, latest_valid: false, open_end: false}
+  - case_id: "locomo:conv-49:q94"
+    source: locomo
+    history_id: conv-49
+    question_id: "conv-49:q94"
+    read_version: 509
+    reference_date: "2024-01-11"
+    question: What kind of water does Evan suggest Sam try as an alternative to soda?
+    gold_answer: [flavored_seltzer_water]
+    gold_ir: "SELECT ?x WHERE { (Sam, shouldTry, ?x) [Evan, offer] . (?x, category, \"water\") }"
+    attribution: [["+Evan/offer"]]
+    time: {state: current, known: r, valid: null, window: null, temporary: false, latest_valid: false, open_end: false}
