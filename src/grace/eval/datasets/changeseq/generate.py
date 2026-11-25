@@ -351,7 +351,9 @@ class _Planner:
         if which == "date":
             if old.event.start is None or old.floor is None:
                 return None
-            dates = [d for d in _dates_between(old.floor, self.date_of[t]) if d != old.event.start]
+            dates = [d for d in _dates_between(old.floor, self.date_of[t])
+                     if (x, spec.predicate, old.event.object, None, d, None)
+                     not in self.propositions]           # G1, including old.event.start
             if not dates:
                 return None
         values = self.fresh_values(x, spec.predicate, old.event.start)
@@ -642,7 +644,7 @@ class _Planner:
             # creates: open tasks and make offers first while that demand is unmet.
             demand = self.queue.count("C3") + self.queue.count("C4") // 2
             pending = sum(len(k.pending()) for k in self.tasks)
-            if demand > pending and self.rng.random() < 0.6:
+            if demand > pending and self.rng.random() < 0.85:
                 names.sort(key=lambda n: {"offer": 0, "constraint": 1}.get(n, 2))
         for name in names:
             fs = by_kind[name]
