@@ -32,6 +32,7 @@ import yaml
 
 from grace.config.paths import REPO_ROOT, project_root, shared_dir
 from grace.context import api
+from grace.eval.datasets.benchmarks.base import BenchmarkConfig
 from grace.eval.engines.baselines.base import message_time
 from grace.eval.engines.baselines.registry import ENGINES
 from grace.eval.runner.harness import rundir
@@ -92,14 +93,18 @@ class ClientSettings:
     base_url: str
     model_config: Path = DEFAULT_MODEL
     embed_url: str | None = None
+    serving: dict[str, Any] | None = None  # server settings to record (e.g. prefix caching)
 
     def model_info(self) -> dict[str, Any]:
         config = yaml.safe_load(Path(self.model_config).read_text(encoding="utf-8"))
-        return {"model_config": repo_relative(self.model_config),
+        info = {"model_config": repo_relative(self.model_config),
                 "served_name": config["served_name"],
                 "label": f"{config['hf_repo']}@{config['revision']}",
                 "thinking": config["thinking"], "decoding": config["decoding"],
                 "base_url": self.base_url, "embed_url": self.embed_url}
+        if self.serving is not None:
+            info["serving"] = dict(self.serving)
+        return info
 
     def factory(self, engine_config: dict[str, Any], seed: int
                 ) -> Callable[[CallLedger], ClientModel]:
@@ -177,6 +182,7 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
                code: rundir.CodeState | None = None, command: str | None = None,
                on_model: Callable[[Any], None] | None = None,
                engine_wrapper: Callable[[api.ContextEngine], api.ContextEngine] | None = None,
+               benchmark_config: BenchmarkConfig | None = None,
                ) -> SystemRun:
     """One `system` stage run of one engine config on one benchmark split and budget.
 
@@ -188,7 +194,8 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
         raise ValueError("give at most one of client and backend_factory")
     config = load_engine_config(engine_config)
     inputs: Inputs = (load_fixture(records, schedule, history_ids) if records is not None
-                      else load_dev(benchmark, split, schedule, history_ids))
+                      else load_dev(benchmark, split, schedule, history_ids,
+                                    config=benchmark_config))
     code = code or rundir.code_state()
     max_tokens = int(budgets()["answer"]["output_reserve_tokens"])
     if client is not None:

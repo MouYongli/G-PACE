@@ -1,0 +1,153 @@
+# E001 Pilot measurements (docs/work/experiments/E001-pilot-measurements.md; plan section 9,
+# phase 1). Development splits only. Driven by `uv run python -m grace.cli.pilot`:
+#   probe   - one CPU run: records, token counts, length distributions, update density (no model)
+#   system  - one harness run per cell x benchmark (x shard), through grace.eval.runner.harness
+#   summary - tables over an explicit list of run IDs (cache ratio, compute ratio, cost)
+experiment: E001
+version: 1
+
+model_config: configs/models/qwen3-8b.yaml     # primary model, thinking disabled (D006, plan 7.1)
+seed: 0                                        # decoding seed; temperature 0 (model config)
+
+# History subsamples: the n histories of a benchmark with the smallest
+# sha256("<sample_prefix>:<history_id>"); subsamples of different sizes are nested.
+sample_prefix: grace-E001
+
+# Serving (scripts/serve-model.sh, vLLM; reserved in runs/compute.yaml). Prefix caching is a
+# property of the server; each cell names the condition it needs and the server is restarted
+# between conditions.
+serving:
+  gpu: 0
+  chat:
+    port: 8100
+    args: [--max-model-len, "32768", --enable-prompt-tokens-details]
+  embed:
+    port: 8101
+    model: Qwen/Qwen3-Embedding-0.6B
+    args: [--max-model-len, "32768"]
+  conditions:
+    apc-on: {prefix_caching: true, args: []}
+    # apc-off runs on its own server on port 8101 (after the embedding server stopped), next to the
+    # apc-on server on 8100, on the same GPU (design change of 2026-11-25, see the experiment Log).
+    apc-off: {prefix_caching: false, port: 8101, args: [--disable-prefix-caching]}
+
+benchmarks:
+  locomo: {split: dev}
+  longmemeval-s: {split: dev}
+  multiwoz: {split: dev}
+  halumem-medium: {split: dev}
+  memoryagentbench: {split: dev}
+  change-seq:
+    split: dev
+    # configs/benchmarks/change-seq.yaml is not bound yet; E001 reads the development smoke set of
+    # the T015 run T015-devsmoke-20261125T023552Z (template renderer, development families only)
+    # with this inline benchmark config. Paths are relative to PROJECT_ROOT.
+    config:
+      benchmark: change-seq
+      version: dataset
+      data_root: runs/T015/artifacts/T015-devsmoke-20261125T023552Z
+      manifest_sha256: 717fe91dc872194cafe8a67907410a498683355d54ff2273cd55f823422e2a1c
+      splits:
+        dev:
+          kind: development
+          rule: every sequence of the T015 development smoke set
+          counts: {histories: 25, messages: 5000, read_tasks: 1145, gold: 9422}
+          histories:
+            - train-travel-rho10-L200-000
+            - train-travel-rho10-L200-001
+            - flight-travel-rho10-L200-000
+            - flight-travel-rho10-L200-001
+            - car-rental-rho10-L200-000
+            - car-rental-rho10-L200-001
+            - hotel-stay-rho10-L200-000
+            - hotel-stay-rho10-L200-001
+            - apartment-search-rho10-L200-000
+            - apartment-search-rho10-L200-001
+            - train-travel-rho1-L200-000
+            - train-travel-rho3-L200-000
+            - train-travel-rho30-L200-000
+            - flight-travel-rho1-L200-000
+            - flight-travel-rho3-L200-000
+            - flight-travel-rho30-L200-000
+            - car-rental-rho1-L200-000
+            - car-rental-rho3-L200-000
+            - car-rental-rho30-L200-000
+            - hotel-stay-rho1-L200-000
+            - hotel-stay-rho3-L200-000
+            - hotel-stay-rho30-L200-000
+            - apartment-search-rho1-L200-000
+            - apartment-search-rho3-L200-000
+            - apartment-search-rho30-L200-000
+
+probe:
+  # Model window of the primary model (plan 7.1). The probe counts, for every read of the native
+  # schedule, the full-history answer prompt exactly as the raw-text engine and the harness build
+  # it (no window applied), and the fixed prompt parts (prompt tokens minus context tokens).
+  window_tokens: 32768
+  # Rule for the raw-text engine's prompt_reserve_tokens (T003 open question): output reserve
+  # (budgets.yaml answer.output_reserve_tokens) + the largest fixed prompt part on any development
+  # read + 64 tokens for the further-retrieval heading and boundary effects, rounded up to a
+  # multiple of 128.
+  reserve_margin_tokens: 64
+  reserve_round_tokens: 128
+
+cells:
+  # Full history on a prefix-caching server: every development history (measured cache ratio).
+  full-cached:
+    engines: [configs/engines/full-history-cached.yaml]
+    budget: full
+    condition: apc-on
+    histories: all
+    shards: {multiwoz: 8}
+  # Full history on a server without prefix caching: the same prompts, for the computed-token
+  # cost and the latency-based compute ratio of cached input.
+  full-uncached:
+    engines: [configs/engines/full-history.yaml]
+    budget: full
+    condition: apc-off
+    histories: {locomo: all, longmemeval-s: all, multiwoz: 100, halumem-medium: 1,
+                memoryagentbench: all, change-seq: 5}
+    shards: {}
+  # The other T003 baseline families at one memory level, on a subsample (cost per family and
+  # pilot predictions for judging).
+  baselines:
+    engines:
+      - configs/engines/last-k.yaml
+      - configs/engines/bm25.yaml
+      - configs/engines/dense.yaml
+      - configs/engines/rrf.yaml
+      - configs/engines/summary-reuse.yaml
+    budget: 1024
+    condition: apc-on
+    histories: {locomo: all, longmemeval-s: 3, multiwoz: 50, halumem-medium: 1,
+                memoryagentbench: all, change-seq: 5}
+    shards: {}
+  # The two baselines with one sequential model call per written message (design change of
+  # 2026-11-25, before any baseline run): a halumem-medium user (about 3,400 messages) would take
+  # hours of sequential calls on the shared GPU, so halumem-medium is left out and longmemeval-s
+  # takes one history.
+  baselines-write:
+    engines:
+      - configs/engines/summary-rewrite.yaml
+      - configs/engines/slot-table.yaml
+    budget: 1024
+    condition: apc-on
+    histories: {locomo: all, longmemeval-s: 1, multiwoz: 50, memoryagentbench: all,
+                change-seq: 5}
+    shards: {}
+
+summary:
+  # Answer calls (category A) of full-cached and full-uncached runs enter the compute-ratio fit:
+  # latency_ms = a + b_new * (input - cached) + b_cached * cached + b_out * output; c = b_cached / b_new.
+  fit_call_types: [answer]
+
+judging:
+  # Not run in this round (D006): the primary judge needs >= 2 B200 GPUs and the secondary judge
+  # is a paid Azure API. The summary step counts the judgeable predictions (answer outputs of
+  # question reads) and estimates the judge input with the judge prompt; the judge stage itself
+  # waits for the user's approval of GPUs and spend.
+  judge_config: configs/judges/blind.yaml
+  judges: [primary, secondary]
+  cells: [full-cached, baselines, baselines-write]
+  # Third-party price figures recorded in D006 (USD per million tokens), for the estimate only.
+  secondary_price_usd_per_mtok: {input: 0.48, output: 1.94}
