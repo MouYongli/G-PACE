@@ -80,7 +80,7 @@ class BaselineRunsTest(unittest.TestCase):
             self.assertTrue(set(w["call_ids"]) <= call_ids)
 
     def test_every_baseline_on_every_fixture(self):
-        self.assertEqual(len(ENGINES), 9)
+        self.assertEqual(len(ENGINES), 10)
         for config in ENGINES:
             for benchmark in sorted(p.name for p in BENCHMARKS.iterdir()):
                 for budget in (None, 24):
