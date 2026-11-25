@@ -78,7 +78,7 @@ prompts:
       src/grace/context/views/render.py, failed sentences fall back to the template.
   plan-query:
     call_type: plan
-    sha256: cdb510baddfcbef85f3e694e89bf60241be0ec8537837ad22118b9fe46d020d1
+    sha256: 90ac3f56da2c63db879c2cce1a1eaa5613944c1816efe3f9edbb0a32281231af
     schema: llm/plan-query    # resources/schemas/llm/plan-query.json
     schema_sha256: e0eb10bff9dd1c9e303deef835385895f113432cb0571c4d85fae1cc1e11eb3c
     note: >-

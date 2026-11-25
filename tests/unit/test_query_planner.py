@@ -339,3 +339,36 @@ class PlannerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NormalisationTest(unittest.TestCase):
+    def test_current_exclusive_read_keeps_open_claims_and_latest(self):
+        from grace.context.pipeline.query.grammar import parse
+        from grace.context.pipeline.query.planner import normalise_current
+
+        c = ctx("Where do I live?")
+        q = normalise_current(parse("SELECT ?o WHERE { (user, livesIn, ?o) [_, inform] }"), c)
+        text = to_text(q)
+        self.assertIn('FILTER(end(?c) > "9999-12-31"^^date)', text)
+        self.assertIn("LATEST BY version OF ?c", text)
+        # the past-dated Hamburg claim (v4) is not the current value
+        from grace.context.pipeline.query.execute import run
+        self.assertEqual([a.values for a in run(q, build_store(), 7).answers],
+                         [(Value("Cologne"),)])
+        for unchanged in ("SELECT ?o WHERE { (Bogdan, speaksLanguage, ?o) }",   # multi-valued
+                          "SELECT ?o WHERE { (user, livesIn, ?o) } AT(state=historical)",
+                          "SELECT COUNT(DISTINCT ?o) WHERE { (user, livesIn, ?o) }"):
+            with self.subTest(q=unchanged):
+                self.assertEqual(normalise_current(parse(unchanged), c), parse(unchanged))
+
+    def test_window_replaces_start_filters_written_by_the_llm(self):
+        from grace.context.pipeline.query.grammar import parse
+        from grace.context.pipeline.query.planner import apply_window
+
+        q = parse('SELECT ?t WHERE { (user, tookTrip, ?t) AS ?c '
+                  'FILTER(start(?c) >= "2026-04-01"^^date) }')
+        out = apply_window(q, resolve_window("last month", "2026-06-15"), "?c")
+        text = to_text(out)
+        self.assertNotIn("2026-04-01", text)
+        self.assertEqual(text.count("start(?c)"), 2)
+        self.assertTrue(out.temporary)

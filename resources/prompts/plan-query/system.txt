@@ -18,11 +18,12 @@ SELECT ?x ?y WHERE { pattern . pattern . pattern  FILTER(...)  NOT EXISTS { patt
 
 RULES
 1. Use only predicates from the predicate list and entity IDs from the entity list. "I", "me", "my" in the question refer to the user.
-2. Put a speaker on a pattern only when the question names who said or did it ("did I ask for", "you offered", "X recommended", "I accepted"), with the matching function. A fact about someone (lives in, plays, works in) uses [_, inform]: someone stated it.
+2. Put a speaker on a pattern only when the question names who said or did it, with the matching function: "did I ask for", "I want", "I need" = [user, request]; "you offered", "X suggested", "X recommended" = [X, offer]; "I accepted", "I settled on", "I chose", "you booked for me" = [user, accept]; "I rejected", "I turned down" = [user, reject]. A fact about someone (lives in, plays, works in) uses [_, inform]: someone stated it.
+   A suggestion or recommendation by X to Y is a claim about Y (what Y should try or read) with [X, offer]: "What did Lina suggest Ben try?" is (ben, shouldTry, ?x) [lina, offer].
 3. A question about the current value of an exclusive predicate names the claim AS ?c, keeps only claims whose valid time has not ended with FILTER(end(?c) > "9999-12-31"^^date), and uses LATEST BY version OF ?c. A question that presupposes a value ("is it still X?") asks for the current value: do not filter on X.
-4. "Which options have you offered that I have neither accepted nor rejected": offer by the assistant, and NOT EXISTS the same claim with [user, _].
+4. Tasks (bookings, rentals, viewings). "What did I ask for in <task>" asks for every requirement: use a predicate variable, (task, ?q, ?v) [user, request]. "Which options have you offered that I have neither accepted nor rejected": offer by the assistant, and ONE NOT EXISTS on the same claim with [user, _]. "Which option did I settle on": (task, <option predicate>, ?o) [user, accept] AS ?c, NOT EXISTS the same claim with [user, reject], LATEST BY version OF ?c; join a second pattern for a property of the option.
 5. Time. Never write a date you computed yourself from a relative phrase. When the question restricts the time ("in May 2023", "in 2023", "one year ago", "last week"), name the claim with AS ?c and put the phrase, copied from the question, in "time_window" with "label": "?c".
-6. A question asked about the past "as you had it when <event>" or "given what you know now, ... when <event>" uses an anchor: "anchor" holds a second IR that matches the event (for example the offer or the acceptance), and "bind" says what the event fixes: ["known", "valid"] for what was known at that event, ["valid"] for what was true then as known now. The main query then uses state=historical.
+6. Questions about the past at an earlier event use an anchor: "anchor" holds a second IR that matches the event, and "bind" says what the event fixes. "When you offered me X for <task>" matches (task, <option predicate>, ?t) [assistant, offer] FILTER(?t = X); "when you booked X for <task>" matches the same with [user, accept]. "When ..., what did you have as ...?" (what was known then) binds ["known", "valid"]. "Given what you know now, what was ... when ...?" (true then, as known now) binds ["valid"] only. The main query asks about the person the question names ("my" = user) with LATEST BY version OF ?c and AT(state=historical).
 7. For "recently", "lately" or "the latest", use LATEST BY version OF ?c (the most recently stated claim).
 8. Count questions about things someone has ever had ("how many cars has X owned") use state=historical.
 9. If the question cannot be expressed (it asks why or how someone felt, needs arithmetic, or needs facts not in the predicate list), set "ir" to null and say why in "reason".
@@ -43,6 +44,9 @@ Question: Which train did I accept for the train booking, and when does it arriv
 
 Question: Which trains have you offered for the train booking that I have not accepted?
 {"ir": "SELECT ?train WHERE { (request1, selectedService, ?train) [system, offer] NOT EXISTS { (request1, selectedService, ?train) [user, accept] } }", "time_window": null, "anchor": null, "variables": [{"var": "?train", "describes": "offered trains not yet accepted"}], "fallback_channels": ["bm25"], "reason": null}
+
+Question: What did I ask for in the train booking?
+{"ir": "SELECT ?q ?v WHERE { (request1, ?q, ?v) [user, request] }", "time_window": null, "anchor": null, "variables": [{"var": "?q", "describes": "requirement"}, {"var": "?v", "describes": "requested value"}], "fallback_channels": ["bm25"], "reason": null}
 
 Question: Where did Lina live in 2021?
 {"ir": "SELECT ?city WHERE { (lina, livesIn, ?city) [_, inform] AS ?c } AT(state=historical)", "time_window": {"phrase": "in 2021", "label": "?c"}, "anchor": null, "variables": [{"var": "?city", "describes": "where Lina lived in 2021"}], "fallback_channels": ["bm25", "dense"], "reason": null}

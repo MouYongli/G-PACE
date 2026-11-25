@@ -53,10 +53,13 @@ from grace.context.pipeline.query.ir import (
     At,
     Bound,
     Filter,
+    Latest,
+    LatestKey,
     Op,
     Query,
     QueryTypeError,
     ReadTime,
+    State,
     ValidBound,
     Var,
     typecheck,
@@ -267,8 +270,45 @@ def apply_window(query: Query, window: Window, label: str) -> Query:
                                 "the pattern whose valid time is restricted")
     filters = (Filter(ValidBound(var, Bound.START), Op.GE, Value(window.start, "date")),
                Filter(ValidBound(var, Bound.START), Op.LT, Value(window.end, "date")))
-    out = replace(query, filters=tuple(query.filters) + filters)
+    # the resolved window is authoritative: start filters of the same claim written by the LLM
+    # (possibly computed from the relative phrase) are replaced, not combined
+    kept = tuple(f for f in query.filters
+                 if not (isinstance(f.left, ValidBound) and f.left.label == var
+                         and f.left.bound is Bound.START))
+    out = replace(query, filters=kept + filters)
     return replace(out, temporary=True) if window.relative else out
+
+
+OPEN_END = "9999-12-31"
+
+
+def normalise_current(query: Query, ctx: PlanningContext) -> Query:
+    """Deterministic form of a current-state read of one exclusive predicate (plan 3.2, 5.2).
+
+    For a query with one positive pattern whose predicate the context lists as exclusive, that
+    reads the current state (`state=current`, no `AT(valid=...)`, no time window, no count):
+    keep only claims whose valid time is still open (`end(?c) > "9999-12-31"`; the fragment has
+    no "end unset" test) and select the latest by version. A past-dated claim ("I lived in
+    Bremen until 2017") is then never the current value. Other queries are returned unchanged.
+    """
+    exclusive = {p.name for p in ctx.predicates if p.exclusive}
+    if (len(query.where) != 1 or query.count is not None or query.at.valid is not None
+            or query.at.state is not State.CURRENT):
+        return query
+    pattern = query.where[0]
+    if not isinstance(pattern.predicate, str) or pattern.predicate not in exclusive:
+        return query
+    if any(isinstance(f.left, ValidBound) for f in query.filters):
+        return query
+    label = pattern.label or Var("c")
+    if pattern.label is None:
+        if label in pattern.variables():
+            return query
+        pattern = replace(pattern, label=label)
+    end = Filter(ValidBound(label, Bound.END), Op.GT, Value(OPEN_END, "date"))
+    latest = query.latest or Latest(label, LatestKey.VERSION)
+    return replace(query, where=(pattern,), filters=tuple(query.filters) + (end,),
+                   latest=latest)
 
 
 def _has_read_time(query: Query) -> bool:
@@ -276,11 +316,25 @@ def _has_read_time(query: Query) -> bool:
     return any(isinstance(f.right, ReadTime) for f in filters)
 
 
+# Hints appended to parse errors that planner LLMs make often; they go into the repair message.
+_HINTS = (
+    ("only one NOT EXISTS", "Use a single NOT EXISTS. To exclude every reply of a speaker, leave "
+                            "the function open, e.g. NOT EXISTS { (k, p, ?o) [user, _] }."),
+    ("found 'FILTER'", "FILTER(...) must stand inside the braces of WHERE { ... }."),
+    ("found 'OPTIONAL'", "OPTIONAL is not available; drop the optional part."),
+)
+
+
+def _hint(message: str) -> str:
+    extra = [h for key, h in _HINTS if key in message]
+    return message + (" Hint: " + " ".join(extra) if extra else "")
+
+
 def _parse_ir(text: str, what: str) -> Query:
     try:
         return parse(text, check=False)
     except QueryTypeError as exc:
-        raise PlanError("parse", f"{what}: {exc}") from None
+        raise PlanError("parse", _hint(f"{what}: {exc}")) from None
     except (ValueError, TypeError) as exc:
         raise PlanError("parse", f"{what}: {type(exc).__name__}: {exc}") from None
 
@@ -323,6 +377,8 @@ def interpret(value: Mapping[str, Any], ctx: PlanningContext, *, mode: str = "rd
         except TimeExpressionError as exc:
             raise PlanError("time", f"time_window: {exc}") from None
         query = apply_window(query, window, tw["label"])
+    if window is None:
+        query = normalise_current(query, ctx)
     if _has_read_time(query):
         if ctx.reference_date is None:
             raise PlanError("time", "now(...) needs a reference date and the read has none")
