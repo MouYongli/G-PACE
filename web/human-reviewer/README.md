@@ -26,6 +26,7 @@ Both ways show the same page. Opened from disk, keep the folders of `web/human-r
 | `js/<benchmark>.js` | Behaviour of one benchmark page |
 | `<benchmark>/index.html` | The page |
 | `<benchmark>/data/example.js` | One complete development data point: plain JSON assigned to `window.HR_EXAMPLE`, loaded as a script so that the page needs no HTTP server |
+| `<benchmark>/data/example.json` | The same data point as a JSON file, for trying `Import data` |
 
 ## Pages
 
