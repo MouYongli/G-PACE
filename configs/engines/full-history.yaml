@@ -1,0 +1,8 @@
+# Raw text: the full history, no prefix caching (plan 7.2). Run with --budget full; with a token
+# budget the same engine is "truncation to the same budget" (newest messages that fit).
+engine: raw
+description: Full history without prefix caching
+prefix_caching: false
+params:
+  last_k: null
+  window_tokens: 32768   # Qwen3-8B native window (plan 7.1); overflow is disclosed in the context

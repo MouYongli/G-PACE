@@ -1,0 +1,25 @@
+# Fixed-schema slot table with speaker, communicative function and provenance (plan 7.2);
+# standalone pilot version of T003 (the GRACE-assembly version for ablation B belongs to T027).
+# The slot inventory below is a PILOT PLACEHOLDER: the plan defines slots on development data and
+# then freezes them (before the configuration lock, D012). The functions are a coarse pilot list
+# until the communicative-function scheme in resources/rdf/ (T014) exists.
+engine: slots
+description: Fixed-schema slot table (pilot inventory)
+prefix_caching: false
+params:
+  context_messages: 1
+  functions: [inform, request, confirm, correct, offer, accept, reject, other]
+  slots:
+    person.name: name of a person in the conversation
+    person.relation: relation between two people (family, friend, colleague)
+    person.location: where a person lives or currently is
+    person.occupation: job, school or role of a person
+    person.preference: something a person likes, dislikes or prefers
+    person.possession: something a person owns, including pets
+    person.activity: hobby, sport or recurring activity of a person
+    event.description: an event that happened or is planned
+    event.time: when an event happened or will happen
+    event.place: where an event happened or will happen
+    plan.goal: a goal, intention or task a person wants to achieve
+    item.choice: the option currently chosen (booking, product, train, restaurant)
+    item.constraint: a requirement on that choice (time, price, area, number of people)
