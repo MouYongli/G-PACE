@@ -22,6 +22,8 @@ The pilot measurements decide where the paper's claims can be supported (plan se
 
 Phase 1 also chooses the second annotator (plan sections 9 and 11.4): a person not involved in building the system, who works on fragment coverage (T012), the MultiWOZ derived gold (T006), the sequence audit (T016) and graph quality (T024). The user names this person before the two-annotator part of T012 or T006 starts; the name, and whether the durations of plan section 9.4 match actual staffing, are written into the decision below.
 
+Second annotator, named by the user: a graduate research assistant of the user, not involved in building the system. The name is added here when the annotator starts. Whether the durations of plan section 9.4 match this staffing is still open.
+
 ## Decision
 
 Pending. To be taken when the nodes this decision depends on are resolved.
@@ -38,3 +40,4 @@ A formal run contradicts a pilot number.
 
 - 2026-11-23: proposed as part of the full project DAG.
 - 2026-11-25: the choice of the second annotator is recorded in this decision (user, 2026-11-25); no separate node.
+- 2026-11-25: the user named a graduate research assistant as the second annotator; the name is to be added when annotation starts.

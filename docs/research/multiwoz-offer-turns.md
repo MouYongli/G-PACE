@@ -139,7 +139,7 @@ By domain (lenient): attraction 28.1%, hotel 24.3%, restaurant 18.3%, train 17.0
 - Rejections are found only through a counter-value. A plain "no" without a new value is classed `none`. The reject count is therefore a lower bound.
 - Turns without acts cannot be classified. In 2.1, 79 of 7,372 test system turns (1.1%) and 671 user turns (9.1%) carry no acts.
 - Lenient matching can merge distinct values that share tokens. Exact-match figures are given for the 2.2/2.4 comparison.
-- Implicit acceptance (asking about the proposed entity) is the weakest part of the rule. Both errors among the accept labels come from it. The derived-gold rule of plan 6.5 may want to require explicit acceptance; that gives 644 test turns and a half-width of 3.5 points.
+- Implicit acceptance (asking about the proposed entity) is the weakest part of the rule. Both errors among the accept labels come from it. Requiring explicit acceptance would give 644 test turns and a half-width of 3.5 points; the user chose to keep implicit acceptance in the derived-gold rule (T006 Log).
 
 ## Requested MultiWOZ card fields
 
