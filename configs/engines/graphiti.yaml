@@ -1,0 +1,19 @@
+# Graphiti (plan 7.2, "External systems"): graphiti-core 0.31.2 with its embedded Kuzu backend,
+# through the adapter in src/grace/eval/engines/baselines/graphiti.py, every LLM and embedding call
+# through grace.llm. Needs the envs/graphiti environment (uv sync --project envs/graphiti).
+# top_k is Graphiti's default search limit, max_tokens its default for LLM calls, max_coroutines
+# null its default concurrency. All are placeholders until fixed on development data.
+engine: graphiti
+description: Graphiti (graphiti-core 0.31.2, Kuzu), one group per history, one episode per message
+prefix_caching: false
+params:
+  top_k: 10
+  max_tokens: 16384
+  max_coroutines: null
+  # Same Qwen3-Embedding query instruction as the dense channel and Mem0, applied to the query
+  # at read time only.
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
