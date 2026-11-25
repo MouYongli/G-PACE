@@ -94,6 +94,8 @@ class CachedModelTest(unittest.TestCase):
     def test_pinned_counters_count_the_chat_template(self):
         found = 0
         for path in sorted(MODELS.glob("*.yaml")):
+            if yaml.safe_load(path.read_text("utf-8"))["tokenizer"].get("backend") is not None:
+                continue  # not a transformers chat template (the renderer's Tekken pin; T015)
             pin = TokenizerPin.from_file(path)
             try:
                 snapshot = locate_snapshot(pin)
