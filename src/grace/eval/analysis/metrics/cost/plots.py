@@ -53,17 +53,24 @@ def cumulative_figure(curves: Sequence[Curve], out: Path, *, unit: str) -> None:
     plt = _pyplot()
     colors = _color([c.label for c in curves])
     histories = list(dict.fromkeys(c.history_id for c in curves))
-    fig, axes = plt.subplots(1, len(histories), figsize=(4.2 * len(histories), 3.2),
+    fig, axes = plt.subplots(1, len(histories), figsize=(4.2 * len(histories), 3.6),
                              squeeze=False)
+    handles = {}
     for ax, history_id in zip(axes[0], histories, strict=True):
         for curve in (c for c in curves if c.history_id == history_id):
             xs = range(1, len(curve.points) + 1)
-            ax.plot(xs, curve.points, color=colors[curve.label], linewidth=2, label=curve.label)
+            (line,) = ax.plot(xs, curve.points, color=colors[curve.label], linewidth=2,
+                              label=curve.label)
+            handles.setdefault(curve.label, line)
         ax.set_title(history_id, color=INK, fontsize=9, loc="left")
         ax.set_xlabel("reads")
         ax.set_ylabel(f"cumulative cost ({unit})")
-    axes[0][-1].legend(loc="upper left", fontsize=8)
-    fig.tight_layout()
+        if all(v > 0 for c in curves if c.history_id == history_id for v in c.points):
+            ax.set_yscale("log")
+    # one legend for the figure: a history panel may lack some systems
+    fig.legend(list(handles.values()), list(handles), loc="lower center",
+               ncol=min(4, len(handles)), fontsize=8)
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
     fig.savefig(out, dpi=150)
     plt.close(fig)
 
