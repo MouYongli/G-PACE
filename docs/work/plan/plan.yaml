@@ -350,11 +350,11 @@ nodes:
     type: task
     title: Controlled change-sequence generator
     milestone: M2
-    status: planned
+    status: active
     depends_on: [T008, T014]
-    issue: null
-    owner: null
-    start: null
+    issue: 59
+    owner: m01-T015
+    start: 2026-11-25
     finish: null
     file: ../tasks/T015-change-sequence-generator.md
   - id: T016
@@ -372,12 +372,12 @@ nodes:
     type: task
     title: Query IR and compiler
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T014]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 58
+    owner: m01-T017
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T017-query-compiler.md
   - id: T018
     type: task
