@@ -40,3 +40,4 @@ Pending.
 ## Log
 
 - 2026-11-23: created from the full project DAG.
+- 2026-11-26: design inputs from the T022 writer smoke runs (PR #126, #129; runs under `runs/T022/artifacts/manager/T022/`), recorded by the integration owner on user decisions: measure both missed and spurious extraction against gold or human labels (writer scale trades precision for coverage: Qwen3-32B wrote 474 claims and left 45/136 units empty, Qwen3-8B wrote 957 with more noise); report quality per predicate, including catch-all predicates (no program-side blacklist is applied); measure the false-drop rate of the writer's evidence check on ended stances; separate writer errors from planner (T023) and fragment-selection errors in graph-channel misses (graph-channel R@20 was about 0.1 with either writer on LoCoMo dev); note that neither writer fills `valid_from`.
