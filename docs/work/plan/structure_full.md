@@ -60,6 +60,7 @@ GRACE/
 │   │   │   │   ├── validate.py         SHACL validation
 │   │   │   │   ├── guard.py            attribution guard
 │   │   │   │   ├── commit.py           graph transaction
+│   │   │   │   ├── updater.py          write loop: units, retries, failure handling
 │   │   │   │   └── vocab.py            vocabulary maintenance (optional)
 │   │   │   ├── query/
 │   │   │   │   ├── ir.py               intermediate representation, claim patterns
@@ -74,7 +75,8 @@ GRACE/
 │   │   │   │   ├── text.py             BM25 and dense channels
 │   │   │   │   ├── graph.py            graph channel
 │   │   │   │   ├── route.py            routing
-│   │   │   │   └── fuse.py             fusion
+│   │   │   │   ├── fuse.py             fusion
+│   │   │   │   └── retrieve.py         retrieval config and retriever
 │   │   │   └── assembly/
 │   │   │       ├── demand.py           variables an answer needs
 │   │   │       ├── filter.py           filtering and verification
