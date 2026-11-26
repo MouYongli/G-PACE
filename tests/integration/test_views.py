@@ -285,6 +285,27 @@ class LLMRenderingTest(Fixture):
         self.assertEqual((event.llm_sentences, event.failed_sentences, event.fallback_units),
                          (0, 2, 2))
 
+    def test_sentence_without_the_binding_subject_falls_back(self):
+        def drop_subject(sentences, user):
+            if "View: constraints requested for request1" in user:
+                for s in sentences:
+                    s["text"] = s["text"].rsplit(" (", 1)[0] + "."   # values only
+            return sentences
+
+        graph = build_store()
+        store = self.store(llm_renderer(self.ledger, FakeTransport(drop_subject)))
+        store.materialise(graph, 7)
+        view = store.get("constraints:request1")
+        self.assertTrue(view.sentences)
+        self.assertEqual({s.source for s in view.sentences}, {"fallback"})
+        self.assertTrue(all("request1" in s.text for s in view.sentences))
+        event = next(e for e in store.events if e.view_id == view.view_id)
+        n = len(view.sentences)
+        self.assertEqual((event.llm_sentences, event.failed_sentences, event.fallback_units),
+                         (0, n, n))
+        listed = store.get("list:melanie:playsInstrument")
+        self.assertEqual({s.source for s in listed.sentences}, {"llm"})
+
     def test_extra_numbers_and_unknown_rows_fail(self):
         def corrupt(sentences, user):
             if "count = " in user:

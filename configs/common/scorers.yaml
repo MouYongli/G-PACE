@@ -106,7 +106,40 @@ benchmarks:
           one F1 over all (slot, value) pairs pooled across turns, with fuzzy value matching.
   change-seq:
     cluster_unit: scenario family   # plan 6.9
-    metrics: []   # pending: scoring follows the generator design (T008) and its gold builder
+    # Registered 2026-11-26 with the user's approval (E005; T004 is done). Primary scorer of the
+    # controlled change sequences (docs/research/change-sequences.md section 9: "Acc, normalised
+    # set match as primary scorer, the blind judge as secondary"); the blind judge is not
+    # registered here yet. The rule is the module docstring of the code: normalised tokens
+    # (case-folded, number words zero to twenty as digits, runs of non-alphanumerics as token
+    # boundaries); every string of every gold item mentioned and no other string of the candidate
+    # pool (gold and outdated values of the same history and view template); an answer to an
+    # abstention task is correct when it mentions no pool string; outdated values may be
+    # mentioned on presupposition questions (premise_outdated).
+    metrics:
+      - name: set-match
+        code: grace.eval.analysis.metrics.changeseq:set_match
+        direction: higher
+        annotation: generator   # the change-seq adapter's gold (the generator's answer sets)
+        population: {include: {label: question_type,
+                               in: [changed, uniform, presupposition, abstention]}}
+        strata: [question_type, template, change_type]
+        abstention: {label: expected_abstention, value: true}
+        invalid_policy: count_as_wrong
+        note: >-
+          Deterministic, no judge and no upstream scorer (own definition). Population: questions
+          about the state at the read version; historical questions are scored by the same rule
+          as set-match-historical.
+      - name: set-match-historical
+        code: grace.eval.analysis.metrics.changeseq:set_match
+        direction: higher
+        annotation: generator
+        population: {include: {label: question_type, in: [known_then, seen_from_now]}}
+        strata: []
+        abstention: {label: expected_abstention, value: true}
+        invalid_policy: count_as_wrong
+        note: >-
+          Questions about the state at an earlier knowledge version or world time (design 3.5);
+          reported as a descriptive stratum where no system component states them (E005).
   halumem-medium:
     cluster_unit: user   # plan 6.9
     metrics: []   # pending: official QA and memory-point scoring use an LLM judge; register before E001 uses it

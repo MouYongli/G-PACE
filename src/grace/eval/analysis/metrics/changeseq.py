@@ -2,9 +2,9 @@
 
 Primary scorer of the change sequences (docs/research/change-sequences.md section 9: "Acc,
 normalised set match as primary scorer, the blind judge as secondary"). Deterministic; no judge.
-Not yet registered in `configs/common/scorers.yaml` (change-seq metrics are pending there; the
-registration is requested by the E005 PR). Reads only what reaches it as run files: predictions,
-read tasks and gold records.
+Registered in `configs/common/scorers.yaml` (`change-seq`: `set-match` and
+`set-match-historical`, 2026-11-26). Reads only what reaches it as run files: predictions, read
+tasks and gold records.
 
 **Normalisation.** Case-folded; number words zero to twenty become digits; every run of
 characters other than a-z and 0-9 is a token boundary. A phrase is *mentioned* in a text when its

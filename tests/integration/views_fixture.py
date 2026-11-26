@@ -136,13 +136,16 @@ _UNIT = re.compile(r"^\[([^\]]+)\] (.*)$")
 
 
 def fake_sentences(user_text: str) -> list[dict]:
-    rows = user_text.split("Rows:\n", 1)[1]
+    """One sentence per unit: its values, then the view title (which names the binding's subject,
+    required by the rendering check)."""
+    head, rows = user_text.split("Rows:\n", 1)
+    title = head.rsplit("View: ", 1)[1].strip()
     out = []
     for line in rows.splitlines():
         m = _UNIT.match(line)
         if m:
             values = [pair.split(" = ", 1)[1] for pair in m.group(2).split("; ")]
-            out.append({"rows": [m.group(1)], "text": "; ".join(values) + "."})
+            out.append({"rows": [m.group(1)], "text": "; ".join(values) + f" ({title})."})
     return out
 
 

@@ -9,8 +9,9 @@ state; the caller attaches the evidence of those rows.
   for model calls), call type `render`, prompt `render-view` pinned in configs/common/prompts.yaml,
   output checked against `resources/schemas/llm/render-view.json`. The LLM writes the rows as text
   and derives no content. Every sentence is checked (`check_sentence`): each value of its rows
-  must appear in it, compared as normalised strings, and it must contain no entity name or number
-  from outside its rows. A sentence that fails is replaced by the template serialisation of its
+  must appear in it, and so must the binding's subject (`RenderSpec.required_constants`), both
+  compared as normalised strings; it must contain no entity name or number from outside its rows
+  and the view's constants. A sentence that fails is replaced by the template serialisation of its
   units (`source: fallback`) and counted; so is every unit of a call that fails or returns output
   the schema rejects. Ledger category W for every render call, at write time and for a lazy
   rebuild at read time alike (contracts.md, "Cost ledger"); the trigger tells them apart.
@@ -73,14 +74,17 @@ def normalise(text: str) -> str:
 
 
 def check_sentence(text: str, required: Sequence[str], allowed: Sequence[str] = (),
-                   others: Sequence[str] = ()) -> str | None:
+                   others: Sequence[str] = (), binding: Sequence[str] = ()) -> str | None:
     """None if `text` passes the rendering check, else the reason.
 
     - `required`: display values that must each appear (normalised substring);
-    - `allowed`: further strings it may contain (member values, the binding's constants);
+    - `binding`: binding constants that must each appear, matched like `required` (normalised
+      substring of the normalised text): the binding's subject, see
+      `RenderSpec.required_constants`;
+    - `allowed`: further strings it may contain (member values, the view's constants);
     - `others`: display values of the view's other rows; none may appear unless it is part of an
-      allowed or required value. Every number in the text must occur in a required or allowed
-      value.
+      allowed, binding or required value. Every number in the text must occur in a required,
+      binding or allowed value.
     """
     norm = normalise(text)
     if not norm:
@@ -88,12 +92,15 @@ def check_sentence(text: str, required: Sequence[str], allowed: Sequence[str] = 
     for value in required:
         if normalise(value) and normalise(value) not in norm:
             return f"value {value!r} is missing"
-    permitted = [normalise(v) for v in (*required, *allowed) if normalise(v)]
+    for constant in binding:
+        if normalise(constant) and normalise(constant) not in norm:
+            return f"binding constant {constant!r} is missing"
+    permitted = [normalise(v) for v in (*required, *binding, *allowed) if normalise(v)]
     for value in others:
         n = normalise(value)
         if n and n in norm and not any(n in p for p in permitted):
             return f"value {value!r} of another row appears"
-    digits = {d for v in (*required, *allowed) for d in _DIGITS.findall(v)}
+    digits = {d for v in (*required, *binding, *allowed) for d in _DIGITS.findall(v)}
     for number in _DIGITS.findall(text):
         if not any(number in d for d in digits):
             return f"number {number} is not in its rows"
@@ -116,12 +123,29 @@ class RenderSpec:
     sentence: str | None = None  # the family's sentence pattern; None: generic `col = value`
 
     def constants(self) -> tuple[str, ...]:
+        """Strings an LLM sentence may contain besides its rows: title, subject, predicate."""
         out = [self.title]
         if self.subject:
             out.append(self.subject)
         if self.predicate:
             out += [self.predicate, humanise(self.predicate)]
         return tuple(out)
+
+    def required_constants(self) -> tuple[str, ...]:
+        """Binding constants every LLM sentence must contain: the binding's subject.
+
+        The subject (the entity of an entity-predicate binding, the task of a task binding) is a
+        name, like the row values, and is matched like them: its display string must be a
+        normalised substring of the sentence (case and every character other than a-z and 0-9
+        ignored, so "Train booking A," matches "train booking A"). Without it a sentence such as
+        "The constraint is arrive by 12:00." no longer says which task or entity it is about, and
+        several views of one history share predicates and values (E005, 2026-11-26). The
+        predicate is not required: it is a relation name the renderer is asked to put into words
+        ("speaksLanguage" -> "Jonas speaks Polish."), so a literal match would reject correct
+        paraphrases; it stays allowed. The title is not required either. A view without a
+        binding (no subject) requires nothing beyond its rows. Template sentences are not checked.
+        """
+        return (self.subject,) if self.subject else ()
 
 
 @dataclass(frozen=True)
@@ -299,7 +323,7 @@ class LLMRenderer:
                 required += list(values.values())
         others = [display(v) for rid, r in rows.items() if rid not in stated_ids
                   for v in r.values if _WORD_CHARS.search(display(v))]
-        return check_sentence(text, required, allowed, others)
+        return check_sentence(text, required, allowed, others, spec.required_constants())
 
 
 def _chunks(todo: Sequence[tuple[str, ...]], limit: int) -> list[list[tuple[str, ...]]]:
