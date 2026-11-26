@@ -257,15 +257,18 @@ class _Body:
                  f"{KNOWN} ?_sv_{n} . FILTER(?_sv_{n} <= {CUTOFF}) }}")
 
     def earliest_change_end(self, n: str, tag: str) -> str:
-        """Pattern binding `?_ee{tag}` to the valid end of the earliest change supersession of
-        claim `?n` stamped <= r that states one (contracts.md, "Claim graph")."""
+        """Pattern binding `?_ee{tag}` to the effective valid end that change supersessions give
+        claim `?n` at r (contracts.md, "Claim graph"): among those stamped <= r that state one,
+        the earliest valid end of the earliest stamp. Same-stamp ends are comparable (the change
+        set enforces it), so this matches `entries.effective_change_end`; equal instants in
+        different lexical forms bind more than once, with the same comparisons."""
         s, e, v = f"?_es{tag}", f"?_ee{tag}", f"?_ev{tag}"
         s2, e2, v2 = f"?_es2{tag}", f"?_ee2{tag}", f"?_ev2{tag}"
         sup = f"{_G['supersedes']} ?{n} ; {_G['kind']} {CHANGE} ; {_G['validEnd']}"
         return (f"{s} {sup} {e} ; {KNOWN} {v} . FILTER({v} <= {CUTOFF}) "
                 f"FILTER NOT EXISTS {{ {s2} {sup} {e2} ; {KNOWN} {v2} . "
                 f"FILTER({v2} <= {CUTOFF} && ({v2} < {v} || "
-                f"({v2} = {v} && STR({s2}) < STR({s})))) }}")
+                f"({v2} = {v} && {e2} < {e}))) }}")
 
     def valid_at(self, p: ClaimPattern, valid: str) -> None:
         """Keep the claim unless it is known to be outside [start, effective end) at `valid`."""

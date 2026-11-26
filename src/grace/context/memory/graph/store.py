@@ -45,6 +45,7 @@ from grace.context.memory.graph.entries import (
     EvidenceLink,
     Supersession,
     SupersessionKind,
+    effective_change_end,
 )
 from grace.context.memory.graph.vocabulary import PREFIXES
 
@@ -94,16 +95,14 @@ class GraphState:
     def valid_end(self, claim_id: str) -> str | None:
         """Effective valid end of a claim as known at this version.
 
-        The claim's own end if it has one; otherwise the `valid_end` of the earliest supersession
-        of kind change that states one; otherwise None (open, or ended at an unknown time).
+        The claim's own end if it has one; otherwise the earliest `valid_end` among the change
+        supersessions with the earliest stamp that state one (`effective_change_end`); otherwise
+        None (open, or ended at an unknown time).
         """
         claim = self.claims[claim_id]
         if claim.valid_time.end is not None:
             return claim.valid_time.end
-        for s in self.supersessions_of(claim_id):
-            if s.kind is SupersessionKind.CHANGE and s.valid_end is not None:
-                return s.valid_end
-        return None
+        return effective_change_end(self.supersessions_of(claim_id))
 
     def representatives(self) -> dict[str, str]:
         return representatives(self.equivalences.values(), self.version)
