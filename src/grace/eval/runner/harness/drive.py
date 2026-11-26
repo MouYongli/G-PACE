@@ -11,6 +11,12 @@ synthetic fixture directory (`--records`, tests and CI only). Model calls go thr
 `--model-config`, embeddings from `--embed-url`), or through the deterministic fake
 (`--backend fake`, the default; no network, no score from it is real).
 
+An engine config MAY name a second model for the engine's own chat calls (`engine_llm`, T034:
+Graphiti's native-backbone row). With `--backend client` the engine is then built on an
+`EngineLLMModel`: its chat calls go to that endpoint, whose URL, deployment and key come from the
+environment variables the config names (never from the repository), while its embeddings, its
+token counting and the answering step stay on the run's model. The fake backend ignores it.
+
     uv run python -m grace.eval.runner.harness.drive --engine configs/engines/bm25.yaml \
         --benchmark locomo --split dev --history conv-26 --budget full --backend client \
         --base-url http://127.0.0.1:8061/v1 --embed-url http://127.0.0.1:8062/v1
@@ -20,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import os
 import shlex
 import sys
 import traceback
@@ -38,16 +45,27 @@ from grace.eval.engines.baselines.registry import ENGINES
 from grace.eval.runner.harness import rundir
 from grace.eval.runner.harness.answer import answer
 from grace.eval.runner.harness.inputs import Inputs, load_dev, load_fixture
-from grace.eval.runner.harness.models import Backend, ClientModel, FakeBackend, RecordingModel
+from grace.eval.runner.harness.models import (
+    Backend,
+    ClientModel,
+    EngineLLMModel,
+    FakeBackend,
+    RecordingModel,
+)
 from grace.eval.runner.harness.outputs import Prediction, RunWriter
 from grace.llm.client import ChatClient, Endpoint
 from grace.llm.embeddings import EmbeddingClient
 from grace.llm.records import CallLedger
-from grace.llm.tokens import HFTokenCounter, TokenizerPin, locate_snapshot
+from grace.llm.tokens import HFTokenCounter, TokenizerJsonCounter, TokenizerPin, locate_snapshot
 
 BUDGETS = REPO_ROOT / "configs" / "common" / "budgets.yaml"
 DEFAULT_MODEL = REPO_ROOT / "configs" / "models" / "qwen3-8b.yaml"
-ENGINE_KEYS = {"engine", "description", "params", "prefix_caching", "embedding"}
+ENGINE_KEYS = {"engine", "description", "params", "prefix_caching", "embedding", "engine_llm"}
+# `engine_llm`: the engine's own chat model. Required keys, then descriptive ones.
+ENGINE_LLM_REQUIRED = {"label", "base_url_env", "deployment_env", "api_key_env", "tokenizer",
+                       "decoding"}
+ENGINE_LLM_KEYS = ENGINE_LLM_REQUIRED | {"auth_header", "input_tokens", "transport_attempts",
+                                        "backoff_s", "provider", "model", "version", "deployment"}
 
 
 def load_engine_config(path: Path) -> dict[str, Any]:
@@ -56,6 +74,12 @@ def load_engine_config(path: Path) -> dict[str, Any]:
     if unknown or config.get("engine") not in ENGINES:
         raise ValueError(f"{path}: bad engine config (unknown keys {sorted(unknown)}, "
                          f"engine {config.get('engine')!r} not in {sorted(ENGINES)})")
+    if "engine_llm" in config:
+        spec = config["engine_llm"]
+        keys = set(spec) if isinstance(spec, dict) else set()
+        if keys - ENGINE_LLM_KEYS or ENGINE_LLM_REQUIRED - keys:
+            raise ValueError(f"{path}: engine_llm needs {sorted(ENGINE_LLM_REQUIRED)} and allows "
+                             f"{sorted(ENGINE_LLM_KEYS - ENGINE_LLM_REQUIRED)}; got {sorted(keys)}")
     config.setdefault("params", {})
     config.setdefault("prefix_caching", False)
     return config
@@ -128,6 +152,41 @@ class ClientSettings:
             return ClientModel(client, counter, decoding=decoding, embedder=embedder)
         return make
 
+    def engine_factory(self, engine_config: dict[str, Any], seed: int
+                       ) -> Callable[[CallLedger, ClientModel], EngineLLMModel] | None:
+        """The engine's port when its config names its own chat model (`engine_llm`), else None
+        (the engine shares the run's model)."""
+        spec = engine_config.get("engine_llm")
+        if spec is None:
+            return None
+        # A hosted API limits requests per minute: the config may allow more transport attempts
+        # and a longer back-off (doubling per attempt) than the local servers need.
+        attempts = int(spec.get("transport_attempts",
+                                budgets()["pipeline"]["transport_attempts"]))
+        backoff = float(spec.get("backoff_s", 1.0))
+
+        def make(ledger: CallLedger, base: ClientModel) -> EngineLLMModel:
+            counter = TokenizerJsonCounter.from_pin(spec["tokenizer"])
+            client = ChatClient(engine_llm_endpoint(spec), ledger, counter, max_attempts=attempts,
+                                backoff_s=backoff)
+            decoding = {**spec["decoding"], "seed": seed}
+            return EngineLLMModel(ClientModel(client, counter, decoding=decoding), base)
+        return make
+
+
+def engine_llm_endpoint(spec: dict[str, Any]) -> Endpoint:
+    """Endpoint of an engine's own chat model. Its URL and deployment are read from the
+    environment variables the config names, so neither is written to the repository or the run
+    directory; the key is read by the client at call time."""
+    names = (spec["base_url_env"], spec["deployment_env"], spec["api_key_env"])
+    missing = [name for name in names if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError(f"engine_llm: environment variables not set: {', '.join(missing)}")
+    return Endpoint(base_url=os.environ[spec["base_url_env"]],
+                    served_model=os.environ[spec["deployment_env"]], model_label=spec["label"],
+                    api_key_env=spec["api_key_env"], auth_header=spec.get("auth_header", "bearer"),
+                    input_tokens=spec.get("input_tokens", "local"))
+
 
 # ---------------------------------------------------------------------------------------------
 # System stage
@@ -198,8 +257,10 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
                                     config=benchmark_config))
     code = code or rundir.code_state()
     max_tokens = int(budgets()["answer"]["output_reserve_tokens"])
+    make_engine_model = None
     if client is not None:
         make_model = client.factory(config, seed)
+        make_engine_model = client.engine_factory(config, seed)
         model_info, device = client.model_info(), "cpu (model on the serving endpoint)"
     else:
         backend = (backend_factory or (lambda caching: FakeBackend(prefix_caching=caching)))(
@@ -240,11 +301,12 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
     answered, failure = 0, None
     try:
         model = make_model(ledger)
+        engine_model = make_engine_model(ledger, model) if make_engine_model else model
         if on_model:
             on_model(model)
         writer = RunWriter(run_dir)
         for item in inputs.histories:
-            engine = build_engine(config, model)
+            engine = build_engine(config, engine_model)
             if engine_wrapper:
                 engine = engine_wrapper(engine)
             answered += drive_history(engine, item, budget, model, writer, max_tokens)

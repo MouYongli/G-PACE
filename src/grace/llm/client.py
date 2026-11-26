@@ -8,7 +8,11 @@ Accounting (Cost ledger section; plan 8.1):
 
 - `input_tokens` is counted locally with the pinned tokenizer and chat template of the model
   (`tokens.TokenCounter`), so it does not depend on what a server reports and failed attempts are
-  counted in full. The server's own `prompt_tokens` is returned for cross-checking.
+  counted in full. The server's own `prompt_tokens` is returned for cross-checking. A hosted model
+  whose chat template is not published (Azure OpenAI) sets `Endpoint.input_tokens` to `server`:
+  an answered attempt then records the server's `usage.prompt_tokens` (the model's own tokenizer
+  and template, and what is billed, including a structured-output schema the server adds to the
+  prompt); an attempt without usage keeps the local count.
 - `output_tokens` and `cached_input_tokens` come from the server's `usage`
   (`usage.prompt_tokens_details.cached_tokens`; 0 when the server does not report it, and the
   result says so in `cache_reported`).
@@ -59,6 +63,9 @@ class Endpoint:
     # Sent as `chat_template_kwargs` (vLLM), so the server renders the prompt with the same
     # template arguments the local counter uses, e.g. {"enable_thinking": false}.
     chat_template_kwargs: Mapping = field(default_factory=dict)
+    # Where `input_tokens` of an answered attempt comes from: "local" (the counter) or "server"
+    # (`usage.prompt_tokens`, falling back to the local count when the server does not report it).
+    input_tokens: str = "local"
 
     @classmethod
     def for_model(cls, pin: TokenizerPin, base_url: str, served_model: str,
@@ -73,6 +80,8 @@ class Endpoint:
             raise ValueError(f"unknown auth_header {self.auth_header!r}")
         if self.gpu_accounting not in ("none", "wall_clock"):
             raise ValueError(f"unknown gpu_accounting {self.gpu_accounting!r}")
+        if self.input_tokens not in ("local", "server"):
+            raise ValueError(f"unknown input_tokens source {self.input_tokens!r}")
         if self.gpu_accounting == "wall_clock" and self.gpus < 1:
             raise ValueError("wall_clock GPU accounting needs gpus >= 1")
 
@@ -178,9 +187,11 @@ class ChatClient:
             cached = details.get("cached_tokens")
             error = validate(text or "") if validate is not None else None
             status = "ok" if error is None else "invalid_output"
-            records.append(self._record(context, attempt, status, input_tokens, output_tokens,
-                                        int(cached or 0), latency, prompt_sha256))
             server_input = usage.get("prompt_tokens")
+            recorded_input = (int(server_input) if self.endpoint.input_tokens == "server"
+                              and server_input is not None else input_tokens)
+            records.append(self._record(context, attempt, status, recorded_input, output_tokens,
+                                        int(cached or 0), latency, prompt_sha256))
             return ChatResult(text=text, status=status, error=error, records=records,
                               server_input_tokens=None if server_input is None
                               else int(server_input),
