@@ -1,0 +1,53 @@
+\section{Fragment Assumptions}\label{sec:s-assumptions}
+
+Every assumption used in S2--S4 is listed here, with the statements that use it. Each is enforced
+or tested by the released implementation; the mapping from assumptions to the code and tests that
+check them is part of the released repository.
+
+\begin{description}
+\item[A1 Append-only stamping.] Each committed change set adds entries that all carry its version;
+  versions strictly increase; no entry is changed or removed; an entry names only entries of the
+  same or an earlier change set. Used by~\eqref{eq:truncate}, Lemma~\ref{prop:s-stability},
+  Definition~\ref{def:triggers} (a new claim's attributions are new) and every later statement.
+\item[A2 Cut-off guard.] An evaluation at cut-off $r$ reads only entries stamped at most $r$: every
+  claim, attribution, supersession event, evidence link and entity-equivalence entry it touches is
+  compared with $r$. Used by Lemma~\ref{prop:s-stability} and Corollary~\ref{cor:reduction}.
+\item[A3 Faithful compilation and locality.] The compiled query and its execution compute the rows,
+  answers, witnesses and evidence of S1. In particular, each claim pattern is compiled to conditions
+  on the claim node, the attribution nodes about it, the supersession nodes that point to it and
+  the class members of its entity constants, and nothing else (Lemma~\ref{lem:locality}); witnesses
+  are built from rows only; evidence comes only from witness claims.
+\item[A4 Immutable fields.] The fields of an entry, in particular stamps and valid-time starts, are
+  fixed when it is written. Used by Lemma~\ref{lem:root} and Proposition~\ref{prop:s-exactness}
+  (filter values do not depend on the version under (Q4)).
+\item[A5 Fixed vocabulary and entity identity.] No entity-equivalence entry and no vocabulary
+  change lies between the two versions compared (for Corollary~\ref{cor:stepwise}: in any step).
+  When one occurs, every resident view of the history is invalidated, outside the scope of the
+  propositions. Used by Proposition~\ref{prop:s-soundness} and everything after it.
+\item[A6 Effective valid end.] The effective valid end is that of S1.1, with the same order
+  (stamp, then identifier) among change events of one claim in the compiled query, in the
+  in-memory graph state and in the change matcher. Used by Lemma~\ref{lem:locality} and
+  Corollary~\ref{cor:filters}.
+\item[A7 No time of reading.] Filters and the world time compare with constants only; a query with
+  relative time is resolved to absolute dates when the read is planned, marked temporary and never
+  stored as a view. So the result of a stored view is a function of the graph and the cut-off.
+  Used implicitly by every statement.
+\item[A8 Set semantics and simple entailment.] Rows and answers are sets; there is no inference
+  over the graph and a fixed default graph. Used by Lemma~\ref{lem:root}.
+\item[A9 Faithful change matcher.] The matcher that decides triggers (i)~compares constants up to
+  the same equivalence as the compiler; (ii)~applies the attribution constraint with the same
+  defaults and relaxations; (iii)~for a pattern with a bracket, treats every new attribution through
+  which a claim matches as a (T2) trigger; (iv)~never decides a local filter false when the compiled
+  query evaluates it true, counting undecidable filters as satisfied; (v)~evaluates the local filters
+  of a supersession trigger with the effective valid end before and after the change set; and
+  (vi)~sees every change set once, in version order, after it is committed. Used by
+  Corollaries~\ref{cor:stepwise}--\ref{cor:filters} and Proposition~\ref{prop:s-exactness}.
+\end{description}
+
+\noindent The fragment restrictions themselves (at most three positive patterns, one non-nested
+negation sharing a variable with the positive part, filters against constants only, distinct count
+as the only aggregate, no counting together with selection, no property paths, \textsc{optional},
+\textsc{union} or nested groups) are enforced by the parser and the type checker of S6. The proofs
+use them only through the shape of the body in S1.4; Lemmas~\ref{lem:atom}--\ref{lem:evidence}
+would hold for any number of patterns, and the bound of three is a cost limit, not a condition of
+soundness.

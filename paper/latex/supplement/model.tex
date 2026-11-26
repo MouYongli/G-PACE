@@ -1,0 +1,152 @@
+\section{Formal Model}\label{sec:s-model}
+
+\subsection{Entries and graphs}
+
+Let $\mathbb E$ be entity identifiers, $\mathbb P$ predicate names, $\mathbb V$ literals (strings,
+integers, Booleans, dates, date-times and times in canonical lexical form), $\mathbb W$ message
+spans and $\mathbb T$ world times (dates and date-times). An \emph{entry} is one of
+\begin{itemize}
+\item a claim $c=(s,p,o,\omega,\tau,\vs)$ with $s\in\mathbb E$, $p\in\mathbb P$,
+  $o\in\mathbb E\cup\mathbb V$, scope $\omega$ a string or $\bot$ (default scope), valid interval
+  $\tau=[\tau^-,\tau^+)$ with $\tau^-\in\mathbb T\cup\{\bot\}$ (unknown) and
+  $\tau^+\in\mathbb T\cup\{\bot\}$ (open), both bounds of one datatype;
+\item an attribution $a=(u,c,f,\rho,\pi,\gamma,\delta,\vs)$ on claim $c$, with speaker
+  $u\in\mathbb E$, function $f$ (request, offer, accept, reject, confirm, inform, commit,
+  question), report mode $\rho$ (own, quote, hypothetical), polarity $\pi$ (positive, negative),
+  certainty $\gamma$ and derived flag $\delta$;
+\item an evidence link $\ell=(c,m,\vs)$ with $m\in\mathbb W$; $\mathrm{id}(\ell)$ is the unified
+  identifier of the span (the message, or the message with a character range), so two links can
+  share an identifier;
+\item a supersession event $x=(c,\kind,\vend,\vs)$ with $\kind\in\{\change,\correction\}$ and
+  $\vend\in\mathbb T\cup\{\bot\}$, where $\vend\neq\bot$ only if $\kind=\change$.
+\end{itemize}
+Every entry $e$ has a version stamp $\vs(e)\ge1$ and an identifier; all fields are fixed when the
+entry is written. The stored form also records, for an attribution, the message that expressed
+it and, for a supersession event, the replacing claim and the licensing attribution; no query
+reads these fields, so they are omitted. A graph $\G$ is a finite set of entries (and of the
+entity-equivalence entries of S1.3). For a claim $c$ of $\G$ write
+$\att_\G(c)$, $\evs_\G(c)$ and $\sups_\G(c)$ for the attributions, evidence links and
+supersession events of $\G$ on $c$, and $N_\G(c)=\{c\}\cup\att_\G(c)\cup\sups_\G(c)$ for its
+\emph{neighbourhood}. For a version $r$, $\G{\restriction}r=\{e\in\G:\vs(e)\le r\}$.
+
+\paragraph{Histories.}
+A history produces graphs $\G_0=\emptyset\subseteq\G_1\subseteq\dots$, where $\G_v=\G_{v-1}\cup
+\Dlt_v$ and every entry of $\Dlt_v$ (the change set of version $v$) has stamp $v$ (assumption
+A1). Versions may skip numbers; $\G_v=\G_{v-1}$ then. An entry names only entries of the same or
+an earlier change set, so an attribution, link or event on $c$ has a stamp at least $\vs(c)$.
+Consequently, for $r_0\le r$,
+\begin{equation}\label{eq:truncate}
+\G_r{\restriction}r_0=\G_{r_0}.
+\end{equation}
+
+\paragraph{Effective valid end.}
+The effective valid end $\effend_\G(c)$ of a claim $c$ in $\G$ is $\tau^+(c)$ if
+$\tau^+(c)\neq\bot$; otherwise $\vend(x)$ for the first $x\in\sups_\G(c)$ with $\kind(x)=\change$
+and $\vend(x)\neq\bot$, in the order of $(\vs(x),\text{identifier})$; and $\bot$ (open, or ended at
+an unknown time) if there is no such $x$.
+$\effend_\G(c)$ depends only on $N_\G(c)$. Along a history it changes at most once: it is
+$\bot$ until the first change event with a stated end and fixed afterwards, because later events
+carry larger stamps (assumption A6).
+
+\subsection{Claim patterns and their rows}
+
+A claim pattern is $P=(s_P,p_P,o_P,\omega_P)[u_P,f_P,\rho_P,\pi_P,\delta_P]$ with a label
+$\lambda_P$ naming the matched claim. Subject, predicate and object positions are constants or
+variables; the scope position is a string, $\mathsf{default}$, the wildcard $\_$ or a variable.
+The bracket is optional; if present, at least one of $u_P$ (an entity or a variable) and $f_P$ is
+given, and each of $\rho_P,\pi_P,\delta_P$ is either its default ($\own$, positive, false) or
+relaxed ($\ast$, any value). A query carries a state $\textsf{st}\in\{\cur,\hist\}$ and an
+optional world time $d$, which apply to every pattern.
+
+Let $\equiv$ be an equivalence relation on $\mathbb E$ (S1.3). For a graph $\G$, a \emph{row} of
+$P$ is a triple $\mu=(\theta,c,a)$ of a binding $\theta$ of the variables of $P$, a claim
+$c\in\G$, and an attribution $a\in\att_\G(c)$ if $P$ has a bracket ($a=\ast$ otherwise), such
+that
+\begin{description}
+\item[(m1) positions.] For each of subject, predicate and object, a constant equals the claim's
+  term (entities up to $\equiv$), and a variable $X$ has $\theta(X)$ equal to the claim's term; a
+  variable occurring twice therefore forces equality. Scope: a string requires $\omega(c)$ equal
+  to it, $\mathsf{default}$ requires $\omega(c)=\bot$, $\_$ accepts any scope, and a variable $X$
+  requires $\omega(c)\neq\bot$ and $\theta(X)=\omega(c)$.
+\item[(m2) attribution.] If $P$ has a bracket: the speaker of $a$ equals $u_P$ (up to $\equiv$) or
+  $\theta(u_P)$ for a variable; $f(a)=f_P$ if $f_P$ is given; and each of $\rho_P,\pi_P,\delta_P$
+  that is not relaxed equals the corresponding field of $a$.
+\item[(m3) state.] If $\textsf{st}=\cur$, $\sups_\G(c)=\emptyset$; if $\textsf{st}=\hist$, no
+  $x\in\sups_\G(c)$ has $\kind(x)=\correction$.
+\item[(m4) world time.] If $d$ is given, $c$ is not known to lie outside its interval at $d$:
+  not $\tau^-(c)>d$, not $\tau^+(c)\le d$, and if $\tau^+(c)=\bot$, not $\effend_\G(c)\le d$.
+  A bound that is $\bot$, or a comparison between a date and a date-time, excludes nothing.
+\end{description}
+$\rows{P}{\G}{}$ is the set of rows. We say $c$ \emph{matches} $P$ in $\G$, written
+$c\matches_\G P$, if some $\theta$ and $a$ satisfy (m1) and (m2); (m3), (m4) and filters are
+ignored. Note that (m1)--(m4) refer only to $N_\G(c)$ and to $\equiv$ (Lemma~\ref{lem:locality}).
+
+\subsection{Entity equivalence and vocabulary}
+
+Entity merges are recorded as equivalence entries $(e_1,e_2,\vs)$; $\equiv_\G$ is the equivalence
+closure of those in $\G$. Constants match every member of their class, and an entity answer is
+reported as the least member of its class. The vocabulary (predicate names, aliases,
+exclusivity rules) is a version label of the history. Equivalence entries and vocabulary changes
+are not among the four kinds of entries: the proofs assume that neither occurs between the two
+versions compared (assumption A5), and the system invalidates every view when one occurs.
+
+\subsection{Queries}
+
+A query of the fragment has a body
+\[
+B=\sigma_\Phi(P_1\bowtie\dots\bowtie P_k)\;\rhd_\Psi\;N,\qquad 1\le k\le 3,
+\]
+where $P_1,\dots,P_k$ are the positive patterns, $\Phi$ a conjunction of filters, and the optional
+anti-join $\rhd_\Psi N$ is the single \textsc{not exists} over pattern $N$ with its own filters
+$\Psi$; $N$ shares at least one variable with the positive part. A \emph{filter} compares a
+variable with a constant ($=,\neq$ for entities, up to $\equiv$; $=,\neq,<,\le,>,\ge$ for literals
+of one datatype), or a valid-time bound $\mathrm{start}(\lambda)$ or $\mathrm{end}(\lambda)$ of a
+labelled claim with a date or date-time constant. $\mathrm{start}(\lambda)\mathrel{op}d$ holds iff
+$\tau^-(c)\neq\bot$ and $\tau^-(c)\mathrel{op}d$. $\mathrm{end}(\lambda)\mathrel{op}d$ uses
+$\tau^+(c)$ if set, else $\effend_\G(c)$ if set, else the open end, which is later than every
+time ($>,\ge,\neq$ hold, $<,\le,=$ do not). A comparison that is undefined (mixed datatypes) is
+false. No filter refers to the time of reading.
+
+The rows of the body are tuples $\vec\mu=(\mu_1,\dots,\mu_k)$ with $\mu_i\in\rows{P_i}{\G}{}$
+whose bindings agree on shared variables, that satisfy $\Phi$, and for which no row
+$\nu\in\rows{N}{\G}{}$ agrees with $\vec\mu$ on shared variables and satisfies $\Psi$ together
+with $\vec\mu$; variables only in $N$ are existential. Write $\rows{B}{\G}{}$ for this set,
+$\theta(\vec\mu)$ for the joint binding, and
+\[
+W(\vec\mu)=\{c_1,\dots,c_k\}\cup\{a_i:a_i\neq\ast\}
+\]
+for its witness. The root of the query is one of
+\begin{itemize}
+\item a projection on variables $X$: the answers are $\{\theta(\vec\mu)|_X\}$, and the witnesses
+  of answer $t$ are the $\subseteq$-minimal sets among $\{W(\vec\mu):\theta(\vec\mu)|_X=t\}$;
+\item a distinct count of variable $y$ grouped by $X$: for each group $g$, with members
+  $M_g=\{\theta(\vec\mu)(y):\theta(\vec\mu)|_X=g\}$, the answer is $(g,|M_g|)$ and its single
+  witness is the union over $m\in M_g$ of the minimal witnesses of the rows with
+  $\theta|_X=g$ and $\theta(y)=m$; without grouping and without rows the answer is $(0)$ with no
+  witness;
+\item a latest-state selection on the claim labelled $\lambda_j$, followed by a projection. The
+  key of a row is $\max(\vs(c_j),\vs(a_j))$ for selection by version (the version at which the
+  pattern became matched, so a later acceptance of an older offer counts at the acceptance), or
+  $\tau^-(c_j)$ for selection by valid time, where rows with $\tau^-(c_j)=\bot$ are dropped. The
+  key of a claim is the maximum key of its rows; the rows kept are all rows of the claims with
+  maximum key (ties keep every tied claim), and the projection then applies to them.
+\end{itemize}
+Entity values in answers are replaced by their class representative. The answer set is
+$\ans(\Q,\G)$ and $\wit(\Q,\G)$ is the set of pairs (answer, its witnesses). The evidence is
+\[
+\ev(\Q,\G)=\{\mathrm{id}(\ell):\ell\in\evs_\G(c),\ c\in\textstyle\bigcup\text{claims of the
+witnesses}\}.
+\]
+Attributions in witnesses contribute no evidence of their own.
+
+\paragraph{Cut-off.}
+$\cut{\Q}{r}$ evaluated on $\G$ is, by definition, $\Q$ evaluated on $\G{\restriction}r$ (with
+$\equiv_{\G{\restriction}r}$). The implementation realises this by comparing the stamp of every
+entry the evaluation touches, including supersession events, evidence links and equivalence
+entries, with the cut-off placeholder (assumption A2).
+
+\paragraph{Local filters.}
+A filter is \emph{local} to pattern $P$ if its only variable or label belongs to $P$. Since
+$\sigma_\varphi(R\bowtie S)=\sigma_\varphi(R)\bowtie S$ when $\varphi$ mentions only variables of
+$R$, local filters may be moved into their pattern; write $P^\Phi$ for $P$ with its local filters,
+and $\rows{P^\Phi}{\G}{}$ for the rows of $P$ that satisfy them.

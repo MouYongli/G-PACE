@@ -1,0 +1,191 @@
+\section{Exactness, Refinements and Over-approximation}\label{sec:s-exactness}
+
+The decision $D$ analysed here is the one the implementation runs as ``claim pattern with local
+filters'': for each committed version $v\in(r_0,r]$ it computes the restricted triggers of
+Corollary~\ref{cor:filters} with respect to $\G_{v-1}$ and $\G_v$, and marks the view if one
+exists, at answer level if one of them is an answer trigger and at citation level otherwise. By
+Corollaries~\ref{cor:stepwise} and~\ref{cor:filters}, $D$ has no false negatives. The question is
+when it has no false positives.
+
+\paragraph{Conditions on the query.}
+\begin{description}
+\item[(Q1)] One positive pattern $P$, no negated pattern, and a projection at the root (counting
+  and selection are treated in Remarks~\ref{rem:count} and~\ref{rem:latest}).
+\item[(Q2)] Current state and no world time.
+\item[(Q3)] No variable occurs twice in $P$ (the speaker variable included), and the scope
+  position is not a variable.
+\item[(Q4)] No filter uses $\mathrm{end}(\lambda_P)$, and the matcher decides every filter on the
+  written fields exactly as the model does (no unknown start in a $\mathrm{start}$ comparison, no
+  date compared with a date-time).
+\end{description}
+Under (Q3) the matcher's relation coincides with $\matches$; under (Q4) the value of a filter on a
+row does not depend on the version, since it reads only fields fixed when entries are written.
+
+\paragraph{Conditions on the change.}
+\begin{description}
+\item[(D1)] No claim reached by a (T1) or (T2) trigger is superseded in $\G_r$.
+\item[(D2)] No (T3) trigger points to a claim already superseded in $\G_{r_0}$.
+\item[(D3)] No (T4) trigger points to a claim superseded in $\G_r$, and no (T4) trigger has an
+  identifier already in $\ev(\cut{\Q}{r_0},\G_{r_0})$.
+\end{description}
+
+\begin{proposition}[Exactness; Proposition~2 of the main text]\label{prop:s-exactness}
+Assume A1--A9, (Q1)--(Q4) and (D1)--(D3). Then (a)~$D$ raises an answer-level mark iff the
+answers or the witnesses change between $r_0$ and $r$; (b)~$D$ marks the view at all iff the
+answers, the witnesses or the evidence change; in particular, a citation-level mark is raised iff
+the view is citation-stale with unchanged witnesses.
+\end{proposition}
+\begin{proof}
+The ``if'' directions are soundness (Corollaries~\ref{cor:stepwise} and~\ref{cor:filters}). For
+the ``only if'' directions, note first that under (Q1) every witness is $\{c\}$ or $\{c,a\}$ for a
+row $(\theta,c,a)$, and two distinct such sets are incomparable, so every row's witness is a
+minimal witness of its answer.
+
+(a) Let $e$ be a restricted answer trigger at version $v$.
+\emph{(T1):} $e=c'$ is a new claim and the row $(\theta,c',\ast)$ satisfies (m1), (m2) and
+$\Phi_P$ in $\G_v$, hence in $\G_r$ (Q4). By (D1), $\sups_{\G_r}(c')=\emptyset$, so (m3) holds, and
+(m4) is void (Q2). The row is a body row in $\G_r$, so $\{c'\}$ is a witness at $r$; since $c'\notin
+\G_{r_0}$ it is no witness at $r_0$.
+\emph{(T2):} $e=a'$ is a new attribution on $c$ and $(\theta,c,a')$ satisfies (m1), (m2) and
+$\Phi_P$; by (D1) $c$ is current in $\G_r$, so $\{c,a'\}$ is a witness at $r$ and, $a'$ being new,
+not at $r_0$.
+\emph{(T3):} $e$ is a supersession event on $c$, and some row $\mu=(\theta,c,a)$, ignoring (m3)
+and (m4), satisfies $\Phi_P$. If $c$ were new, its own (T1) trigger, or the (T2) trigger of the
+attribution in $\mu$, would reach a claim superseded in $\G_r$, against (D1); so $c\in\G_{r_0}$. If
+$a\neq\ast$ were new, it would be a (T2) trigger reaching $c$, again against (D1); so
+$a\in\G_{r_0}$. By (D2), $c$ is current in $\G_{r_0}$, so $\mu$ is a body row at $r_0$ and
+$W(\mu)\ni c$ is a witness at $r_0$. In $\G_r$, $c$ is superseded, so no row and no witness at $r$
+contains $c$.
+In every case the witnesses change.
+
+(b) If some trigger is an answer trigger, apply (a). Otherwise there is a (T4) link $\ell$ on a
+claim $c$ with a row $(\theta,c,a)$ satisfying (m1), (m2) and $\Phi_P$ in $\G_v$. By (D3), $c$ is
+current in $\G_r$, so the row is a body row at $r$ and $c$ is a witness claim; hence
+$\mathrm{id}(\ell)\in\ev(\cut{\Q}{r},\G_r)$, which by (D3) is not in the evidence at $r_0$. With no
+answer trigger the answers and witnesses are unchanged (soundness), so the view is citation-stale.
+\end{proof}
+
+\noindent The level of a mark is not exact even under these conditions: an answer-level mark
+can come from a change of witnesses alone (Example~\ref{ex:level}). Deciding the level needs the
+answer fingerprint, which the hybrid strategy computes after the mark.
+
+\begin{remark}[Distinct count]\label{rem:count}
+Proposition~\ref{prop:s-exactness} also holds when the root of $\Q$ is a distinct count, grouped
+or not, with (Q1)--(Q4) and (D1)--(D3) otherwise unchanged.
+\end{remark}
+\begin{proof}
+In the cases (T1) and (T2) of (a), the new row adds $c'$ (resp.\ $a'$) to the union witness of its
+group, or creates the group; in case (T3), $c$ lies in the union witness of its group at $r_0$ and
+in no row at $r$, so it leaves the union or the group disappears. Part (b) is unchanged.
+\end{proof}
+
+\begin{remark}[Latest by version]\label{rem:latest}
+For a latest-state selection by version over the single pattern, every restricted (T1) or (T2)
+trigger satisfying (D1) changes the witnesses; a (T3) trigger on a claim that is not selected at
+$r_0$ need not (Example~\ref{ex:latest-version}).
+\end{remark}
+\begin{proof}
+The new row $\mu'$ found in (a) contains an entry $e\in\Dlt$, so its key is at least
+$\vs(e)>r_0$, while every key at $r_0$ is at most $r_0$. At $r$ the maximum key over the rows is
+therefore greater than $r_0$, and each selected claim has a kept row whose key comes from an entry
+of $\Dlt$; the witness of that row contains an entry of $\Dlt$ and so is no witness at $r_0$.
+\end{proof}
+
+\subsection{Over-approximation outside the conditions}
+
+Each example gives a query, a graph at $r_0$ and a change $\Dlt$ for which $D$ marks the view
+while answers, witnesses and evidence are unchanged (unless stated otherwise). Entity and predicate
+names follow the running examples of the main text.
+
+\begin{example}[Join without a partner]\label{ex:join}
+$\Q$: \texttt{SELECT ?t ?arr WHERE \{ (req1, selectedService, ?t)[user, accept] .
+(?t, scheduledArrival, ?arr) \}}. $\Dlt$ adds the claim \texttt{(TR9, scheduledArrival,
+"21:00:00")} with its attribution and link, while TR9 was never selected. It is a (T2) trigger of
+the second pattern, but joins with no row of the first.
+\end{example}
+
+\begin{example}[Negated pattern without an answer]\label{ex:neg}
+$\Q$: \texttt{SELECT ?t WHERE \{ (req1, selectedService, ?t)[system, offer] NOT EXISTS \{
+(req1, selectedService, ?t)[user, accept] \} \}}. $\Dlt$ adds a claim
+\texttt{(req1, selectedService, TR9)} stated and accepted by the user, never offered. It triggers
+the negated pattern, but no positive row has $t=\mathrm{TR9}$.
+\end{example}
+
+\begin{example}[Latest by valid time]\label{ex:latest-valid}
+$\Q$: \texttt{SELECT ?city WHERE \{ (lina, livesIn, ?city) AS ?c \} LATEST BY valid OF ?c}, with
+the selected claim starting in 2023. $\Dlt$ adds a current claim of the pattern starting in 2019:
+a (T1) trigger, but it is not the latest.
+\end{example}
+
+\begin{example}[Latest by version, supersession of an unselected claim]\label{ex:latest-version}
+Same pattern selected by version, with two current claims $c_1$ (stamp 1) and $c_2$ (stamp 2);
+$c_2$ is selected. $\Dlt$ supersedes $c_1$ (a removal on a multi-valued predicate): a (T3)
+trigger, while the rows of $c_2$ are unchanged.
+\end{example}
+
+\begin{example}[Historical state]\label{ex:hist}
+$\Q$: \texttt{SELECT ?city WHERE \{ (lina, livesIn, ?city) \} AT(state=historical)}. $\Dlt$ adds a
+change event on a matching claim: a (T3) trigger, but (m3) excludes only corrected claims, so the
+rows are unchanged. This holds only without world time and without $\mathrm{end}$ filters: with
+\texttt{AT(valid="2022-06-01"\textasciicircum\textasciicircum date, state=historical)}, a change
+event stating $\vend=$ 2022-03-01 on a claim with open $\tau^+$ sets its effective end before $d$,
+so (m4) removes the claim and the answers \emph{do} change.
+\end{example}
+
+\begin{example}[Repeated supersession; superseded within the change]\label{ex:resup}
+(i)~A claim superseded at $r_0$ receives a second supersession event in $\Dlt$ (violates (D2)).
+(ii)~A new matching claim and its supersession both lie in $\Dlt$ (violates (D1)). (iii)~An
+acceptance is added to a claim that is already superseded (violates (D1)).
+\end{example}
+
+\begin{example}[Evidence]\label{ex:evidence}
+(i)~A new link on a matching claim cites a span whose identifier is already in $\ev$, for example
+the message already cited for another witness claim; $\ev$ is a set of identifiers and does not
+change (violates (D3)). (ii)~A new link on a superseded matching claim (violates (D3)).
+\end{example}
+
+\begin{example}[Level of a mark]\label{ex:level}
+$\Q$: \texttt{SELECT ?t WHERE \{ (req1, selectedService, ?t)[user, accept] \}} with answer TR7143.
+$\Dlt$ adds a second (user, accept) attribution on the same current claim. It is a (T2) trigger and
+$D$ raises an answer-level mark; the answers are unchanged and the witnesses gain
+$\{c,a'\}$, so the view is only citation-stale.
+\end{example}
+
+\noindent Conditions (Q3) and (Q4) exclude the remaining sources: a repeated variable or a scope
+variable (the matcher ignores both), an undecidable filter (counted as satisfied), and an
+$\mathrm{end}$ filter on a supersession trigger (tried before and after the change, although a
+current-state query drops the superseded claim anyway).
+
+\subsection{The observation}
+
+Let $U$ be the policy that marks a view iff $\Dlt$ contains a supersession event on a claim of its
+witnesses at $r_0$, and $U^+$ the policy that also marks it on a trigger of its negated pattern or
+of a pattern under a count.
+
+\begin{proof}[of the Observation in the main text]
+Each case is an instance with no supersession event in $\Dlt$, so $U$ does not mark.
+(i)~$\Q$: \texttt{SELECT ?s WHERE \{ (lina, responsibleFor, ?s) \}}; $\G_{r_0}$ holds the claim for
+Atlas; $\Dlt$ adds the claim for Boreal with an own positive attribution and a link. The answers
+gain Boreal.
+(ii)~$\Q$ of Example~\ref{ex:neg}; $\G_{r_0}$ holds the claim for TR7143 with a (system, offer)
+attribution, so the answer is TR7143; $\Dlt$ adds a (user, accept) attribution on that claim. The
+answer set becomes empty.
+(iii)~$\Q$: \texttt{SELECT COUNT(DISTINCT ?i) WHERE \{ (melanie, playsInstrument, ?i) \}};
+$\Dlt$ adds the clarinet claim to the violin claim. The count changes from 1 to 2.
+$U^+$ marks (ii) and (iii) but not (i), whose only trigger is a (T1) trigger of a positive pattern
+without counting. In each case the missed entry is an insertion that supersedes nothing: a new
+claim, or in (ii) a new attribution on a used claim. A policy that also watched attributions and
+links on used claims would catch (ii), but still not (i) or (iii).
+\end{proof}
+
+\subsection{What is not claimed}
+
+The exact decision for a given graph and change is re-evaluation: read-time re-query compares the
+answers, witnesses and evidence directly and is exact with respect to the claim graph. We make no
+claim about the decidability or complexity of \emph{static} query--update independence for this
+fragment; the undecidability results of Levy and Sagiv~\cite{levy1993independent} concern more
+expressive query languages. Nor do we claim a new invalidation algorithm, the first soundness
+result for SPARQL cache invalidation, or an incremental maintenance algorithm. A citation-based policy is correct
+for monotone queries under deletion; an append-only graph has no deletion, supersession events
+play its role through the built-in negation of every current-state query, and they are exactly
+the insertions such a policy observes.

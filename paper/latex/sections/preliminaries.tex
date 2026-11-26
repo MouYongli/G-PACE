@@ -1,3 +1,83 @@
-\section{Preliminaries}\label{sec:preliminaries}
+\section{Problem Formalisation}\label{sec:preliminaries}\label{sec:formal}
 
-% TODO
+% Main-text formal part (plan section 9.2: about one page). Wording follows decision D005.
+% Full proofs, the fragment assumptions and the IR grammar are in supplement.tex.
+
+Writing message $h_r$ of a history commits version $r$ of the claim graph $\G_r$, a set of
+entries of four kinds, each with a version stamp $\vs$:
+\emph{claims} $c=(s,p,o,\omega,\tau,\vs)$ with scope $\omega$ and valid interval
+$\tau=[\tau^-,\tau^+)$ (start possibly unknown, end possibly open);
+\emph{attributions} $(u,c,f,\rho,\pi,\gamma,\delta,\vs)$, a stance of speaker $u$ on $c$ with
+communicative function $f$, report mode $\rho$, polarity $\pi$, certainty $\gamma$ and a flag
+$\delta$ for derived restatements;
+\emph{evidence links} $(c,m,\vs)$ to a message span $m$;
+and \emph{supersession events} $(c,\kind,\vend,\vs)$: from version $\vs$ on, $c$ is no longer
+currently accepted, because the world changed ($\kind=\change$, optionally with a valid end
+$\vend$) or $c$ was wrong ($\kind=\correction$).
+The graph is append-only: $\G_{r-1}\subseteq\G_r$, and all entries added at $r$ carry stamp $r$.
+Vocabulary and entity identities are assumed fixed between the versions compared; a vocabulary
+change or an entity merge invalidates every view.
+
+Queries are built from \emph{claim patterns} $P=(s,p,o,\omega)[u,f]$, whose optional bracket
+requires an attribution by $u$ with function $f$ (by default own, positive, not derived): one to
+three joined positive patterns, filters against constants, at most one \textsc{not exists} over
+one pattern, and a projection, distinct count or latest-state selection (Supplement~S6). Each
+pattern carries the built-in negation ``currently accepted'' (or ``not corrected'' for historical
+reads). $\cut{\Q}{r}$ sees only entries stamped at most $r$, so $\cut{\Q}{r_0}$ gives the same
+result on every $\G_r$, $r\ge r_0$: only reads whose cut-off moves can go stale.
+$\ans(\cut{\Q}{r},\G)$ is the answer set; the witnesses $\wit$ of an answer are its minimal sets
+of claims and constraint-satisfying attributions over the positive part (why-provenance
+\cite{buneman2001why}; a count takes the union over its members, a selection the witnesses of the
+selected claim); $\ev$ is the set of evidence spans of the witness claims.
+
+\begin{definition}[Two-level staleness]
+At version $r\ge r_0$, a view of $\Q$ with cut-off $r_0$ is \emph{answer-stale} iff
+$\ans(\cut{\Q}{r},\G_r)\neq\ans(\cut{\Q}{r_0},\G_{r_0})$, and \emph{citation-stale} iff the
+answers are equal but $(\wit,\ev)$ differ.
+\end{definition}
+
+\noindent An answer-stale view needs new text; a citation-stale one only has its sentence-level
+citations patched, by a program.
+
+\begin{observation}
+Invalidating a view only when a claim it used is superseded misses a new match, a write that
+supersedes nothing but matches the negated pattern (an acceptance empties ``offered and not yet
+accepted''), and a new aggregate member. None of the three supersedes anything: in an
+append-only graph every change is an insertion, and new claims and attributions change results
+without superseding a used claim.
+\end{observation}
+
+\noindent Let $\Dlt=\G_r\setminus\G_{r_0}$. A claim \emph{matches} $P$ if its positions agree
+with the constants of $P$ and, if $P$ has a bracket, it carries a satisfying attribution (state,
+valid time and filters ignored). An \emph{answer trigger} of $P$ is a claim of $\Dlt$ matching
+$P$, an attribution of $\Dlt$ through which its claim matches $P$, or a supersession event of
+$\Dlt$ on a claim matching $P$; a \emph{citation trigger} is an evidence link of $\Dlt$ on a claim
+matching a positive pattern.
+
+\begin{proposition}[Soundness]\label{prop:soundness}
+If no entry of $\Dlt$ is an answer trigger of a pattern of $\Q$, positive or negated, the view is
+not answer-stale at $r$ and its witnesses are unchanged; if there is no citation trigger either,
+it is not citation-stale.
+\end{proposition}
+
+\noindent The rows of a pattern depend only on a claim and the attributions and supersession
+events on it, so without a trigger each pattern has the same rows on $\G_{r_0}$ and $\G_r$; the
+rest follows by structural induction (Supplement~S3). The argument is routine and extends
+Proposition~1 of Martin et al.~\cite{martin2010caching} (one triple, \textsc{and}, \textsc{opt},
+\textsc{union}, \textsc{filter}) to negation, distinct counting, latest-state selection, cut-off
+reads, claim patterns with attribution constraints, and witnesses and evidence; it stays sound
+when decided per write and with each pattern's local filters.
+
+\begin{proposition}[Exactness]\label{prop:exactness}
+With local filters, the decision marks a view iff its answers, witnesses or evidence change,
+provided $\Q$ has a single pattern, without negation, count, selection, world time, repeated or
+scope variables, or undecidable filters or filters on $\mathrm{end}(c)$; and no claim reached by a claim, attribution or
+evidence trigger is superseded by $r$, no supersession trigger hits a claim superseded at $r_0$,
+and no evidence trigger repeats a cited span (Supplement~S4).
+\end{proposition}
+
+\noindent Otherwise the decision over-approximates: a new claim without a join partner, an entry
+matching the negated pattern but no answer, a claim with an earlier start under selection by valid
+time. Even under the conditions a mark does not tell answer from citation staleness (a second
+acceptance changes only the witnesses). Exact instance-level decision is re-evaluation, so
+read-time re-query with fingerprints is the reference for every strategy.
