@@ -33,7 +33,11 @@ restored from the log and the store resumes correctly.
    the guard's removal rule. `commit.py` commits the change set.
 
 Entity IDs are grammar-safe names made by `validate.EntityTable`; the surface names they came
-from are kept in `entity_labels` and saved in the writer state (`writer.json`).
+from are kept in `entity_labels` and saved in the writer state (`writer.json`). They are also
+written to the graph as entity labels (contracts.md, "Claim graph", version 0.3): a label goes into
+the change set of the first version whose entries name the entity (subject, entity object,
+speaker or merged entity) and that the store does not reject, once per entity. A label of an
+entity whose claims were all dropped stays in the writer state only, until an entry names it.
 
 Every call of a unit, including retries, invalid outputs and failed attempts, is in the cost
 ledger by construction (`grace.llm.client`); `UnitResult.call_ids` lists them with their statuses.
@@ -200,8 +204,9 @@ class UnitResult:
             out["evidence_links"] += len(cs.evidence_links)
             out["supersessions"] += len(cs.supersessions)
             out["entity_merges"] += len(cs.entity_merges)
+            out["entity_labels"] += len(cs.entity_labels)
         return {k: out[k] for k in ("claims", "attributions", "evidence_links", "supersessions",
-                                    "entity_merges")}
+                                    "entity_merges", "entity_labels")}
 
     def trace(self) -> WriteTrace:
         """The `traces/write.jsonl` record of this unit (the engine adds staleness marks)."""
@@ -330,7 +335,8 @@ class Updater:
             raise ValueError(f"{directory}: writer state does not match the restored store")
         self.vocabulary = LocalVocabulary.from_record(self.vocabulary.seed, record["vocabulary"])
         self.failures = Counter({int(k): v for k, v in record["failures"].items()})
-        self.entity_labels = dict(record.get("entity_labels", {}))
+        self.entity_labels = {**self.store.state(self.store.head).entity_labels(),
+                              **record.get("entity_labels", {})}
 
     # -- units ---------------------------------------------------------------------------------
 
@@ -412,7 +418,8 @@ class Updater:
     def _apply(self, unit: Unit, patch: ClaimPatch, request: WriterInput,
                result: UnitResult) -> None:
         state = self.store.state(self.store.head)
-        entities = EntityTable.from_state(state, request.participants, self.entity_labels)
+        entities = EntityTable.from_state(state, request.participants,
+                                          {**state.entity_labels(), **self.entity_labels})
         ordered = ClaimPatch(tuple(sorted(patch.claims, key=lambda c: c.message)),
                              patch.stances, patch.aliases)
         added_before = len(self.vocabulary.added)
@@ -488,6 +495,10 @@ class Updater:
         for rs in stances:
             self._stance(rs, state, pending, builder, local_ids, attributed, result)
 
+        labelled = state.entity_labels()
+        for entity in sorted(builder.named_entities()):
+            if entity in self.entity_labels and entity not in labelled:
+                builder.label(entity, self.entity_labels[entity])
         cs, error = commit_version(self.store, builder, validate=self.config.shacl)
         result.changesets.append(cs)
         if error is not None:

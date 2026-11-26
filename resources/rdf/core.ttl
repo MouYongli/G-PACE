@@ -53,6 +53,10 @@ g:Supersession a owl:Class ; rdfs:subClassOf prov:Invalidation ; rdfs:label "Sup
     rdfs:comment "From its version on, the claim is no longer currently accepted." .
 g:EntityEquivalence a owl:Class ; rdfs:label "Entity equivalence" ;
     rdfs:comment "Two entities denote the same thing from its version on; not one of the four entry kinds." .
+g:EntityLabel a owl:Class ; rdfs:label "Entity label" ;
+    rdfs:comment """The surface name (rdfs:label) an entity ID was made from, shown from its version
+on; written once per entity. Display data: no query reads it, so it changes no answer, witness,
+evidence or fingerprint. Not one of the four entry kinds.""" .
 
 # ---- Properties ------------------------------------------------------------------------------
 
@@ -96,6 +100,9 @@ message. Never present on a correction.""" ;
 
 g:entityA a owl:ObjectProperty ; rdfs:domain g:EntityEquivalence .
 g:entityB a owl:ObjectProperty ; rdfs:domain g:EntityEquivalence .
+
+g:labelOf a owl:ObjectProperty ; rdfs:domain g:EntityLabel ; rdfs:range g:Entity ;
+    rdfs:comment "The entity an entity label names; the name itself is the label node's rdfs:label." .
 
 # ---- Value schemes ---------------------------------------------------------------------------
 

@@ -139,3 +139,13 @@ gs:EquivalenceShape a sh:NodeShape ;
         [ sh:path g:entityA ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
           sh:disjoint g:entityB ] ,
         [ sh:path g:entityB ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .
+
+# ---- Entity label (contract version 0.3) ---------------------------------------------------
+
+gs:EntityLabelShape a sh:NodeShape ;
+    sh:targetClass g:EntityLabel ;
+    sh:nodeKind sh:IRI ;
+    sh:property gs:VersionStamp ,
+        [ sh:path g:labelOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ,
+        [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+          sh:minLength 1 ] .

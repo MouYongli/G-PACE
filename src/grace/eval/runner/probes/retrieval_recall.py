@@ -176,8 +176,10 @@ class ExtractedGraph:
     decision): the predicates used in the graph ranked by word overlap with the question (camel
     case split, crude stemming), then by use; the entities of the graph ranked the same way, then
     by frequency; the speakers always. At most `max_predicates` and `max_entities`. An entity is
-    shown under its ID with the surface name the writer made it from (`entity_labels`, saved in
-    `writer.json`) as its name, and ranked by the words of both.
+    shown under its ID with the surface name the writer made it from as its name, and ranked by
+    the words of both. Names are the entity labels of the graph at its head (contracts.md, "Claim
+    graph", version 0.3); for a writer run made before labels entered the graph, the
+    `entity_labels` of `writer.json` fill the gaps (`load_extracted_graphs`).
     """
 
     store: ClaimStore
@@ -237,9 +239,10 @@ def load_extracted_graphs(writer_run: Path, history_ids: Iterable[str], *,
         speakers = tuple(dict.fromkeys(a.speaker for a in sorted(
             state.attributions.values(), key=lambda a: (a.version, a.attribution_id))))
         specs = {p: vocabulary.predicates[p].exclusive for p in uses}
+        # Graph labels (contract 0.3) take precedence; writer.json covers older writer runs.
+        labels = {**record.get("entity_labels", {}), **state.entity_labels()}
         out[hid] = ExtractedGraph(store, specs, dict(uses), dict(entities), speakers,
-                                  max_predicates, max_entities,
-                                  dict(record.get("entity_labels", {})))
+                                  max_predicates, max_entities, labels)
     return out
 
 

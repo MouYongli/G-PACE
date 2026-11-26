@@ -11,6 +11,11 @@ two differ only in the claim's proposition triples. Every entry is a named node 
 IRI encodes its kind and ID; every entry node carries `g:knownFrom` with its version stamp, which
 is what reads at a cut-off version filter on. `entries_from_triples` inverts the mapping exactly
 and rejects any triple it would not produce.
+
+An entity label (contract version 0.3) is an entry node of its own, `gx:label/<id> a g:EntityLabel ;
+g:knownFrom v ; g:labelOf <entity> ; rdfs:label "name"`, so that it is version-stamped like every
+other entry. The entity node itself carries no `rdfs:label`: a triple on it could not be filtered
+by cut-off.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from urllib.parse import quote, unquote
 import pyoxigraph as ox
 
 from grace.context.memory.graph.changeset import ChangeSet
-from grace.context.memory.graph.entities import EntityEquivalence
+from grace.context.memory.graph.entities import EntityEquivalence, EntityLabel
 from grace.context.memory.graph.entries import (
     Attribution,
     Certainty,
@@ -54,6 +59,7 @@ from grace.context.memory.graph.vocabulary import (
     PREFIXES,
     PROV,
     RDF,
+    RDFS,
     XSD,
 )
 
@@ -75,11 +81,12 @@ RDF_SUBJECT, RDF_PREDICATE, RDF_OBJECT = (_n(RDF + x) for x in ("subject", "pred
 RDF_REIFIES = _n(RDF + "reifies")
 KNOWN_FROM = _n(GRACE + "knownFrom")
 G = {name: _n(GRACE + name) for name in (
-    "Claim", "Attribution", "EvidenceLink", "Supersession", "EntityEquivalence",
+    "Claim", "Attribution", "EvidenceLink", "Supersession", "EntityEquivalence", "EntityLabel",
     "scope", "validFrom", "validUntil", "validTimeExpression",
     "about", "function", "reportMode", "polarity", "certainty", "derived",
     "supports", "supersedes", "kind", "validEnd", "replacedBy", "licensedBy",
-    "entityA", "entityB")}
+    "entityA", "entityB", "labelOf")}
+RDFS_LABEL = _n(RDFS + "label")
 PROV_ATTRIBUTED = _n(PROV + "wasAttributedTo")
 PROV_DERIVED = _n(PROV + "wasDerivedFrom")
 OA_SELECTOR, OA_TPS, OA_START, OA_END = (
@@ -100,9 +107,11 @@ CONCEPTS: dict[object, ox.NamedNode] = {
 _FROM_CONCEPT = {(type(k), v): k for k, v in CONCEPTS.items()}
 
 KIND_PATH = {Claim: "claim", Attribution: "attribution", EvidenceLink: "evidence",
-             Supersession: "supersession", EntityEquivalence: "equivalence"}
+             Supersession: "supersession", EntityEquivalence: "equivalence",
+             EntityLabel: "label"}
 _CLASS = {Claim: "Claim", Attribution: "Attribution", EvidenceLink: "EvidenceLink",
-          Supersession: "Supersession", EntityEquivalence: "EntityEquivalence"}
+          Supersession: "Supersession", EntityEquivalence: "EntityEquivalence",
+          EntityLabel: "EntityLabel"}
 
 
 def _local(prefix: str, local: str) -> ox.NamedNode:
@@ -147,7 +156,8 @@ def term_node(term: Term) -> ox.NamedNode | ox.Literal:
 # Entries -> triples
 
 
-def entry_triples(entry: Entry | EntityEquivalence, mode: Mode = "rdf11") -> list[ox.Triple]:
+def entry_triples(entry: Entry | EntityEquivalence | EntityLabel,
+                  mode: Mode = "rdf11") -> list[ox.Triple]:
     """The triples of one entry under serialisation `mode`."""
     if mode not in MODES:
         raise ValueError(f"unknown serialisation mode {mode!r}; expected one of {MODES}")
@@ -206,6 +216,9 @@ def entry_triples(entry: Entry | EntityEquivalence, mode: Mode = "rdf11") -> lis
     elif isinstance(entry, EntityEquivalence):
         add(G["entityA"], entity_iri(entry.entity_a))
         add(G["entityB"], entity_iri(entry.entity_b))
+    elif isinstance(entry, EntityLabel):
+        add(G["labelOf"], entity_iri(entry.entity))
+        add(RDFS_LABEL, ox.Literal(entry.label))
     else:
         raise TypeError(f"not a claim-graph entry: {entry!r}")
     return out
@@ -280,7 +293,8 @@ class _Props:
             raise RdfError(f"{self.node}: unexpected triples {sorted(map(str, self.values))}")
 
 
-def entries_from_triples(triples: Iterable[ox.Triple | ox.Quad]) -> list[Entry | EntityEquivalence]:
+def entries_from_triples(triples: Iterable[ox.Triple | ox.Quad]
+                         ) -> list[Entry | EntityEquivalence | EntityLabel]:
     """Invert `entry_triples` for either mode (mixed modes are accepted per claim).
 
     Raises RdfError on any triple that the mapping would not produce, so a round trip is exact.
@@ -384,6 +398,12 @@ def _entry(node, props: _Props, types: set, by_subject: dict):
             entity_a=_local_of(props.take(G["entityA"]), ENTITY, "an entity"),
             entity_b=_local_of(props.take(G["entityB"]), ENTITY, "an entity"),
             version=version)
+    elif kind == G["EntityLabel"]:
+        entry = EntityLabel(
+            label_id=_id_of(node, EntityLabel),
+            entity=_local_of(props.take(G["labelOf"]), ENTITY, "an entity"),
+            label=_literal(props.take(RDFS_LABEL), "string"),
+            version=version)
     else:
         raise RdfError(f"{node}: unknown entry type {kind}")
     props.done()
@@ -399,7 +419,8 @@ def changesets_from_triples(triples: Iterable[ox.Triple | ox.Quad], history_id: 
     """
     groups: dict[int, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     field_of = {Claim: "claims", Attribution: "attributions", EvidenceLink: "evidence_links",
-                Supersession: "supersessions", EntityEquivalence: "entity_merges"}
+                Supersession: "supersessions", EntityEquivalence: "entity_merges",
+                EntityLabel: "entity_labels"}
     for entry in entries_from_triples(triples):
         groups[entry.version][field_of[type(entry)]].append(entry)
     versions = vocabulary_versions or {}

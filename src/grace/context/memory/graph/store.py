@@ -18,7 +18,8 @@ Commit rules (checked before anything is written; a failed commit writes nothing
 - a new claim does not repeat the proposition (s, p, o, scope, valid time) of a claim that is
   currently accepted; a repeated mention adds an attribution and an evidence link instead;
 - a replacing claim has the subject, predicate and scope of the claim it replaces, and the
-  licensing attribution is on the superseded claim or on the replacing claim.
+  licensing attribution is on the superseded claim or on the replacing claim;
+- an entity has at most one label in the history: a label is written once and never changes.
 
 The attribution guard and the exclusivity rules are not commit rules: they decide *whether* to
 supersede and live in `pipeline/update/guard.py` (T022), so that a variant without the guard can
@@ -37,7 +38,13 @@ import pyoxigraph as ox
 
 from grace.context.memory.graph import rdf
 from grace.context.memory.graph.changeset import ChangeSet
-from grace.context.memory.graph.entities import EntityEquivalence, representatives
+from grace.context.memory.graph.entities import (
+    EntityEquivalence,
+    EntityLabel,
+    display_name,
+    labels_at,
+    representatives,
+)
 from grace.context.memory.graph.entries import (
     Attribution,
     Claim,
@@ -71,6 +78,7 @@ class GraphState:
     evidence_links: MappingProxyType
     supersessions: MappingProxyType
     equivalences: MappingProxyType
+    labels: MappingProxyType = MappingProxyType({})   # label ID -> EntityLabel
 
     def attributions_on(self, claim_id: str) -> list[Attribution]:
         return sorted((a for a in self.attributions.values() if a.claim_id == claim_id),
@@ -107,6 +115,15 @@ class GraphState:
     def representatives(self) -> dict[str, str]:
         return representatives(self.equivalences.values(), self.version)
 
+    def entity_labels(self) -> dict[str, str]:
+        """Entity ID -> label, for the labels visible at this version (display data only)."""
+        return labels_at(self.labels.values(), self.version)
+
+    def display_name(self, entity: str) -> str:
+        """The label of `entity` at this version, following merges (`entities.display_name`);
+        the ID itself when no label applies."""
+        return display_name(entity, self.entity_labels(), self.representatives())
+
 
 class ClaimStore:
     """The claim graph of one history; `mode` picks the claim serialisation (`rdf11`, `rdf12`)."""
@@ -123,6 +140,7 @@ class ClaimStore:
         # "no repeated current proposition" rule.
         self._current: dict[tuple, str] = {}
         self._superseded: set[str] = set()
+        self._labelled: dict[str, str] = {}   # entity ID -> label ID
         self._head = 0
 
     # -- writing -------------------------------------------------------------------------------
@@ -164,6 +182,7 @@ class ClaimStore:
             self._entries[entry.entry_id] = entry
         self._superseded.update(s.claim_id for s in canonical.supersessions)
         self._current.update({c.proposition: c.claim_id for c in canonical.claims})
+        self._labelled.update({x.entity: x.label_id for x in canonical.entity_labels})
         self._head = canonical.version
         return canonical
 
@@ -198,6 +217,11 @@ class ClaimStore:
                                                                rep.scope):
                     raise CommitError(f"version {cs.version}: {where}: replacing claim "
                                       f"{rep.claim_id} differs in subject, predicate or scope")
+        for x in cs.entity_labels:
+            if x.entity in self._labelled:
+                raise CommitError(f"version {cs.version}: label {x.label_id}: entity "
+                                  f"{x.entity!r} already has label {self._labelled[x.entity]} "
+                                  f"(labels are written once)")
         superseded = self._superseded | {s.claim_id for s in cs.supersessions}
         current = {p: cid for p, cid in self._current.items() if cid not in superseded}
         for c in cs.claims:
@@ -229,13 +253,12 @@ class ClaimStore:
         """G_version: every entry stamped at most `version`."""
         if version < 0:
             raise ValueError(f"version must be >= 0, got {version}")
-        groups: dict[type, dict] = {k: {} for k in (Claim, Attribution, EvidenceLink,
-                                                    Supersession, EntityEquivalence)}
+        kinds = (Claim, Attribution, EvidenceLink, Supersession, EntityEquivalence, EntityLabel)
+        groups: dict[type, dict] = {k: {} for k in kinds}
         for entry in self._entries.values():
             if entry.version <= version:
                 groups[type(entry)][entry.entry_id] = entry
-        return GraphState(version, *(MappingProxyType(groups[k]) for k in (
-            Claim, Attribution, EvidenceLink, Supersession, EntityEquivalence)))
+        return GraphState(version, *(MappingProxyType(groups[k]) for k in kinds))
 
     def triples(self, version: int | None = None) -> Iterator[ox.Triple]:
         """The stored triples of the entries stamped at most `version` (all when None)."""
