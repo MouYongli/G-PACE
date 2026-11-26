@@ -43,6 +43,7 @@ MELANIE = [  # (speaker, text, model output)
     ("Melanie", "I live in Boston.", out([claim("Melanie", "livesIn", "Boston", single=True)])),
     ("Melanie", "We moved to Denver.", out([claim("Melanie", "livesIn", "Denver", single=True)])),
     ("Melanie", "I gave up the violin.", out(ended=[{"claim": "c1", "kind": "change"}])),
+    ("Caroline", "I play the piano.", out([claim("Caroline", "playsInstrument", "piano")])),
 ]
 
 TRIP = [
@@ -119,7 +120,7 @@ class MappingTest(unittest.TestCase):
     def test_change_sets(self):
         _, x = history("mel", MELANIE)
         cs = x.changesets
-        self.assertEqual([c.version for c in cs], list(range(1, 8)))
+        self.assertEqual([c.version for c in cs], list(range(1, 9)))
         self.assertEqual(cs[0].claims[0].predicate, "playsInstrument")
         # repeated mention: no new claim, an attribution and an evidence link on c1
         self.assertEqual((cs[3].claims, [a.claim_id for a in cs[3].attributions],
@@ -164,7 +165,12 @@ class ReplayTest(unittest.TestCase):
         self.assertIsNone(marks[(3, cnt)]["used_claims"])
         self.assertEqual(marks[(3, cnt)]["used_claims_patterns"], "answer")
         self.assertEqual(marks[(6, cur)]["used_claims"], "answer")
-        self.assertEqual(result.views_created["list"], 1)
+        self.assertEqual(result.views_created["list"], 2)       # Melanie's and Caroline's
+        # Caroline's piano: same predicate, other subject: C7 (b), marked only by predicate level
+        (e,) = [e for e in result.events if e["version"] == 8 and e["view_id"] == lst]
+        self.assertEqual((e["type"], e["subtypes"], e["outcome"]), ("C7", ["b"], "none"))
+        self.assertEqual(e["marks"]["predicate_level"], "answer")
+        self.assertIsNone(e["marks"]["claim_pattern_filters"])
         self.assertEqual(result.views_created["current"], 1)
 
     def test_task_families(self):
@@ -179,10 +185,27 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual((ev[(4, choice, 0)]["type"], ev[(4, choice, 0)]["outcome"]),
                          ("C3", "answer"))
 
+    def test_filtered_replay_records_the_same_events(self):
+        """Without the full check, views outside the candidate filter are not re-queried, but
+        their marks by other strategies are still recorded (over-marking)."""
+        for history_id, script, roles in (
+                ("mel", MELANIE, None),
+                ("trip", TRIP, {"user": "user", "assistant": "assistant"})):
+            messages, extraction = history(history_id, script)
+            vocabulary = ns.vocabulary_from(extraction.vocabulary, "test")
+            speakers = [*dict.fromkeys(m.speaker for m in messages), "other"][:2]
+            runs = [ns.measure_history(history_id, extraction.changesets, messages, vocabulary,
+                                       base_config(), ns.orientations(speakers, roles),
+                                       benchmark="test", full_check=full)
+                    for full in (True, False)]
+            self.assertEqual(runs[0].events, runs[1].events, history_id)
+            self.assertTrue(any(e["marks"]["predicate_level"] and e["outcome"] == "none"
+                                for e in runs[1].events), history_id)
+
     def test_summary(self):
         _, mel = replay("mel", MELANIE)
         hist = [{"benchmark": "test", **mel.summary()}]
-        totals = summarise(mel.events, hist, {"test": 7},
+        totals = summarise(mel.events, hist, {"test": 8},
                            {"max_per_thousand": 1.0, "max_share": 0.1})["test"]
         self.assertEqual((totals["answer_stale"], totals["citation_stale"]), (5, 2))
         self.assertEqual(totals["types"]["C2"]["events"], 1)

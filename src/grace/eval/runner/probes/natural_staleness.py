@@ -216,20 +216,26 @@ def measure_history(history_id: str, changesets: Sequence[ChangeSet], messages: 
             for view in views:
                 family = view.binding.family
                 filtered = view.view_id in marks["filter"]
-                if not (filtered or full_check):
+                marked = {name: marks[name].get(view.view_id) for name in REPORTED}
+                evaluation = None
+                if filtered or full_check:
+                    evaluation, _ = store.evaluate(view.view_id, graph, cs.version)
+                    level = compare(view, evaluation).level
+                    after = frozenset(c for r in evaluation.rows for w in r.witnesses
+                                      for c in w.claims)
+                elif any(marked.values()):
+                    # Outside the sound filter the view is unchanged (no re-query needed); it is
+                    # still typed, because another strategy marked it (over-marking).
+                    level, after = "none", view.used_claims()
+                else:
                     result.counters[(benchmark, o.index, family, "untouched", "none",
                                      "unmarked")] += 1
                     continue
-                evaluation, _ = store.evaluate(view.view_id, graph, cs.version)
-                level = compare(view, evaluation).level
-                after = frozenset(c for r in evaluation.rows for w in r.witnesses
-                                  for c in w.claims)
                 kind, subs = classify(view, cs, index, after, not view.rows)
                 if level != "none" and not filtered:
                     result.soundness_violations.append(
                         {"version": cs.version, "view_id": view.view_id,
                          "orientation": o.index, "level": level})
-                marked = {name: marks[name].get(view.view_id) for name in REPORTED}
                 if level != "none" or kind in STALE_TYPES or any(marked.values()):
                     result.events.append({
                         "benchmark": benchmark, "history_id": history_id,
