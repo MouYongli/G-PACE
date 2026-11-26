@@ -167,3 +167,42 @@ class HFTokenCounter:
         if isinstance(ids, Mapping):  # some versions return a BatchEncoding
             ids = ids["input_ids"]
         return len(ids)
+
+
+class TokenizerJsonCounter:
+    """Counts with a pinned `tokenizer.json` (Hugging Face `tokenizers`) for a hosted model whose
+    chat template is not published, e.g. Azure OpenAI gpt-4.1-mini with o200k_base. A prompt is
+    each message's content plus `per_message` tokens, plus `reply_priming` (OpenAI's chat format:
+    3 and 3). It is an estimate of the prompt; an endpoint with `input_tokens: server` records the
+    server's count of every answered attempt and uses this only where the server reports none."""
+
+    def __init__(self, name: str, path: Path, sha256: str, *, per_message: int = 3,
+                 reply_priming: int = 3):
+        if (actual := sha256_file(path)) != sha256:
+            raise TokenizerPinError(f"{name}: {Path(path).name} sha256 {actual} != pinned {sha256}")
+        import tokenizers
+
+        self.name = name
+        self.per_message, self.reply_priming = per_message, reply_priming
+        self._tokenizer = tokenizers.Tokenizer.from_file(str(path))
+
+    @classmethod
+    def from_pin(cls, pin: Mapping) -> TokenizerJsonCounter:
+        """`pin` has `hf_repo`, `revision`, `file` and `sha256`; the file is read from the local
+        Hugging Face cache only (never downloaded)."""
+        from huggingface_hub import hf_hub_download
+
+        try:
+            path = hf_hub_download(pin["hf_repo"], pin["file"], revision=pin["revision"],
+                                   local_files_only=True)
+        except Exception as exc:  # the hub raises several types for "not in the cache"
+            raise TokenizerPinError(f"{pin['hf_repo']}@{pin['revision']} {pin['file']} is not "
+                                    "in the local Hugging Face cache") from exc
+        return cls(f"{pin['hf_repo']}@{pin['revision']}", Path(path), pin["sha256"])
+
+    def count_text(self, text: str) -> int:
+        return len(self._tokenizer.encode(text, add_special_tokens=False).ids)
+
+    def count_messages(self, messages: Sequence[Message]) -> int:
+        return sum(self.count_text(m["content"]) + self.per_message
+                   for m in messages) + self.reply_priming

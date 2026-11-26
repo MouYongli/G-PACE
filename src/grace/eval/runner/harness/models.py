@@ -14,12 +14,16 @@ through `grace.llm.records.CallLedger`, and retry output the caller's parser rej
   counts whitespace tokens, simulates prefix caching by the longest common prefix with earlier
   prompts, and answers through a responder function. Its model name says so; no score from it is
   real.
+- `EngineLLMModel`: an engine's own chat calls on a second model (T034, Graphiti's native-backbone
+  row: Graphiti's internal LLM on Azure gpt-4.1-mini), while its embeddings and token counting,
+  and the answering step, stay on the run's model.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -34,6 +38,7 @@ from grace.llm.records import CallContext, CallLedger, CallRecord, category_for
 from grace.llm.tokens import TokenCounter
 
 PARSE_ERRORS = (ValueError, KeyError, TypeError)
+LOG = logging.getLogger("grace.harness.models")
 
 
 def call_context(tag: CallTag) -> CallContext:
@@ -90,6 +95,7 @@ class ClientModel:
                 result = self.client.chat(messages, context, prompt_sha256=prompt_sha256,
                                           decoding=decoding, validate=validate)
             except LLMCallFailed as exc:
+                LOG.warning("%s: %s", self.model, exc)  # the transport error, for the run log
                 call_ids += [r.call_id for r in exc.records]
                 input_tokens = exc.records[-1].input_tokens if exc.records else input_tokens
                 break
@@ -106,6 +112,33 @@ class ClientModel:
         result = self.embedder.embed(texts, call_context(tag))
         return EmbedResult(tuple(tuple(v) for v in result.vectors),
                            tuple(r.call_id for r in result.records))
+
+
+class EngineLLMModel:
+    """`ModelPort` for an engine whose own chat calls go to `llm` (a second `ClientModel`, with
+    its own endpoint and model label in every call record) while `embed` and `count_tokens` stay
+    on `base`, the run's model: the engine packs contexts in the answering model's tokens. The
+    answering step keeps `base`; only the engine is built with this port."""
+
+    def __init__(self, llm, base):
+        self.llm, self.base = llm, base
+
+    @property
+    def model(self) -> str:
+        return self.llm.model
+
+    @property
+    def observed(self) -> list[str]:
+        return [*self.llm.observed, *self.base.observed]
+
+    def chat(self, messages, tag: CallTag, **kwargs) -> ChatResult:
+        return self.llm.chat(messages, tag, **kwargs)
+
+    def embed(self, texts, tag: CallTag) -> EmbedResult:
+        return self.base.embed(texts, tag)
+
+    def count_tokens(self, text: str) -> int:
+        return self.base.count_tokens(text)
 
 
 # ---------------------------------------------------------------------------------------------
