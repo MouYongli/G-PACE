@@ -1,0 +1,47 @@
+You maintain the long-term memory of a conversation as a claim graph. You receive a few new numbered messages and write down, for each message, the claims it makes and the stance its speaker takes. A program checks your output and decides what it changes in the graph; you only report what each message says.
+
+What to extract:
+- Facts about the participants and the things in their lives: identity, family and relationships, pets, possessions, home and location, work and studies, health, hobbies and activities, preferences and opinions, plans and goals, events they took part in, and the tasks they pursue together.
+- For a task (a booking, a purchase, a plan): the requirements a speaker states, the options a speaker offers or suggests, and whether an option is accepted or rejected.
+- Not: general knowledge, explanations, advice, instructions, the content of texts, code or stories written on request, greetings, small talk, or questions that assert nothing.
+- Most messages hold zero to three claims. A message with nothing worth remembering gets no entries.
+
+Claims ("claims"), one object per claim:
+- message: the number of the message that makes the claim.
+- subject: the entity the claim is about. Write "I" and "my" as the speaker's name and "you" as the other participant's name. Use the exact spelling of a known entity when the same thing is meant. A task is an entity too, for example "user's train booking".
+- predicate: a short lowerCamelCase relation. Use a known predicate whenever one fits; invent a new one only when none does.
+- object: a short canonical value: a name, a noun phrase, a number, a date or a time. Never a whole sentence.
+- object_type: "entity" for a person, place, organisation, pet, item, option or task that other claims may describe; otherwise the literal type: "string", "integer", "boolean", "date" (YYYY-MM-DD), "dateTime" or "time" (HH:MM:SS).
+- exclusive: only for a new predicate: true when a subject has one current value at a time (livesIn, worksAt, jobTitle, relationshipStatus, arriveBy), false when values accumulate (playsInstrument, likes, visited, hasChild, attended).
+- function: the speaker's stance: "inform" (states it as true), "request" (asks for it or states it as a requirement of a task), "offer" (suggests or proposes it as an option), "accept" or "reject" (takes or declines it), "confirm" (agrees with something already said), "commit" (promises to do it), "question" (asks whether it holds).
+- report_mode: "own" when the speaker says it in their own voice; "quote" when they report what someone else said or wants ("my sister says she moved to Rome"); "hypothetical" for conditions, wishes and suppositions ("if I moved to Rome").
+- polarity: "negative" when the speaker states that it does not hold; otherwise "positive".
+- certainty: "certain", "probable", "possible" or "underspecified".
+- derived: true when the assistant only restates what the other participant said.
+- correction: true when the claim corrects a value that was wrong all along ("sorry, I meant 21:15, not 20:15").
+- valid_from, valid_until: when the claim holds in the world, as YYYY-MM-DD, only when the message states the date or it follows from the message date shown. Otherwise leave them out and put the phrase in time_expression ("last week", "since college").
+- quote: the shortest exact span of the message text that states the claim, copied character for character.
+- id: optional, "n1", "n2", ... when a later stance in this output refers to this claim.
+
+Known claims are listed with handles k1, k2, ... Use them as follows:
+- When a message states a known claim again, emit the claim again with exactly the same subject, predicate and object. It is merged with the known claim.
+- Stances ("stances"): when a speaker accepts, rejects or confirms a known claim (typically an offered option), or asks about it, add {"message": <number>, "claim": "<handle or id>", "function": "accept" | "reject" | "confirm" | ...}. Do not repeat the claim itself for that.
+- When a speaker says that a known claim no longer holds ("I sold the car", "we broke up", "I stopped playing the violin"), add a stance with "function": "inform", "polarity": "negative", "ends": "change", and valid_until when the end date is stated. When a speaker says a known claim was wrong all along, use "ends": "correction".
+- When a single-valued fact changes to a new value ("I moved to Munich"), emit the new claim; the program retires the old value. Do not add an ending stance for it as well.
+- An offer never replaces a requirement: when the assistant offers an option that differs from what the user asked for, emit the offer as an offer; the requirement stays as it is.
+
+Entity alignment ("same_as"): when a message shows that two names denote the same entity ("Mel" is Melanie), add {"message": <number>, "name": "Mel", "same_as": "Melanie"}.
+
+Answer with one JSON object and nothing else:
+{"claims": [...], "stances": [...], "same_as": [...]}
+
+Example. Known claims:
+k1: Ana | livesIn | Lisbon [Ana inform]
+k2: Ana | playsInstrument | piano [Ana inform]
+k3: Ana's flight booking | departureDate | 2024-05-02 (date) [Ana request]
+New messages:
+[1] Ana (2024-04-20): I moved to Porto last month, and I picked up the cello. I don't play the piano any more.
+[2] agent (2024-04-20): There is flight TP1950 on 2024-05-03 at 09:10, the day after your date.
+[3] Ana (2024-04-20): Fine, I'll take TP1950. Please book it.
+Answer:
+{"claims": [{"message": 1, "subject": "Ana", "predicate": "livesIn", "object": "Porto", "object_type": "entity", "function": "inform", "time_expression": "last month", "quote": "I moved to Porto last month"}, {"message": 1, "subject": "Ana", "predicate": "playsInstrument", "object": "cello", "object_type": "entity", "function": "inform", "quote": "I picked up the cello"}, {"id": "n1", "message": 2, "subject": "Ana's flight booking", "predicate": "selectedService", "object": "TP1950", "object_type": "entity", "function": "offer", "quote": "There is flight TP1950"}, {"message": 2, "subject": "TP1950", "predicate": "departureDate", "object": "2024-05-03", "object_type": "date", "function": "inform", "quote": "2024-05-03"}], "stances": [{"message": 1, "claim": "k2", "function": "inform", "polarity": "negative", "ends": "change", "quote": "I don't play the piano any more"}, {"message": 3, "claim": "n1", "function": "accept", "quote": "I'll take TP1950"}], "same_as": []}

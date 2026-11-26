@@ -120,3 +120,16 @@ prompts:
       per message. Variables: participants, date (segment time), predicates (most used predicates
       of the history), claims (known current claims with IDs), earlier (two preceding messages),
       speaker, message (the new message, last).
+  extract-claims:
+    call_type: extract
+    sha256: 870c286a62e576d57610c1e8a5612849e52198e386d5a57b8e9fba31280c92f3
+    schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
+    schema_sha256: 36b3189354b8ae24b18683bcebf5e4c4b6047c90d7f140b8565f64a949052b96
+    note: >-
+      GRACE's writer (T022, plan 5.1 and 5.6), one call per extraction unit (configs/common/
+      writer.yaml: message, segment of n messages inside a session, or session). Variables:
+      predicates (the vocabulary in force, stable, first), participants, entities, claims (known
+      current claims under handles k1, k2, ...), earlier (preceding messages, context only),
+      messages (the unit, numbered, last). Output: claims, stances and same_as entries anchored to
+      message numbers and quotes; checked by src/grace/context/pipeline/update/patch.py
+      (parse_patch), resolved by validate.py and guarded by guard.py.
