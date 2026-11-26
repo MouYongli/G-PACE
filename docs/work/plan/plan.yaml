@@ -405,12 +405,12 @@ nodes:
     type: task
     title: Final formalisation and proof
     milestone: M2
-    status: review
+    status: done
     depends_on: [D005, T017]
     issue: 108
     owner: m01-T020
     start: 2026-11-26
-    finish: null
+    finish: 2026-11-26
     file: ../tasks/T020-formalisation.md
   - id: T021
     type: task
