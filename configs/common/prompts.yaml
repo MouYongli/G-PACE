@@ -109,3 +109,14 @@ prompts:
       sentence), facts (the message's events with IDs resolved), discourse, required, allowed,
       forbidden. Checked by src/grace/eval/datasets/changeseq/render.py (check_output); a message
       that fails three attempts falls back to its template sentence.
+  extract-claims-rough:
+    call_type: extract
+    sha256: 93b96268c505530ddceef9507f82585323dcde03ec46e5117d3d2c03ae8e45d5
+    schema: null              # {"claims": [...], "stances": [...], "ended": [...]}; checked by
+    schema_sha256: null       # src/grace/eval/runner/probes/natural_extract.py (parse_output)
+    note: >-
+      One-off claim extraction of the rough natural staleness distribution (E002, plan 6.5:
+      "a one-off extraction prompt and hand-written queries"); not GRACE's writer (T022). One call
+      per message. Variables: participants, date (segment time), predicates (most used predicates
+      of the history), claims (known current claims with IDs), earlier (two preceding messages),
+      speaker, message (the new message, last).
