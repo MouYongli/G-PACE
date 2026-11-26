@@ -7,9 +7,10 @@
 
 - `run` (stage `probe`, CPU only, no model): one run per (view mix, blocks, seed, standing
   views). Generates the blocks from the T015 generator (development families only), commits the
-  prefix, times the queries of the first block's views (as compiled and with constants inlined),
-  then measures every (read scope, writes per read) cell whose window is long enough, for every arm
-  and repetition (`grace.eval.runner.probes.scale`). Writes `machine.json` (CPU model, cores, load
+  prefix, times the queries of the first block's views and of a seeded sample of other views (as
+  the engine runs them, with the pre-change `VALUES` form inlined by the probe, and in that
+  `VALUES` form where it is affordable), then measures every (read scope, writes per read) cell
+  whose window is long enough, for every arm and repetition (`grace.eval.runner.probes.scale`). Writes `machine.json` (CPU model, cores, load
   average), `graph.json` (size, build time, skipped cells, query diagnostics),
   `measurements.jsonl` (one record per arm x cell x repetition) and `periods.jsonl` (one record
   per read period). `n_records` is the number of measurements.
@@ -159,12 +160,16 @@ def run_one(config_path: Path, mix: str, blocks: int, seed: int, views: int, *,
         families = config["mixes"][mix]
         admitted = scale.admitted(graph.bindings, families)
         diag = config["diagnostics"]
-        compiled = [f for f in scale.FAMILY.values()
-                    if f not in diag["slow_families"]
-                    or blocks <= diag["compiled_slow_max_blocks"]]
+        # Version 2 named the limit `compiled_slow_max_blocks` (the compiler bound constants with
+        # VALUES then); version 3 names the same limit for the pre-change VALUES form.
+        slow_max = diag.get("values_slow_max_blocks", diag.get("compiled_slow_max_blocks"))
+        values_families = [f for f in scale.FAMILY.values()
+                           if f not in diag["slow_families"] or blocks <= slow_max]
         diagnostics = scale.query_diagnostics(
-            graph, scale.admitted(made[0].bindings, scale.FAMILY.values()),
-            compiled_families=compiled, repeats=int(diag["repeats"]))
+            graph, scale.diagnostic_bindings(
+                graph, scale.admitted(made[0].bindings, scale.FAMILY.values()),
+                scale.FAMILY.values(), int(diag.get("sample_per_family", 0)), seed),
+            values_families=values_families, repeats=int(diag["repeats"]))
         window = len(graph.window)
         todo, skipped = cells(config, views, window)
         (run_dir / "graph.json").write_text(json.dumps(
