@@ -30,7 +30,7 @@ Written on 2026-11-26 before the first formal run (session `m01-E002`). Config: 
 
 ## Acceptance
 
-- [ ] Every number traces to a run report.
+- [x] Every number traces to a run report: two extraction runs and two completed measurement runs, each with `report.yaml` (Runs table); the failed measurement run `E002-20261126T055223Z-3d61` also has one and is not quoted.
 
 ## Runs
 
@@ -40,17 +40,76 @@ Reports are under `$PROJECT_ROOT/runs/E002/artifacts/manager/E002/<run-id>/repor
 | --- | --- | --- | --- | --- |
 | `E002-20261126T050042Z-dd83` | 2026-11-26 | completed | `b5a7827` | `runs/E002/artifacts/manager/E002/E002-20261126T050042Z-dd83/report.yaml` (extract, LoCoMo dev) |
 | `E002-20261126T052939Z-70bb` | 2026-11-26 | completed | `b5a7827` | `runs/E002/artifacts/manager/E002/E002-20261126T052939Z-70bb/report.yaml` (measure of dd83) |
+| `E002-20261126T050049Z-f084` | 2026-11-26 | completed | `b5a7827` | `runs/E002/artifacts/manager/E002/E002-20261126T050049Z-f084/report.yaml` (extract, LongMemEval-S dev) |
+| `E002-20261126T055223Z-3d61` | 2026-11-26 | failed | `804afd9` | `runs/E002/artifacts/manager/E002/E002-20261126T055223Z-3d61/report.yaml` (measure of f084; `code_dirty`: an uncommitted edit of this file at start; not quoted) |
+| `E002-20261126T081116Z-dac0` | 2026-11-26 | completed | `221f571` | `runs/E002/artifacts/manager/E002/E002-20261126T081116Z-dac0/report.yaml` (measure of f084, repeat of 3d61) |
 
 ## Results
 
-Not run.
+From completed runs only: LoCoMo measurement `E002-20261126T052939Z-70bb` (extraction `E002-20261126T050042Z-dd83`), LongMemEval measurement `E002-20261126T081116Z-dac0` (extraction `E002-20261126T050049Z-f084`), all at code `b5a7827` (extractions, LoCoMo measurement) or `221f571` (LongMemEval measurement; differs only by the ledger status fix and documentation, the replay code is identical). Numbers are copied from `distribution.json` and `report.yaml` of these runs. An event is one (message, view) pair; "messages" counts messages with at least one event of the type. No intervals are reported (a rough measurement; LoCoMo has two histories).
+
+**Extraction** (`report.yaml` of the extraction runs).
+
+| | LoCoMo | LongMemEval |
+| --- | --- | --- |
+| Messages | 928 | 48,781 |
+| Invalid outputs (empty change set) | 17 (1.8%) | 1,048 (2.1%) |
+| New claims / repeated mentions / stances | 439 / 472 / 194 | 66,736 / 15,045 / 15,618 |
+| Supersessions (exclusivity rule + ended) | 5 (4 + 1) | 1,433 (1,253 + 180) |
+| Messages clipped at 8,000 characters | 0 | 43 |
+| Extraction tokens (input / output) | 1.65M / 62K | 111.0M / 5.56M |
+| Resident views created | 96 | 11,182 |
+
+**Change types per 1,000 messages** (stale events only; answer-stale and citation-stale).
+
+| Type | LoCoMo events | LoCoMo messages | LongMemEval events | LongMemEval messages |
+| --- | --- | --- | --- | --- |
+| C1 state change superseding a cited claim | 6.5 | 5.4 | 16.8 | 14.7 |
+| C2 new match | 292.0 | 264.0 | 447.0 | 356.2 |
+| C3 negation hit | 0 | 0 | 3.6 | 3.5 |
+| C4 count or order | 281.3 | 256.5 | 258.1 | 223.2 |
+| C5 late correction | 0 | 0 | 2.5 | 0.9 |
+| C6 repeated mention | 872.8 | 399.8 | 547.5 | 268.1 |
+
+C2 falls mostly on the `list` family (LoCoMo 261 of 271; LongMemEval 12,563 of 21,805) and on `constraints` (10; 8,853); C4 almost entirely on `count`, which mirrors `list` (every new member of a list is also a count change), so C2 and C4 events of the same message largely coincide. C3 occurs only on LongMemEval (`pending`: an offered option accepted or declined; 174 events, plus 152 negation hits that left the answer unchanged). C2 "empty to non-empty": 0 on LoCoMo, 27 on LongMemEval.
+
+**Answer and citation staleness.**
+
+| | LoCoMo | LongMemEval |
+| --- | --- | --- |
+| Answer-stale events (per 1,000 messages) | 537 (578.7) | 35,519 (728.1) |
+| Citation-stale events (per 1,000 messages) | 811 (873.9) | 26,704 (547.4) |
+| Citation : answer | 1.51 | 0.75 |
+| Missed-by-design types C2+C3+C4, answer-stale | 532 = 573.3 per 1,000, 99.1% of answer staleness | 34,571 = 708.7 per 1,000, 97.3% of answer staleness |
+| Decision rule (below 1 per 1,000 and below 10%) | not rare | not rare |
+
+**Misses of the citation-based strategies** (stale events not marked at any level).
+
+| Strategy | LoCoMo answer-stale missed | LongMemEval answer-stale missed | Citation-stale missed (LoCoMo; LongMemEval) |
+| --- | --- | --- | --- |
+| Used claims only | 532 of 537 (99.1%): C2 271, C4 261 | 34,580 of 35,519 (97.4%): C2 21,805, C4 12,592, C3 174, C5 1, C6 8 | 810; 26,700 |
+| Used claims + negation and aggregation patterns | 271 (50.5%): all C2 | 21,843 (61.5%): C2 21,805, C4 29, C5 1, C6 8 | 431; 17,392 |
+
+**Sound strategies and checks.** Claim-pattern push with local filters missed nothing and over-marked 0 of 1,348 marked events on LoCoMo and 500 of 62,723 (0.8%) on LongMemEval; predicate level missed nothing and over-marked 3,942 of 5,290 (74.5%) and 40,615 of 102,838 (39.5%). The full re-query of every view at every version on LoCoMo found no staleness outside the candidate filter (0 soundness violations); every stale event received a type C1-C6. Type/outcome deviations from change-sequences.md 4.2 (diagnostic): one C1 event with a citation outcome on LoCoMo (one habit ended and another added in the same message left the count unchanged); on LongMemEval 2 C1 and 2 C5 events with citation outcomes and 8 C6 events with answer outcomes.
 
 ## Conclusion
 
-Pending.
+On the extracted graphs of both development sets, the three kinds of change that citation-based dependencies miss are not rare: they are the bulk of answer staleness (99% on LoCoMo, 97% on LongMemEval), at 573 and 709 answer-stale events per 1,000 messages against a pre-set rarity threshold of 1. Measured per message, about a quarter (LoCoMo) to a third (LongMemEval) of all messages add a new member to some resident view (C2). Supersessions of a cited claim (C1), the one change the used-claims-only strategy sees, occur at 5 to 15 messages per 1,000. Acceptance and rejection of offers (C3) are rare in both sets (0 and 3.5 per 1,000), so the negation-hit evidence for RQ2 must come from the controlled sequences and task dialogue (MultiWOZ), while new matches and count changes are abundant in natural dialogue.
+
+For D007 this supports: **the D007 option "missed change types are rare" does not apply**; RQ2's claim that citation-based dependencies miss natural staleness has natural-data support, and view maintenance need not be positioned only for high-revision workloads. The RQ2 hypothesis "citation staleness is far more frequent than answer staleness" is not supported at this granularity (ratio 1.5 on LoCoMo, 0.75 on LongMemEval).
+
+Limits, in order of weight:
+
+- **No hand correction of the extraction.** Plan 6.5 corrects the LoCoMo extraction by hand; this rough pass does not, and nothing was audited. Over-granular or spurious claims inflate C2, C4 and C6; missed claims deflate every type. The verdict "not rare" has a margin of more than two orders of magnitude over the threshold, so it survives even if most typed C2 events were spurious, but the individual rates and the citation:answer ratio do not. `audit-sample.tsv` of each measurement run holds up to 20 typed stale events per type for an audit (one annotator, about 200 events in total, judging whether the message really expresses the typed change for the view; a second annotator on a subset for agreement).
+- **Granularity drives the counts.** With `instantiation_threshold: 1` every (entity, predicate) pair with one claim gets a list and a count view, and the count mirrors the list. The rates are per resident view of this configuration; a higher threshold or view selection by read frequency (plan 5.4) would lower them. The decision rule is applied to the configuration as configured.
+- **One-off extractor.** Qwen3-32B with a one-off prompt, not GRACE's writer; no valid times; supersession only via the exclusivity rule and claims the model marks as ended. Phase 3 repeats the measurement with the final writer and compiler.
+- **LongMemEval histories share sessions** (4,493 distinct sessions in 4,706 session occurrences), so its rates are not from fully independent text; the haystack sessions also include assistant-written content the prompt tries to exclude.
+- `calls.jsonl` of the extraction runs records every answered call as `ok`; invalid outputs are recorded in `extractions.jsonl` (fixed in `804afd9` for later runs).
 
 ## Log
 
 - 2026-11-23: created from the full project DAG.
 - 2026-11-26: manager session `m01-E002` started on `task/E002-rough-staleness` from `main` at `da699da`; Issue #110. Design and config written before the first formal run. Two Qwen3-32B servers on GPUs 0 and 2 (ports 8121, 8122), reserved in `runs/compute.yaml`.
 - 2026-11-26: smoke checks (not runs; first 60 messages of conv-26, first 80 of LongMemEval `58bf7951`): 7 of 60 LoCoMo outputs used the function `confirm` for a re-emitted claim, which the parser rejected. `confirm` was added to the claim functions of the prompt and the parser (new pin) before any formal run. LongMemEval: 3 of 80 invalid (a fence with trailing text, a stance with function `request`, one output cut at the token limit); kept as invalid. Mean prompt 1.3K (LoCoMo) and 1.9K (LongMemEval) tokens.
+- 2026-11-26: extraction runs `E002-20261126T050042Z-dd83` (LoCoMo) and `E002-20261126T050049Z-f084` (LongMemEval) completed at `b5a7827`; servers stopped and the reservation removed afterwards. LoCoMo measurement `E002-20261126T052939Z-70bb` completed. The first LongMemEval measurement `E002-20261126T055223Z-3d61` measured all histories but is `failed` (`code_dirty`: the Runs table of this file was edited before it started); repeated from a clean tree as `E002-20261126T081116Z-dac0`. The replay of a few LongMemEval histories takes up to about 75 minutes (median a few minutes); not profiled, the slow histories are not the ones with the most claims. After the runs, commit `804afd9` makes the extraction stage record invalid output as `invalid_output` in `calls.jsonl`; the formal extraction runs predate it.
+- 2026-11-26: Results and Conclusion written from the completed runs; status proposal `E002: active -> review` (D007 input: missed change types are not rare).
