@@ -283,12 +283,12 @@ nodes:
     type: task
     title: Fragment coverage annotation
     milestone: M1
-    status: active
+    status: done
     depends_on: [T002, T010]
     issue: 47
     owner: m01-T012
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-26
     file: ../tasks/T012-fragment-coverage.md
   - id: T013
     type: task
