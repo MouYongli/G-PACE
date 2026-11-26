@@ -1,0 +1,93 @@
+# T025 · Evidence recall of the retrieval channels on development data (plan 5.5, 7.3 ablation D;
+# task file docs/work/tasks/T025-retrieval-fusion.md). Driver:
+#   uv run python -m grace.cli.retrieval_recall --config configs/experiments/T025-retrieval-recall.yaml \
+#       --embed-url http://127.0.0.1:<port>/v1 [--planner-url http://127.0.0.1:<port>/v1]
+# Development splits only; the driver refuses any other split kind.
+experiment: T025
+seed: 0
+retrieval_config: configs/retrieval/default.yaml
+# Token counter for the local input-token count of embedding calls (fallback when the server does
+# not report usage) and for the planner LLM; the primary model of plan 7.1.
+model_config: configs/models/qwen3-8b.yaml
+
+# Cut-offs at which recall is measured; `total` of the retrieval config is replaced by each value
+# (depth = max(total, cut-off)), so every condition is compared at the same number of candidates.
+cutoffs: [5, 10, 20, 50]
+depth: 50                     # candidates kept per channel (>= the largest cut-off)
+embed_batch: 32               # messages per embedding request
+
+benchmarks:
+  # LoCoMo development histories conv-26 and conv-49 (plan 6.5). No claim graph exists until the
+  # writer (T022) lands: text channels only, graph channel pending.
+  - slug: locomo
+    split: dev
+    graph: none
+  # LongMemEval-S development split (98 histories; plan 6.5). Text channels only, graph pending.
+  - slug: longmemeval-s
+    split: dev
+    graph: none
+  # Controlled change sequences, model-rendered development set of run
+  # T015-devmodel-20261125T192037Z (inline config as in E005; configs/benchmarks/change-seq.yaml is
+  # not bound yet). The graph channel reads the stored *gold* claim graph of each sequence (a
+  # perfect-writer upper bound, not GRACE's own extraction) and the questions are planned by the
+  # T023 planner (rule templates, then the planner LLM). Primary schedule (read_tasks.jsonl) only.
+  - slug: change-seq
+    split: dev
+    graph: gold
+    config:
+      benchmark: change-seq
+      version: dataset
+      data_root: runs/T015/artifacts/T015-devmodel-20261125T192037Z
+      manifest_sha256: 9b147185381de5982ad94560e27d8eb1b20e1d7c41347db6cc66a736355c515a
+      splits:
+        dev:
+          kind: development
+          rule: every sequence of the T015 model-rendered development set
+          counts: {histories: 25, messages: 5000, read_tasks: 1145, gold: 9422}
+          histories:
+            - train-travel-rho10-L200-000
+            - train-travel-rho10-L200-001
+            - flight-travel-rho10-L200-000
+            - flight-travel-rho10-L200-001
+            - car-rental-rho10-L200-000
+            - car-rental-rho10-L200-001
+            - hotel-stay-rho10-L200-000
+            - hotel-stay-rho10-L200-001
+            - apartment-search-rho10-L200-000
+            - apartment-search-rho10-L200-001
+            - train-travel-rho1-L200-000
+            - train-travel-rho3-L200-000
+            - train-travel-rho30-L200-000
+            - flight-travel-rho1-L200-000
+            - flight-travel-rho3-L200-000
+            - flight-travel-rho30-L200-000
+            - car-rental-rho1-L200-000
+            - car-rental-rho3-L200-000
+            - car-rental-rho30-L200-000
+            - hotel-stay-rho1-L200-000
+            - hotel-stay-rho3-L200-000
+            - hotel-stay-rho30-L200-000
+            - apartment-search-rho1-L200-000
+            - apartment-search-rho3-L200-000
+            - apartment-search-rho30-L200-000
+
+# Conditions, each evaluated at every cut-off with the total held at that cut-off.
+#   channels: the enabled channels; routing: all | rules; fusion: rrf | weighted.
+conditions:
+  bm25:            {channels: [bm25], routing: all, fusion: rrf}
+  dense:           {channels: [dense], routing: all, fusion: rrf}
+  graph:           {channels: [graph], routing: all, fusion: rrf, backfill: false}
+  rrf-all:         {channels: [bm25, dense, graph], routing: all, fusion: rrf}
+  rrf-routed:      {channels: [bm25, dense, graph], routing: rules, fusion: rrf}
+  weighted-all:    {channels: [bm25, dense, graph], routing: all, fusion: weighted}
+  weighted-routed: {channels: [bm25, dense, graph], routing: rules, fusion: weighted}
+  # Ablation D: one channel switched off, total unchanged (RRF, always all remaining channels).
+  rrf-no-bm25:     {channels: [dense, graph], routing: all, fusion: rrf}
+  rrf-no-dense:    {channels: [bm25, graph], routing: all, fusion: rrf}
+  rrf-no-graph:    {channels: [bm25, dense], routing: all, fusion: rrf}
+
+# Strata reported next to the overall value (gold labels; scoring side only).
+strata:
+  locomo: [category]
+  longmemeval-s: [question_type]
+  change-seq: [question_type]
