@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 from grace.context import api
+from grace.eval.engines.baselines import graphiti
 from grace.eval.runner.harness.drive import build_engine, load_engine_config
 from grace.eval.runner.harness.inputs import load_fixture as load
 from grace.eval.runner.harness.models import FakeBackend, RecordingModel
@@ -53,6 +54,8 @@ class EngineSuite(unittest.TestCase):
         item = load(BENCHMARKS / "locomo", "streaming").histories[0]
         for config in ENGINES:
             with self.subTest(engine=config.stem):
+                if not graphiti.runnable(config):
+                    continue  # needs the envs/graphiti environment; tests/integration covers it
                 engine = self.engine(config)
                 with self.assertRaises(RuntimeError):
                     engine.write(item.messages[0])  # not opened

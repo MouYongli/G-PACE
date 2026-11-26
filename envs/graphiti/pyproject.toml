@@ -1,0 +1,30 @@
+# Graphiti environment (T034; plan 7.2, "External systems"): the research package plus
+# graphiti-core with its embedded Kuzu graph backend, so that no database server is needed. Kept
+# out of the research environment, as planned in the T034 log: graphiti-core brings its own
+# dependency set (neo4j driver, posthog, kuzu). Created with
+#   uv sync --project envs/graphiti
+# and used as
+#   envs/graphiti/.venv/bin/python -m grace.eval.runner.harness.drive --engine configs/engines/graphiti.yaml ...
+[project]
+name = "grace-graphiti"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "grace",
+  "graphiti-core[kuzu]==0.31.2",  # exact pin; the adapter refuses another version
+]
+
+[tool.uv]
+package = false
+# Same versions as the research environment's uv.lock for the packages both resolve, so that token
+# counting, the OpenAI-compatible client and the LoCoMo scorer behave alike in both environments.
+constraint-dependencies = [
+  "filelock==4.3.0",
+  "openai==3.57.0",
+  "packaging==26.3",
+  "regex==2026.11.19",
+  "transformers==5.24.0",
+]
+
+[tool.uv.sources]
+grace = { path = "../..", editable = true }

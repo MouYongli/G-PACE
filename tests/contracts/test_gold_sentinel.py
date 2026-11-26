@@ -14,6 +14,7 @@ import unittest
 from pathlib import Path
 
 from grace.context import api
+from grace.eval.engines.baselines import graphiti
 from grace.eval.runner.harness import drive
 from grace.eval.runner.harness.answer import is_answer_call, is_final_call
 from grace.eval.runner.harness.models import FakeBackend, fake_responder
@@ -21,7 +22,9 @@ from grace.eval.runner.harness.rundir import CodeState
 
 ROOT = Path(__file__).resolve().parents[2]
 BENCHMARKS = ROOT / "tests" / "fixtures" / "benchmarks"
-ENGINES = sorted((ROOT / "configs" / "engines").glob("*.yaml"))
+ALL_ENGINES = sorted((ROOT / "configs" / "engines").glob("*.yaml"))
+# Graphiti's config needs the envs/graphiti environment; there every config runs.
+ENGINES = [config for config in ALL_ENGINES if graphiti.runnable(config)]
 SENTINEL = "GOLDSENTINEL7f3a"
 CODE = CodeState("0" * 40, False)
 
