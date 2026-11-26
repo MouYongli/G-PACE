@@ -22,4 +22,5 @@ message_chars: 4000                # longer messages are clipped in the prompt (
 earlier_chars: 600                 # anchor in the full text)
 decoding:
   temperature: 0.0                 # D006: temperature 0, thinking disabled (model config)
+  seed: 0                          # sent with every call (vLLM per-request seed)
   max_tokens: 2048
