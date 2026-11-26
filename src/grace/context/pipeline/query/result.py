@@ -113,6 +113,11 @@ class QueryResult:
     def witness_set(self) -> frozenset:
         return frozenset((a.values, a.witnesses) for a in self.answers)
 
+    def evidence_set(self) -> frozenset[str]:
+        """The union of the evidence of all answers. Not a staleness input: the evidence
+        fingerprint is per answer (`fingerprints`)."""
+        return frozenset(e for a in self.answers for e in a.evidence)
+
     def fingerprints(self) -> dict[str, str]:
         """SHA-256 of the canonical answers, witnesses and evidence (plan 3.4 staleness).
 
