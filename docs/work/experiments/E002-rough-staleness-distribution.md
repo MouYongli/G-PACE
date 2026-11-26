@@ -34,8 +34,12 @@ Written on 2026-11-26 before the first formal run (session `m01-E002`). Config: 
 
 ## Runs
 
+Reports are under `$PROJECT_ROOT/runs/E002/artifacts/manager/E002/<run-id>/report.yaml`. Qwen3-32B at revision `9216db5781bf21249d130ec9da846c4624c16137` on vLLM 0.34.0, GPUs 0 and 2, ports 8121 and 8122, `--enable-prefix-caching --max-model-len 32768 --kv-cache-memory-bytes 85899345920 --max-num-seqs 128` (server logs `runs/E002/artifacts/serve/`).
+
 | Run ID | Date | Status | Code SHA | Report |
 | --- | --- | --- | --- | --- |
+| `E002-20261126T050042Z-dd83` | 2026-11-26 | completed | `b5a7827` | `runs/E002/artifacts/manager/E002/E002-20261126T050042Z-dd83/report.yaml` (extract, LoCoMo dev) |
+| `E002-20261126T052939Z-70bb` | 2026-11-26 | completed | `b5a7827` | `runs/E002/artifacts/manager/E002/E002-20261126T052939Z-70bb/report.yaml` (measure of dd83) |
 
 ## Results
 
