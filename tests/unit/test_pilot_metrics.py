@@ -153,5 +153,37 @@ class CacheTest(unittest.TestCase):
         self.assertAlmostEqual(est["secondary_usd_estimate"], (400 * 0.5 + 10 * 2.0) / 1e6, 6)
 
 
+class JudgedCountsTest(unittest.TestCase):
+    def test_rules_for_answer_unknown_invalid_and_judge_invalid(self):
+        tasks = {f"r{i}": {"kind": "question"} for i in range(6)}
+        tasks["s"] = {"kind": "state"}
+        gold = {f"t{i}": {"labels": {}} for i in range(6)}
+        gold["t3"] = {"labels": {"category": 5}}            # LoCoMo adversarial
+        gold["t4"] = {"labels": {"expected_abstention": True}}
+        predictions = [{"read_id": f"r{i}", "task_id": f"t{i}", "output": o} for i, o in
+                       enumerate(["answer", "answer", "answer", "unknown", "unknown", "invalid"])]
+        predictions.append({"read_id": "s", "task_id": "t0", "output": "state"})
+        verdicts = {"r0": "correct", "r1": "incorrect", "r2": "invalid"}
+        row = pilot.judged_counts(predictions, tasks, gold, verdicts)
+        self.assertEqual((row["question_reads"], row["answer"], row["unknown"], row["invalid"]),
+                         (6, 3, 2, 1))
+        self.assertEqual((row["judged_correct"], row["judged_incorrect"], row["judge_invalid"]),
+                         (1, 1, 1))
+        # Scored: r0 1, r1 0, r3 1 (abstention), r4 1 (abstention), r5 0 (invalid) -> 3 / 5.
+        self.assertEqual((row["n_scored"], row["accuracy"]), (5, 0.6))
+        self.assertEqual(row["answer_correct_rate"], 0.5)
+        total = pilot.merge_counts([row, row])
+        self.assertEqual((total["n_scored"], total["accuracy"]), (10, 0.6))
+
+    def test_usage_sums(self):
+        rows = [{"prompt_tokens": 1000, "cached_tokens": 200, "completion_tokens": 2,
+                 "server_model": "m"},
+                {"prompt_tokens": None, "http_status": 400, "error_code": "content_filter"}]
+        sums = pilot.usage_sums(rows, {"input": 0.5, "cached_input": 0.1, "output": 2.0})
+        self.assertAlmostEqual(sums["usd"], (800 * 0.5 + 200 * 0.1 + 2 * 2.0) / 1e6)
+        self.assertEqual((sums["failed_calls"], sums["content_filtered"]), (1, 1))
+        self.assertEqual(sums["server_models"], ["m"])
+
+
 if __name__ == "__main__":
     unittest.main()

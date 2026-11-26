@@ -6,6 +6,10 @@
         --engine configs/engines/full-history-cached.yaml --benchmark multiwoz --shard 0/8 \\
         --base-url http://127.0.0.1:8100/v1 --embed-url http://127.0.0.1:8101/v1
     uv run python -m grace.cli.pilot summary --config <config> --probe <run-id> <run-id>...
+    uv run python -m grace.cli.pilot judge --config <config> --judge-model comparison_model \\
+        --run-root <RUN_DIR> --price 0.484,0.121,1.936 --max-usd 2 [--limit N] [<run-id>...]
+    uv run python -m grace.cli.pilot judge-summary --config <config> --run-root <RUN_DIR> \\
+        --probe <run-id> --price 0.484,0.121,1.936 --out <dir> <judge-run-id>...
 
 - `probe` (stage `probe`, no model): loads every development split of the config through
   `load_split`, writes its record files under `records/<slug>/` (gold included: the analysis reads
@@ -19,6 +23,13 @@
 - `summary`: tables over an explicit list of run IDs (not a run): per-run cost and cache ratio, the
   compute ratio of cached input, and the judging estimate. Written to `<out>/summary.json` with the
   checksums of every input run.json.
+- `judge`: one `judge` run (`grace.cli.run.judge`) per completed system run of the `judging`
+  cells, with the remote comparison judge of the judge config (the Azure secondary judge of D006;
+  endpoint, deployment and key are read from the environment variables the config names). Gold
+  comes from `load_split`. A spend guard stops at `--max-usd` or when the projection after 10% of
+  the calls exceeds it.
+- `judge-summary`: judged counts, accuracy and server-reported spend over an explicit list of judge
+  runs (not a run), written to `<out>/judge-summary.json`.
 """
 
 from __future__ import annotations
@@ -386,6 +397,179 @@ def _text(value) -> str:
 
 
 # ---------------------------------------------------------------------------------------------
+# Judge stage (one `judge` run per system run of the `judging` cells) and its summary
+
+
+def judging_runs(exp: Mapping[str, Any], upstream_base: Path,
+                 run_ids: list[str] | None = None) -> list[Path]:
+    """The completed system runs whose cell is in `judging.cells` (all of them, in run-ID order,
+    or exactly `run_ids`)."""
+    wanted = set((exp.get("judging") or {}).get("cells") or [])
+    dirs = ([upstream_base / r for r in run_ids] if run_ids
+            else sorted(d for d in upstream_base.iterdir() if (d / "run.json").exists()))
+    out = []
+    for d in dirs:
+        run = json.loads((d / "run.json").read_text(encoding="utf-8"))
+        if run["stage"] != "system":
+            if run_ids:
+                raise ValueError(f"{d.name}: not a system run")
+            continue
+        cell = (yaml.safe_load((d / "resolved-config.yaml").read_text(encoding="utf-8"))
+                .get("model", {}).get("serving") or {}).get("cell")
+        if cell not in wanted or run["status"] != "completed":
+            if run_ids:
+                raise ValueError(f"{d.name}: cell {cell!r}, status {run['status']!r}")
+            continue
+        out.append(d)
+    return out
+
+
+def judge_inputs(slug: str, spec: Mapping[str, Any], loader=None
+                 ) -> tuple[dict[str, dict], dict[str, dict], list[dict]]:
+    """read_id -> read task, task_id -> gold, and the data entries of one development split,
+    loaded through `load_split` (manifests verified). Each task must have one gold annotation."""
+    records = (loader or load_records)(slug, spec)
+    tasks = {t.read_id: t.to_record() for t in records.read_tasks}
+    gold: dict[str, dict] = {}
+    for g in records.gold:
+        if g.task_id in gold:
+            raise ValueError(f"{slug}: task {g.task_id} has several gold annotations")
+        gold[g.task_id] = g.to_record()
+    return tasks, gold, data_entries(slug, spec, None)
+
+
+def parse_prices(text: str) -> dict[str, float]:
+    values = [float(x) for x in text.split(",")]
+    if len(values) != 3 or min(values) < 0:
+        raise ValueError("--price takes input,cached_input,output in USD per million tokens")
+    return dict(zip(("input", "cached_input", "output"), values, strict=True))
+
+
+def run_judging(exp: Mapping[str, Any], config_path: Path, upstream: list[Path], run_root: Path,
+                *, judge_config_path: Path, judge_model: str, prices: Mapping[str, float],
+                max_usd: float, workers: int, limit: int | None = None, loader=None,
+                counter: TokenCounter | None = None, environ: Mapping[str, str] | None = None,
+                post=None, code: rundir.CodeState | None = None,
+                command: str | None = None) -> list:
+    """Judge every upstream run with the remote judge `judge_model` of the judge config."""
+    import os
+
+    from grace.cli.run import judge as stage
+    from grace.eval.analysis.judging.judge import blind_judge
+    from grace.llm.client import ChatClient, http_post
+
+    jc = yaml.safe_load(Path(judge_config_path).read_text(encoding="utf-8"))
+    prompt = load_pinned(jc["prompt"], PROMPT_REGISTRY)
+    if prompt.sha256 != jc["prompt_sha256"] or jc["parse"] != "one_word":
+        raise ValueError("judge prompt hash or parse rule differs from the judge config")
+    if judge_model != "comparison_model":
+        raise ValueError("only the remote comparison judge is wired here")
+    endpoint = stage.remote_endpoint(jc[judge_model], os.environ if environ is None else environ)
+    decoding = dict(jc["decoding"])
+    counter = stage.LockedCounter(
+        counter or HFTokenCounter.from_model_config(REPO_ROOT / exp["model_config"]))
+    attempts = int(drive.budgets()["pipeline"]["transport_attempts"])
+    usage = stage.UsageTransport(post or http_post)
+    inputs: dict[str, tuple] = {}
+    plan = []
+    for d in upstream:
+        run = json.loads((d / "run.json").read_text(encoding="utf-8"))
+        slug = run["data"][0]["benchmark"]
+        predictions = stage.read_jsonl(d / "predictions.jsonl")
+        if not any(p["output"] == "answer" for p in predictions):
+            plan.append((d, slug, 0))  # state reads only (MultiWOZ): nothing to judge
+            continue
+        if slug not in inputs:
+            inputs[slug] = judge_inputs(slug, exp["benchmarks"][slug], loader)
+        n = len(stage.judgeable(predictions, inputs[slug][0]))
+        plan.append((d, slug, n if limit is None else min(n, limit)))
+    guard = stage.SpendGuard(max_usd, sum(n for _, _, n in plan), prices)
+    resolved = {"config": drive.repo_relative(config_path),
+                "judge_config": drive.repo_relative(judge_config_path),
+                "judge_config_sha256": rundir.file_sha256(judge_config_path),
+                "judge_model": judge_model, "model": dict(jc[judge_model]),
+                "prompt": jc["prompt"], "prompt_sha256": prompt.sha256, "parse": jc["parse"],
+                "decoding": decoding, "max_attempts": attempts,
+                "input_token_counter": f"{counter.name} (proxy; the remote judge's own count "
+                                       f"is in {stage.USAGE_FILE})",
+                "price_usd_per_mtok": dict(prices), "max_usd": max_usd}
+    results = []
+    for d, slug, n in plan:
+        if n == 0:
+            continue
+        tasks, gold, data = inputs[slug]
+        result = stage.run_judge(
+            d, run_root=run_root, experiment=exp["experiment"], judge_name=jc["judge"],
+            make_judge=lambda client: blind_judge(jc["judge"], client, prompt, decoding),
+            make_client=lambda ledger: ChatClient(endpoint, ledger, counter,
+                                                  max_attempts=attempts, transport=usage),
+            usage=usage, tasks=tasks, gold=gold, data=data,
+            resolved={**resolved, "benchmark": slug}, config_path=drive.repo_relative(
+                judge_config_path), seed=int(decoding.get("seed", 0)), workers=workers,
+            guard=guard, limit=limit, code=code, command=command)
+        results.append(result)
+        print(f"{result.run_id}: {result.status} ({result.n_judgements} judgements of "
+              f"{d.name}); spend so far USD {guard.spent:.4f}", flush=True)
+        if result.status != "completed":
+            break
+    return results
+
+
+def judge_summary(exp: Mapping[str, Any], judge_dirs: list[Path], probe_dir: Path,
+                  prices: Mapping[str, float]) -> dict[str, Any]:
+    """Judged counts per judge run, per cell x engine x benchmark, per cell x benchmark and per
+    benchmark, with server usage and spend; gold comes from the probe's record files."""
+    tasks, gold = {}, {}
+    for slug in exp["benchmarks"]:
+        records = probe_dir / "records" / slug
+        tasks.update({r["read_id"]: r for r in pilot.read_jsonl(records / "read_tasks.jsonl")})
+        gold.update({g["task_id"]: g for g in pilot.read_jsonl(records / "gold.jsonl")})
+    rows = []
+    for d in judge_dirs:
+        run = json.loads((d / "run.json").read_text(encoding="utf-8"))
+        if run["stage"] != "judge" or run["status"] != "completed":
+            raise ValueError(f"{d.name}: not a completed judge run")
+        up = Path(run["upstream"][0]["path"])
+        if rundir.file_sha256(up / "run.json") != run["upstream"][0]["run_json_sha256"]:
+            raise ValueError(f"{d.name}: upstream run.json changed")
+        resolved = yaml.safe_load((up / "resolved-config.yaml").read_text(encoding="utf-8"))
+        verdicts = {j["read_id"]: j["verdict"] for j in pilot.read_jsonl(d / "judgements.jsonl")}
+        usage = pilot.read_jsonl(d / "judge-usage.jsonl")
+        calls = pilot.read_jsonl(d / "calls.jsonl")
+        rows.append({"judge_run": d.name, "upstream_run": up.name,
+                     "cell": (resolved["model"].get("serving") or {}).get("cell"),
+                     "engine_config": resolved["engine_config"],
+                     "benchmark": resolved["benchmark"],
+                     **pilot.judged_counts(pilot.read_jsonl(up / "predictions.jsonl"), tasks,
+                                           gold, verdicts),
+                     "usage": pilot.usage_sums(usage, prices),
+                     "call_attempts": len(calls),
+                     "failed_attempts": sum(1 for c in calls if c["status"] == "failed"),
+                     "proxy_input_tokens": sum(c["input_tokens"] for c in calls
+                                               if c["status"] != "failed")})
+
+    def group(keys):
+        out = defaultdict(list)
+        for row in rows:
+            out[tuple(row[k] for k in keys)].append(row)
+        return [{**dict(zip(keys, key, strict=True)), "judge_runs": len(members),
+                 **pilot.merge_counts(members)} for key, members in sorted(out.items())]
+
+    usage_total = pilot.usage_sums([u for d in judge_dirs
+                                    for u in pilot.read_jsonl(d / "judge-usage.jsonl")], prices)
+    return {"runs": rows, "by_cell_engine_benchmark": group(("cell", "engine_config",
+                                                             "benchmark")),
+            "by_cell_benchmark": group(("cell", "benchmark")),
+            "by_benchmark": group(("benchmark",)), "total": pilot.merge_counts(rows),
+            "usage_total": usage_total,
+            "proxy_input_tokens": sum(r["proxy_input_tokens"] for r in rows),
+            "note": "secondary judge only (comparison_model of configs/judges/blind.yaml); "
+                    "development data; `accuracy` covers all question reads of each run "
+                    "(unknown correct on abstention tasks, invalid predictions wrong, judge "
+                    "verdict invalid excluded) and is not a registered metric"}
+
+
+# ---------------------------------------------------------------------------------------------
 # Command line
 
 
@@ -396,11 +580,33 @@ def default_run_root() -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("probe", "plan", "system", "summary"):
+    for name in ("probe", "plan", "system", "summary", "judge", "judge-summary"):
         p = sub.add_parser(name)
         p.add_argument("--config", type=Path, required=True)
         p.add_argument("--run-root", type=Path, default=None,
                        help="parent of E001/<run-id>/ (default: runs/E001/artifacts/manager)")
+        if name in ("judge", "judge-summary"):
+            p.add_argument("--price", required=True, type=parse_prices,
+                           help="input,cached_input,output in USD per million tokens")
+        if name == "judge":
+            p.add_argument("--upstream-root", type=Path, default=None,
+                           help="parent of E001/<run-id>/ of the system runs (default: "
+                                "runs/E001/artifacts/manager)")
+            p.add_argument("--judge-config", type=Path,
+                           default=REPO_ROOT / "configs" / "judges" / "blind.yaml")
+            p.add_argument("--judge-model", choices=["comparison_model"], required=True)
+            p.add_argument("--max-usd", type=float, required=True)
+            p.add_argument("--workers", type=int, default=4)
+            p.add_argument("--limit", type=int, default=None,
+                           help="judge only the first N judgeable predictions of each run")
+            p.add_argument("runs", nargs="*",
+                           help="system run IDs (default: every run of the judging cells)")
+        if name == "judge-summary":
+            p.add_argument("--probe", required=True, help="run ID of the probe run")
+            p.add_argument("--probe-root", type=Path, default=None,
+                           help="parent of E001/<probe-id>/ (default: runs/E001/artifacts/manager)")
+            p.add_argument("--out", type=Path, required=True)
+            p.add_argument("runs", nargs="+", help="run IDs of judge runs under --run-root")
         if name in ("plan", "system"):
             p.add_argument("--cell", required=True)
         if name == "system":
@@ -442,6 +648,32 @@ def main(argv: list[str] | None = None) -> int:
         if result.failure:
             print(f"failure: {result.failure}")
         return 0 if result.status == "completed" else 1
+    command = " ".join(shlex.quote(a) for a in sys.argv)
+    if args.command == "judge":
+        upstream_base = (args.upstream_root or default_run_root()) / exp["experiment"]
+        upstream = judging_runs(exp, upstream_base, args.runs or None)
+        results = run_judging(exp, args.config, upstream, run_root,
+                              judge_config_path=args.judge_config, judge_model=args.judge_model,
+                              prices=args.price, max_usd=args.max_usd, workers=args.workers,
+                              limit=args.limit, command=command)
+        return 0 if all(r.status == "completed" for r in results) else 1
+    if args.command == "judge-summary":
+        probe_dir = (args.probe_root or default_run_root()) / exp["experiment"] / args.probe
+        dirs = [run_root / exp["experiment"] / r for r in args.runs]
+        summary = judge_summary(exp, dirs, probe_dir, args.price)
+        code = rundir.code_state()
+        args.out.mkdir(parents=True, exist_ok=False)
+        payload = {"experiment": exp["experiment"], "code_sha": code.sha,
+                   "code_dirty": code.dirty, "config_path": drive.repo_relative(args.config),
+                   "command": command, "created_at": rundir.utc_now(), "probe": args.probe,
+                   "price_usd_per_mtok": args.price,
+                   "inputs": [{"run_id": d.name,
+                               "run_json_sha256": rundir.file_sha256(d / "run.json")}
+                              for d in [probe_dir, *dirs]], **summary}
+        (args.out / "judge-summary.json").write_text(json.dumps(payload, indent=2) + "\n",
+                                                     encoding="utf-8")
+        print(args.out / "judge-summary.json")
+        return 0
     base = run_root / exp["experiment"]
     counter = HFTokenCounter.from_model_config(REPO_ROOT / exp["model_config"])
     dirs = [base / run_id for run_id in args.runs]

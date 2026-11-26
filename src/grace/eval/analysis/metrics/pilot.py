@@ -399,3 +399,83 @@ def judge_estimate(predictions: Iterable[Mapping[str, Any]], prompt_tokens: Iter
     return {"judgeable_predictions": n, "prompts_counted": len(tokens),
             "judge_input_tokens": inp, "judge_output_tokens_max": out,
             "secondary_usd_estimate": round(usd, 6)}
+
+
+# ---------------------------------------------------------------------------------------------
+# Judged accuracy of the pilot predictions (descriptive; development data)
+
+
+def abstention_task(gold: Mapping[str, Any]) -> bool:
+    """Whether the gold marks a task as unanswerable: LoCoMo category 5, `abstention`
+    (LongMemEval, MemoryAgentBench) or `expected_abstention` (change-seq)."""
+    labels = gold.get("labels") or {}
+    return (labels.get("category") == 5 or labels.get("abstention") is True
+            or labels.get("expected_abstention") is True)
+
+
+def judged_counts(predictions: Iterable[Mapping[str, Any]],
+                  tasks: Mapping[str, Mapping[str, Any]], gold: Mapping[str, Mapping[str, Any]],
+                  verdicts: Mapping[str, str]) -> dict[str, Any]:
+    """Counts and accuracy over the question reads of one set of predictions.
+
+    `answer` reads take the judge's verdict (`judged_values`); `unknown` is correct exactly on
+    abstention tasks; `invalid` predictions count as wrong (count_as_wrong); a judge verdict
+    `invalid` leaves the denominator. `answer_correct_rate` is correct / (correct + incorrect)
+    over judged answers only. Not a registered metric: one population (all question reads of
+    the run) for every benchmark."""
+    from grace.eval.analysis.metrics.answer import judged_values
+
+    question = [p for p in predictions if tasks[p["read_id"]]["kind"] == "question"]
+    outputs = {p["read_id"]: p["output"] for p in question}
+    abstention = {p["read_id"]: abstention_task(gold[p["task_id"]]) for p in question}
+    values, judge_invalid = judged_values(verdicts, outputs, abstention)
+    scored = {r: (0.0 if v is None else v) for r, v in values.items() if r not in judge_invalid}
+    answered = [p["read_id"] for p in question if p["output"] == "answer"]
+    correct = sum(1 for r in answered if verdicts[r] == "correct")
+    incorrect = sum(1 for r in answered if verdicts[r] == "incorrect")
+    return {"question_reads": len(question), "answer": len(answered),
+            "unknown": sum(1 for o in outputs.values() if o == "unknown"),
+            "invalid": sum(1 for o in outputs.values() if o == "invalid"),
+            "unknown_on_abstention_tasks": sum(1 for r, o in outputs.items()
+                                               if o == "unknown" and abstention[r]),
+            "judged_correct": correct, "judged_incorrect": incorrect,
+            "judge_invalid": len(judge_invalid), "n_scored": len(scored),
+            "correct_total": sum(scored.values()),
+            "accuracy": round(sum(scored.values()) / len(scored), 4) if scored else None,
+            "answer_correct_rate": (round(correct / (correct + incorrect), 4)
+                                    if correct + incorrect else None)}
+
+
+COUNT_KEYS = ("question_reads", "answer", "unknown", "invalid", "unknown_on_abstention_tasks",
+              "judged_correct", "judged_incorrect", "judge_invalid", "n_scored", "correct_total")
+
+
+def merge_counts(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+    """Sum `judged_counts` results and recompute the two rates."""
+    total = dict.fromkeys(COUNT_KEYS, 0)
+    for row in rows:
+        for k in COUNT_KEYS:
+            total[k] += row[k]
+    judged = total["judged_correct"] + total["judged_incorrect"]
+    total["accuracy"] = (round(total["correct_total"] / total["n_scored"], 4)
+                         if total["n_scored"] else None)
+    total["answer_correct_rate"] = (round(total["judged_correct"] / judged, 4)
+                                    if judged else None)
+    return total
+
+
+def usage_sums(rows: Iterable[Mapping[str, Any]], prices: Mapping[str, float]) -> dict[str, Any]:
+    """Server-reported judge usage (`judge-usage.jsonl`) and its spend in USD; prices per
+    million tokens (`input`, `cached_input`, `output`)."""
+    rows = list(rows)
+    prompt = sum(r.get("prompt_tokens") or 0 for r in rows)
+    cached = sum(min(r.get("cached_tokens") or 0, r.get("prompt_tokens") or 0) for r in rows)
+    out = sum(r.get("completion_tokens") or 0 for r in rows)
+    usd = ((prompt - cached) * prices["input"] + cached * prices["cached_input"]
+           + out * prices["output"]) / 1e6
+    return {"judgements": len(rows), "prompt_tokens": prompt, "cached_tokens": cached,
+            "completion_tokens": out, "usd": round(usd, 6),
+            "failed_calls": sum(1 for r in rows if r.get("http_status") or r.get("error")),
+            "content_filtered": sum(1 for r in rows if r.get("error_code") == "content_filter"
+                                    or r.get("finish_reason") == "content_filter"),
+            "server_models": sorted({r["server_model"] for r in rows if r.get("server_model")})}
