@@ -9,9 +9,9 @@ view built before it (cut-off t-1):
 1. **Marks.** The write-side strategies see the change set: the two citation-based strategies of
    plan 5.4 (`used_claims`, `used_claims_patterns`, arms of `configs/views/staleness.yaml`), the
    claim-pattern push with local filters and the predicate level (for over-marking), and a
-   candidate filter: claim-pattern matching without attribution constraints and local filters.
-   The filter is wider than the claim-pattern rung, which is sound (plan 3.4 proposition; no
-   entity merges or vocabulary changes happen here), so a view it does not mark is unchanged.
+   candidate filter: the claim-pattern push without local filters, the "claim pattern" rung of
+   plan 3.4's ladder, which is sound (plan 3.4 proposition; no entity merges or vocabulary
+   changes happen here), so a view it does not mark is unchanged.
 2. **Reference.** Every candidate view is re-queried at t and compared with its cut-off by the
    answer, witness and evidence fingerprints (`staleness.base.compare`, the exact reference). With
    `full_check` every view is re-queried and a stale view outside the filter is counted as a
@@ -65,10 +65,10 @@ STRATEGIES: dict[str, tuple[str, dict[str, Any]]] = {
                              {"watch_mentions": False, "local_filters": True}),
     "claim_pattern_filters": ("claim_pattern_push", {"local_filters": True}),
     "predicate_level": ("predicate_level", {}),
-    "filter": ("claim_pattern_push", {"local_filters": False, "attribution": False}),
+    "filter": ("claim_pattern_push", {"local_filters": False}),
 }
 REPORTED = ("used_claims", "used_claims_patterns", "claim_pattern_filters", "predicate_level")
-RELEVANT = Options(attribution=False, local_filters=False)
+NO_FILTERS = Options(local_filters=False)
 STALE_TYPES = ("C1", "C2", "C3", "C4", "C5", "C6")
 
 
@@ -101,9 +101,12 @@ def classify(view: View, cs: ChangeSet, index: Index, witnesses_after: frozenset
     deps = view.dependencies
     family = view.binding.family if view.binding else None
     w_before = view.used_claims()
+    # R_b ignores attribution constraints and filters (section 4.1): match on the patterns with
+    # their attribution constraint removed.
+    relaxed = [replace(dp, pattern=replace(dp.pattern, attribution=None)) for dp in deps]
 
     def relevant(c) -> bool:
-        return any(claim_matches(dp, c, index, RELEVANT) for dp in deps)
+        return any(claim_matches(dp, c, index, NO_FILTERS) for dp in relaxed)
 
     claims = {c.claim_id: c for c in _touched(cs, index)}
     for s in cs.supersessions:                                           # 1: C5
@@ -117,8 +120,7 @@ def classify(view: View, cs: ChangeSet, index: Index, witnesses_after: frozenset
     for a in cs.attributions:                                            # 3: C3
         c = index.claims.get(a.claim_id)
         if c is not None and relevant(c) and any(
-                claim_matches(dp, c, index, Options(attribution=True, local_filters=False),
-                              attribution=a) for dp in negated):
+                claim_matches(dp, c, index, NO_FILTERS, attribution=a) for dp in negated):
             return "C3", []
     new = [cid for cid in claims if cid in witnesses_after and cid not in w_before
            and relevant(claims[cid])]
