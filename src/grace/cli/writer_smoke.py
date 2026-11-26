@@ -17,8 +17,8 @@ under `$PROJECT_ROOT/runs/T022/artifacts/manager/T022/<run-id>/`:
   dropped items, conflicts, raw output);
 - `graphs/<history_id>/` the claim store snapshot and the writer state of every history, read by
   `grace.cli.retrieval_recall` (`graph: extracted`);
-- `metrics.json` unit and call statistics (`grace.eval.analysis.metrics.writer`, from the files
-  above) and `samples.json`, a seeded sample of units for a qualitative look.
+- `metrics.json` unit, call and graph statistics (`grace.eval.analysis.metrics.writer`, from the
+  files above) and `samples.json`, a seeded sample of units for a qualitative look.
 
 `--limit n` writes only the first n messages of each history (a dry run). `n_records`: units.
 This is a smoke run of the writer on development data, not E006 (graph quality) or E007 (writer
@@ -161,6 +161,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                       for h in per_history}
         metrics = {"units": metric.unit_stats(updates), "calls": metric.call_stats(calls),
                    "per_history": {h: metric.unit_stats(us) for h, us in per_history.items()},
+                   "graph": metric.graph_stats([c for h in sorted(changesets)
+                                                for c in changesets[h]]),
                    "model_calls": len(calls)}
         (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True)
                                               + "\n", encoding="utf-8")

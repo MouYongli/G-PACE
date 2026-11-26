@@ -4,9 +4,15 @@
 fails a check is dropped with a reason (`Dropped`); the rest of the patch stands. Checks:
 
 - **Names.** A subject, entity object or speaker is matched to a known entity ID exactly, then
-  case-insensitively with whitespace folded; otherwise the cleaned name becomes a new entity ID.
-  Speakers are entities too, so a first-person subject written with the speaker's name is the
-  speaker.
+  to the surface name of a known entity (its label) case-insensitively with whitespace and
+  apostrophe variants folded, then to an ID case-insensitively; otherwise the name gets a new
+  entity ID (`entity_id`): characters outside `[A-Za-z0-9_]` are removed (apostrophes,
+  diacritics) or replaced by `_`, so that every ID is a bare name of the query IR grammar (T017,
+  T023) and a safe IRI local name. A different surface name that normalises to a taken ID gets
+  the suffix `_2`, `_3`, ... (deterministic in the order names first occur), so two names never
+  share an ID by normalisation alone. The surface name is kept as the entity's label
+  (`EntityTable.labels`, saved in the writer state). Speakers are entities too, so a
+  first-person subject written with the speaker's name is the speaker.
 - **Predicates.** A name or alias of the vocabulary in force resolves to its predicate. Otherwise
   the name is reduced to lowerCamelCase and, under the `local` policy, added to a history-local
   extension of the vocabulary with the writer's exclusivity proposal (default multi-valued, the
@@ -21,12 +27,16 @@ fails a check is dropped with a reason (`Dropped`); the rest of the patch stands
   quote that does not occur leaves a whole-message evidence link and is counted.
 - **Claim references.** A stance names a handle `k<i>` of this call's known claims or a local ID
   `n<i>` of a claim of the same patch stated in the same or an earlier message.
+- **Ending evidence.** A stance that ends a known claim must quote evidence that mentions that
+  claim (`ending_evidence`); the updater drops it otherwise (user decision of 2026-11-26, an
+  addition to the removal rule G2(ii) of the guard; decision D010).
 """
 
 from __future__ import annotations
 
 import datetime as _dt
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -143,36 +153,104 @@ def clean_name(text: str) -> str:
     return " ".join(text.split())
 
 
-class EntityTable:
-    """Entity IDs known at the writer's head, matched exactly or case-insensitively."""
+_APOSTROPHES = re.compile(r"['\u2018\u2019\u02bc`\u00b4]")
+_NOT_NAME = re.compile(r"[^A-Za-z0-9_]+")
+# Bare names the query IR grammar reads as something else (grammar._KEYWORDS, booleans), compared
+# case-insensitively to be safe; pure numbers are read as numbers.
+_RESERVED = frozenset({"true", "false", "default", "_", "r"})
 
-    def __init__(self, known: Iterable[str] = ()):
+
+def entity_id(name: str) -> str:
+    """The base entity ID of a surface name: a bare name of the query IR grammar.
+
+    `Caroline's mom` -> `Carolines_mom`, `José` -> `Jose`, `Rock & roll` -> `Rock_roll`. The
+    result matches `[A-Za-z0-9_]+`, is not a pure number and not a reserved word (those get the
+    prefix `e_`); a name with no letter or digit becomes `entity`."""
+    text = unicodedata.normalize("NFKD", clean_name(name))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = _APOSTROPHES.sub("", text)
+    text = _NOT_NAME.sub("_", text).strip("_")
+    text = re.sub(r"_+", "_", text) or "entity"
+    if text.casefold() in _RESERVED or re.fullmatch(r"\d+", text):
+        text = "e_" + text
+    return text
+
+
+def surface_key(name: str) -> str:
+    """Key under which surface names are the same name: whitespace, case and apostrophe
+    variants folded."""
+    return _APOSTROPHES.sub("'", clean_name(name)).casefold()
+
+
+class EntityTable:
+    """Entity IDs known at the writer's head and the surface names (labels) they came from.
+
+    `resolve` (module docstring, "Names") never creates an ID outside `[A-Za-z0-9_]+`. `labels`
+    maps every ID the writer created from a different surface name to that name; `new_labels`
+    holds the ones created by this table, for the writer state."""
+
+    def __init__(self, known: Iterable[str] = (), labels: Mapping[str, str] | None = None):
         self._ids: set[str] = set()
-        self._folded: dict[str, str] = {}
+        self._folded: dict[str, str] = {}     # casefolded ID -> ID
+        self._by_key: dict[str, str] = {}     # surface key -> ID
+        self.labels: dict[str, str] = {}
+        self.new_labels: dict[str, str] = {}
+        self.normalised = 0                   # new IDs that differ from their surface name
         for entity in known:
             self.add(entity)
+        for entity, label in sorted((labels or {}).items()):
+            self.add(entity)
+            self.labels[entity] = label
+            self._by_key.setdefault(surface_key(label), entity)
 
     def add(self, entity: str) -> str:
         if entity not in self._ids:
             self._ids.add(entity)
             self._folded.setdefault(entity.casefold(), entity)
+            self._by_key.setdefault(surface_key(entity), entity)
         return entity
 
-    def resolve(self, name: str) -> str:
-        """The ID `name` denotes; a new name becomes a new ID."""
+    def lookup(self, name: str) -> str | None:
+        """The known ID `name` denotes, or None."""
         name = clean_name(name)
         if name in self._ids:
             return name
-        folded = self._folded.get(name.casefold())
-        return folded if folded is not None else self.add(name)
+        hit = self._by_key.get(surface_key(name))
+        if hit is not None:
+            return hit
+        return self._folded.get(name.casefold())
+
+    def resolve(self, name: str) -> str:
+        """The ID `name` denotes; a new name becomes a new, grammar-safe ID."""
+        hit = self.lookup(name)
+        if hit is not None:
+            return hit
+        surface = clean_name(name)
+        base = entity_id(surface)
+        candidate, n = base, 1
+        while candidate.casefold() in self._folded:
+            n += 1
+            candidate = f"{base}_{n}"
+        self.add(candidate)
+        self._by_key[surface_key(surface)] = candidate
+        if candidate != surface:
+            self.labels[candidate] = surface
+            self.new_labels[candidate] = surface
+            self.normalised += 1
+        return candidate
+
+    def label(self, entity: str) -> str:
+        return self.labels.get(entity, entity)
 
     def __contains__(self, name: object) -> bool:
-        return isinstance(name, str) and (name in self._ids
-                                          or clean_name(name).casefold() in self._folded)
+        return isinstance(name, str) and self.lookup(name) is not None
 
     @classmethod
-    def from_state(cls, state: GraphState, speakers: Iterable[str] = ()) -> EntityTable:
-        known: list[str] = list(speakers)
+    def from_state(cls, state: GraphState, speakers: Iterable[str] = (),
+                   labels: Mapping[str, str] | None = None) -> EntityTable:
+        """The IDs of `state` with the saved `labels`; speakers are resolved like any name, so
+        a speaker name outside the grammar gets a safe ID too."""
+        known: list[str] = []
         for c in sorted(state.claims.values(), key=lambda c: (c.version, c.claim_id)):
             known.append(c.subject)
             if isinstance(c.object, Entity):
@@ -181,7 +259,10 @@ class EntityTable:
             known.append(a.speaker)
         for q in state.equivalences.values():
             known += [q.entity_a, q.entity_b]
-        return cls(known)
+        table = cls(known, labels)
+        for speaker in speakers:
+            table.resolve(speaker)
+        return table
 
 
 def speaker_of(message: Message) -> str:
@@ -421,3 +502,75 @@ def _resolve_stance(item: PatchStance, where: str, messages: Sequence[Message],
                           stance=Stance.of(item.stance),
                           ends=SupersessionKind(item.ends) if item.ends else None,
                           valid_end=valid_end, span=_span(message, item.quote, out.notes))
+
+
+# ---------------------------------------------------------------------------------------------
+# Ending evidence (user decision of 2026-11-26; decision D010)
+
+_CAMEL_WORD = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
+_ALNUM = re.compile(r"[a-z0-9]+")
+_STOPWORDS = frozenset(
+    "the and for with that this was are you your have has had not but from they she her his him "
+    "its our out all any can did does what when who how why about just like been will would "
+    "there their them then than very which where whom into onto over some more most much many "
+    "one get got make made thing things really still also even ever yes yeah well "
+    # time words: they place a claim in time and name none
+    "last next ago since time times day days week weeks month months year years today "
+    "yesterday tomorrow now recently lately".split())
+# Predicate words that name no particular claim (the catch-all predicates of the smoke run).
+_GENERIC_PREDICATE_WORDS = frozenset(
+    "is was be experienced experience memory plan intention feel feeling".split())
+
+
+def _stem(word: str) -> str:
+    """Crude stem: `-ing`, `-ed`, a plural `-s` and then a final `-e` removed while three letters
+    remain (`hiking`, `hikes`, `hike` -> `hik`)."""
+    for suffix in ("ing", "ed"):
+        if len(word) >= len(suffix) + 3 and word.endswith(suffix):
+            return word[:-len(suffix)]
+    if len(word) >= 4 and word.endswith("s") and not word.endswith("ss"):
+        word = word[:-1]
+    if len(word) >= 4 and word.endswith("e"):
+        word = word[:-1]
+    return word
+
+
+def content_words(text: str, *, camel: bool = False) -> set[str]:
+    """Stemmed content words of `text`: lower-case runs of letters and digits, at least three
+    characters (any number), stop words removed; `camel` splits lowerCamelCase first."""
+    if camel:
+        text = " ".join(_CAMEL_WORD.findall(text))
+    text = text.replace("_", " ").lower()
+    return {_stem(w) for w in _ALNUM.findall(text)
+            if (len(w) >= 3 or w.isdigit()) and w not in _STOPWORDS}
+
+
+def ending_evidence(predicate: str, claim_object: Term, quote: str | None,
+                    object_label: str | None = None) -> str | None:
+    """None when `quote` is evidence for ending the claim, else the reason it is not.
+
+    The check (deliberately conservative; a legitimate ending that names neither is dropped):
+
+    - the stance must carry a quote that was found in its message (`ended_without_quote`);
+    - the quote must share a content word (`content_words`: stemmed, three or more letters or a
+      number, no stop words) with the claim's object: the entity's label (or its ID with `_` as
+      spaces) or the literal's lexical form;
+    - only when the object has no content word at all (a boolean or a short literal), the
+      predicate's words count instead (lowerCamelCase split, generic words such as `has`,
+      `experienced`, `memory`, `plan` removed).
+
+    The predicate alone never suffices when the object has content words, because one predicate
+    is shared by many claims: in the smoke run `T022-20261126T184442Z-2a64` one message ended ten
+    unrelated claims of its speaker under G2(ii)."""
+    if not quote:
+        return "ended_without_quote"
+    said = content_words(quote)
+    if isinstance(claim_object, Entity):
+        surface = object_label or claim_object.id
+    else:
+        surface = "" if claim_object.datatype == "boolean" else claim_object.lexical
+    wanted = content_words(surface)
+    if not wanted:
+        wanted = content_words(predicate, camel=True) - {_stem(w) for w in
+                                                         _GENERIC_PREDICATE_WORDS}
+    return None if said & wanted else "ended_without_evidence"

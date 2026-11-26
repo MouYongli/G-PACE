@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 
 from grace.context.api import HistoryInfo, Message, Segment
@@ -18,6 +19,7 @@ from grace.context.memory.graph.entries import (
     ReportMode,
     SupersessionKind,
     ValidTime,
+    Value,
 )
 from grace.context.memory.graph.store import ClaimStore
 from grace.context.memory.graph.vocabulary import load_vocabulary
@@ -27,6 +29,8 @@ from grace.context.pipeline.update.segment import Granularity, Segmenter, Unit
 from grace.context.pipeline.update.validate import (
     EntityTable,
     LocalVocabulary,
+    ending_evidence,
+    entity_id,
     predicate_name,
     resolve_valid_time,
     resolve_value,
@@ -114,6 +118,24 @@ class PatchTest(unittest.TestCase):
                 self.assertIsNone(patch)
                 self.assertIn(reason, error)
 
+    def test_array_bounds_end_repetition_loops(self):
+        """User decision of 2026-11-26: at most 32 claims, 16 stances and 8 same_as entries."""
+        import json
+
+        item = {"message": 1, "subject": "A", "predicate": "p", "object": "o"}
+        stance = {"message": 1, "claim": "k1", "function": "confirm"}
+        alias = {"message": 1, "name": "A", "same_as": "B"}
+        for claims, stances, aliases, ok in ((32, 16, 8, True), (33, 0, 0, False),
+                                             (0, 17, 0, False), (0, 0, 9, False)):
+            text = json.dumps({"claims": [item] * claims, "stances": [stance] * stances,
+                               "same_as": [alias] * aliases})
+            with self.subTest(claims=claims, stances=stances, aliases=aliases):
+                patch, error = parse_patch(text, self.validator, 1)
+                self.assertEqual(patch is not None, ok, error)
+        schema = self.validator.schema["properties"]
+        self.assertEqual([schema[k]["maxItems"] for k in ("claims", "stances", "same_as")],
+                         [32, 16, 8])
+
 
 class ValueTest(unittest.TestCase):
     def test_literals_and_times(self):
@@ -136,7 +158,8 @@ class ValueTest(unittest.TestCase):
         self.assertEqual(predicate_name("2nd job"), "p2ndJob")
         table = EntityTable(["Melanie"])
         self.assertEqual(table.resolve("melanie"), "Melanie")
-        self.assertEqual(table.resolve("  New   York "), "New York")
+        self.assertEqual(table.resolve("  New   York "), "New_York")
+        self.assertEqual(table.labels, {"New_York": "New York"})
         vocab = LocalVocabulary(load_vocabulary())
         self.assertEqual(vocab.resolve("no later than"), "arriveBy")   # alias
         self.assertIsNone(vocab.resolve("hasPet"))
@@ -170,6 +193,66 @@ def store_with(*entries) -> ClaimStore:
 def new_claim(o, start=None, end=None):
     return Claim("cnew", "lina", "livesIn", Entity(o), None, ValidTime(start, end), 2)
 
+
+
+class EntityIdTest(unittest.TestCase):
+    NAME = re.compile(r"[A-Za-z0-9_]+")
+
+    def test_base_ids(self):
+        cases = {"Caroline's mom": "Carolines_mom", "Caroline\u2019s mom": "Carolines_mom",
+                 "José": "Jose", "Rock & roll": "Rock_roll", "  New   York ": "New_York",
+                 "2023": "e_2023", "2023 trip": "2023_trip", "true": "e_true", "R": "e_R",
+                 "_": "entity", "!!!": "entity", "-x-": "x", "a/b (c)": "a_b_c",
+                 "北京": "entity", "Ana-Maria": "Ana_Maria"}
+        for name, expected in cases.items():
+            self.assertEqual(entity_id(name), expected, name)
+
+    def test_every_id_is_a_bare_ir_name(self):
+        from grace.context.pipeline.query.grammar import parse, to_text
+        table = EntityTable()
+        names = ["Caroline's mom", "true", "2023", "x y", "x-y", "X Y", "a\"b", "<iri>",
+                 "now()", "default", "?var", "{b}", "Mel", "mel", "ünïcödé"]
+        ids = [table.resolve(n) for n in names]
+        for entity in ids:
+            self.assertRegex(entity, self.NAME)
+            text = to_text(parse(f"SELECT ?o WHERE {{ ({entity}, likes, ?o) }}"))
+            self.assertIn(f"({entity}, likes, ?o)", text)
+        # "x y" and "x-y" are different surface names: different IDs, never merged
+        self.assertEqual(ids[3:6], ["x_y", "x_y_2", "x_y"])   # "X Y" is "x y" up to case
+        self.assertEqual(ids[12:14], ["Mel", "Mel"])
+        self.assertEqual(table.labels["x_y"], "x y")
+        self.assertEqual(table.labels["x_y_2"], "x-y")
+        self.assertEqual(table.resolve("x_y"), "x_y")  # a name equal to a known ID is that ID
+
+    def test_writer_may_write_the_id_or_the_label(self):
+        table = EntityTable(labels={"Carolines_mom": "Caroline's mom"})
+        for name in ("Carolines_mom", "carolines_mom", "caroline's MOM", "Caroline\u2019s mom"):
+            self.assertEqual(table.resolve(name), "Carolines_mom", name)
+        self.assertEqual(table.new_labels, {})
+
+
+class EndingEvidenceTest(unittest.TestCase):
+    def test_object_words_must_be_mentioned(self):
+        violin = Entity("violin")
+        self.assertIsNone(ending_evidence("playsInstrument", violin, "I stopped playing violins"))
+        self.assertIsNone(ending_evidence("hasHobby", Entity("hiking"), "I don't hike any more"))
+        self.assertEqual(ending_evidence("playsInstrument", violin, "I quit playing music"),
+                         "ended_without_evidence")      # predicate words never suffice alone
+        self.assertEqual(ending_evidence("playsInstrument", violin, None), "ended_without_quote")
+        self.assertIsNone(ending_evidence("livesIn", Entity("New_York"), "we left New York"))
+        self.assertIsNone(ending_evidence("hasPet", Entity("Carolines_dog"),
+                                          "the dog died", "Caroline's dog"))
+        self.assertEqual(ending_evidence("hasPlan", Value("go to the beach"),
+                                         "I changed my plans"), "ended_without_evidence")
+        self.assertIsNone(ending_evidence("hasPlan", Value("go to the beach"),
+                                          "no beach for us this year"))
+
+    def test_object_without_content_words_falls_back_to_the_predicate(self):
+        self.assertIsNone(ending_evidence("ownsCar", Value("true", "boolean"),
+                                          "I sold my car"))
+        self.assertEqual(ending_evidence("hasExperienced", Value("ok"), "I experienced it"),
+                         "ended_without_evidence")      # generic predicate words only
+        self.assertIsNone(ending_evidence("age", Value("31", "integer"), "I'm not 31 anymore"))
 
 class GuardTest(unittest.TestCase):
     def test_replacement_conditions(self):

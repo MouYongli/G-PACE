@@ -85,6 +85,10 @@ class DriveTest(unittest.TestCase):
         changesets = {hid: metric.read_jsonl(self.out / "graphs" / hid / "store"
                                              / "changesets.jsonl")}
         messages = {(m.history_id, m.message_id): m.to_record() for m in self.rig.messages}
+        graph = metric.graph_stats(changesets[hid])
+        self.assertEqual((graph["claims"], graph["catch_all_claims"], graph["removals"],
+                          graph["unsafe_entity_ids"]), (2, 0, 0, 0))
+        self.assertEqual(graph["top_predicates"], {"playsInstrument": 2})
         samples = metric.sample_units(updates, changesets, messages, 5, 0)
         self.assertEqual(len(samples), 2)
         first = samples[0]
@@ -136,7 +140,10 @@ class WriterRunCheckTest(unittest.TestCase):
 
 class ConfigTest(unittest.TestCase):
     def test_configs_are_development_only(self):
-        for path in (SMOKE_CONFIG, RECALL_CONFIG):
+        paths = sorted((REPO_ROOT / "configs" / "experiments").glob("T022-*.yaml"))
+        self.assertIn(SMOKE_CONFIG, paths)
+        self.assertIn(RECALL_CONFIG, paths)
+        for path in paths:
             config = yaml.safe_load(path.read_text(encoding="utf-8"))
             self.assertEqual(config["experiment"], "T022")
             for entry in config["benchmarks"]:

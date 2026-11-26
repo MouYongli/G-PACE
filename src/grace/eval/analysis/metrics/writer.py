@@ -9,6 +9,8 @@ history (`graphs/<history_id>/store/changesets.jsonl`). Nothing here imports eng
   dropped items by reason, conflicts, blocked removals and commit errors.
 - `call_stats`: calls by status and attempt, the rates of invalid outputs and failed attempts, and
   token totals (input, output, cached input) overall and per status.
+- `graph_stats`: the shape of the committed graph (predicates, catch-all share, long string
+  objects, valid times, supersessions and removals, grammar-unsafe entity IDs).
 - `sample_units`: a seeded sample of units with their messages, the writer's raw output and the
   entries committed for them, for a qualitative look (there are no gold labels for LoCoMo's
   claims, so nothing here is an accuracy).
@@ -18,6 +20,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
@@ -166,3 +169,61 @@ def sample_units(updates: Sequence[Mapping[str, Any]],
             "commit_errors": u["commit_errors"],
         })
     return out
+
+
+# Catch-all predicates of the first smoke run (T022-20261126T184442Z-2a64): about half its claims.
+CATCH_ALL = ("experienced", "hasExperience", "hasMemory", "hasPlan", "hasIntention", "hasFeeling",
+             "feels", "said", "mentioned", "talkedAbout")
+# Predicates that record the conversation itself rather than a fact (fixed before the comparison
+# runs, from the same smoke run).
+DIALOGUE_ACTS = ("asks", "askedAbout", "commentsOn", "appreciates", "expresses",
+                 "expressedInterest", "expressedPraise", "expressedHappiness", "encourages",
+                 "greeted", "thanks", "compliments")
+_SAFE_ID = re.compile(r"[A-Za-z0-9_]+")
+
+
+def graph_stats(changesets: Sequence[Mapping[str, Any]], top: int = 15) -> dict[str, Any]:
+    """Shape of the committed graph of one or more histories, from change sets only.
+
+    Descriptive, not accuracy: claims per predicate (top `top`), the share of catch-all
+    predicates (`CATCH_ALL`), claims with a dialogue-act predicate (`DIALOGUE_ACTS`), string
+    objects of six or more words, claims with a valid-time start or a kept time phrase,
+    supersessions by kind and whether they replace a claim (a new value) or only end one (a
+    removal), the largest number of removals by one message, and entity IDs
+    that are not bare names of the query IR grammar (`[A-Za-z0-9_]+`)."""
+    claims = [c for cs in changesets for c in cs["entries"]["claims"]]
+    sups = [s for cs in changesets for s in cs["entries"]["supersessions"]]
+    # message IDs are unique within a history only
+    atts = {(cs["history_id"], a["attribution_id"]): (cs["history_id"], a["message_id"])
+            for cs in changesets for a in cs["entries"]["attributions"]}
+    sup_keys = [(cs["history_id"], s["attribution_id"]) for cs in changesets
+                for s in cs["entries"]["supersessions"] if s["replacing_claim_id"] is None]
+    preds = Counter(c["predicate"] for c in claims)
+    long_strings = sum(1 for c in claims if "value" in c["object"]
+                       and c["object"]["datatype"] == "string"
+                       and len(c["object"]["value"].split()) >= 6)
+    entities = set()
+    for c in claims:
+        entities.add(c["subject"])
+        if "entity" in c["object"]:
+            entities.add(c["object"]["entity"])
+    removals = [s for s in sups if s["replacing_claim_id"] is None]
+    per_message = Counter(atts[k] for k in sup_keys if k in atts)
+    catch_all = sum(preds[p] for p in CATCH_ALL)
+    return {
+        "claims": len(claims),
+        "predicates_used": len(preds),
+        "top_predicates": dict(preds.most_common(top)),
+        "catch_all_claims": catch_all,
+        "catch_all_share": _rate(catch_all, len(claims)),
+        "dialogue_act_claims": sum(preds[p] for p in DIALOGUE_ACTS),
+        "long_string_objects": long_strings,
+        "valid_from_filled": sum(1 for c in claims if c["valid_time"]["start"]),
+        "time_expression_kept": sum(1 for c in claims if c["valid_time"]["expression"]),
+        "supersessions": dict(sorted(Counter(s["kind"] for s in sups).items())),
+        "replacements": len(sups) - len(removals),
+        "removals": len(removals),
+        "max_removals_per_message": max(per_message.values(), default=0),
+        "entities": len(entities),
+        "unsafe_entity_ids": sum(1 for e in entities if not _SAFE_ID.fullmatch(e)),
+    }

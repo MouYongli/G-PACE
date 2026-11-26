@@ -122,9 +122,9 @@ prompts:
       speaker, message (the new message, last).
   extract-claims:
     call_type: extract
-    sha256: f5ddcd844ee51a3f688c80e9cb292b38adc16494fce46f8125e370f1bb7c2bc9
+    sha256: e3aca074d4565305a8d420e79c0acbad988816073579f247ae4e1e785a7d0e2b
     schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
-    schema_sha256: 36b3189354b8ae24b18683bcebf5e4c4b6047c90d7f140b8565f64a949052b96
+    schema_sha256: 65da49a5bbf8b82dbf0c652255e03014744605d759691c68301b1bea0ad01bf0
     note: >-
       GRACE's writer (T022, plan 5.1 and 5.6), one call per extraction unit (configs/common/
       writer.yaml: message, segment of n messages inside a session, or session). Variables:

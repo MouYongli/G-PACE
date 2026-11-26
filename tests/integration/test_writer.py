@@ -26,6 +26,7 @@ from tests.integration.writer_fixture import (
     MELANIE_SCRIPT,
     TRAIN_SCRIPT,
     Rig,
+    handle_of,
     melanie_messages,
     message,
     train_messages,
@@ -188,14 +189,44 @@ class GuardThroughWriterTest(RigTest):
                          claim(1, "Lina", "playsInstrument", "cello")], "stances": []},
              lambda p: {"claims": [], "stances": [
                  {"message": 1, "claim": _handle(p, "cello"), "function": "inform",
-                  "polarity": "negative", "ends": "change"}]},
+                  "polarity": "negative", "ends": "change",
+                  "quote": "You don't play the cello any more"}]},
              lambda p: {"claims": [], "stances": [
                  {"message": 1, "claim": _handle(p, "violin"), "function": "inform",
-                  "polarity": "negative", "ends": "change", "valid_until": "2023-06-01"}]}])
+                  "polarity": "negative", "ends": "change", "valid_until": "2023-06-01",
+                  "quote": "I stopped playing the violin"}]}])
         self.assertEqual(rig.store.changeset(2).supersessions, ())
         self.assertEqual(results[1].blocked[0]["reason"], "speaker_or_function")
         sup = rig.store.changeset(3).supersessions
         self.assertEqual([(s.replacing_claim_id, s.valid_end) for s in sup], [(None, "2023-06-01")])
+
+    def test_ending_needs_a_quote_that_mentions_the_claim(self):
+        """User decision of 2026-11-26 (D010 evidence): G2(ii) alone let one message end ten
+        unrelated claims of its speaker; the writer now drops an ending stance whose quote does
+        not mention the claim's object."""
+        rig, results = self.run_guard(
+            [lina(1, "I play the violin, I have a dog called Rex and I live in Berlin."),
+             lina(2, "Well, that chapter of my life is over. I stopped playing the violin.")],
+            [{"claims": [claim(1, "Lina", "playsInstrument", "violin"),
+                         claim(1, "Lina", "hasPet", "Rex"),
+                         claim(1, "Lina", "livesIn", "Berlin")], "stances": []},
+             lambda p: {"claims": [], "stances": [
+                 {"message": 1, "claim": _handle(p, "violin"), "function": "inform",
+                  "polarity": "negative", "ends": "change",
+                  "quote": "I stopped playing the violin"},
+                 {"message": 1, "claim": handle_of(p, "hasPet | Rex"), "function": "inform",
+                  "polarity": "negative", "ends": "change",
+                  "quote": "that chapter of my life is over"},
+                 {"message": 1, "claim": handle_of(p, "livesIn | Berlin"), "function": "inform",
+                  "polarity": "negative", "ends": "change"}]}])
+        state = rig.store.state(2)
+        ended = sorted(state.claims[s.claim_id].object.id for s in state.supersessions.values())
+        self.assertEqual(ended, ["violin"])
+        self.assertEqual(sorted(d.reason for d in results[1].dropped),
+                         ["ended_without_evidence", "ended_without_quote"])
+        self.assertEqual(results[1].notes["ending_dropped"], 2)
+        # a dropped stance leaves no attribution either
+        self.assertEqual(len(rig.store.changeset(2).attributions), 1)
 
     def test_correction_and_no_guard_variant(self):
         script = [{"claims": [claim(1, "request1", "arriveBy", "20:15", object_type="time",
@@ -373,6 +404,100 @@ class VocabularyAndEntityTest(RigTest):
         (claim_,) = rig.store.state(1).claims.values()
         self.assertIsNone(rig.store.state(1).evidence_for(claim_.claim_id)[0].span)
 
+
+
+class EntityIdTest(RigTest):
+    """Entity IDs are bare names of the query IR grammar; the surface name is the label."""
+
+    MESSAGES = [message("t022-ids", 1, "Caroline", "Caroline's mom lives in Sweden."),
+                message("t022-ids", 2, "Caroline", "My mom\u2019s still in Sweden, she loves it."),
+                message("t022-ids", 3, "Caroline", "Carolines mom is a band; José plays in it.")]
+    SCRIPT = [
+        {"claims": [claim(1, "Caroline's mom", "livesIn", "Sweden",
+                          quote="Caroline's mom lives in Sweden")], "stances": []},
+        {"claims": [claim(1, "Caroline\u2019s  mom", "livesIn", "Sweden")], "stances": []},
+        {"claims": [claim(1, "Carolines mom", "hasMember", "José"),
+                    claim(1, "true", "isA", "band")], "stances": []}]
+
+    def write(self):
+        cfg = replace(WriterConfig(), granularity=Granularity("message", None))
+        rig = self.rig(self.MESSAGES, [dict(x) for x in self.SCRIPT], config=cfg)
+        return rig, rig.write_all()
+
+    def test_ids_are_safe_deterministic_and_collision_free(self):
+        rig, results = self.write()
+        state = rig.store.state(3)
+        subjects = sorted({c.subject for c in state.claims.values()})
+        self.assertEqual(subjects, ["Carolines_mom", "Carolines_mom_2", "e_true"])
+        objects = sorted(c.object.id for c in state.claims.values()
+                         if isinstance(c.object, Entity))
+        self.assertEqual(objects, ["Jose", "Sweden", "band"])
+        # curly apostrophe and extra space: the same surface name, a repeated mention
+        self.assertEqual(results[1].notes["repeated_mention"], 1)
+        self.assertEqual(rig.updater.entity_labels,
+                         {"Carolines_mom": "Caroline's mom", "Carolines_mom_2": "Carolines mom",
+                          "Jose": "José", "e_true": "true"})
+        self.assertEqual(results[0].notes["entity_id_normalised"], 1)
+        self.assertEqual(results[2].notes["entity_id_normalised"], 3)
+        # the same input gives the same IDs
+        rig2, _ = self.write()
+        self.assertEqual(sorted(rig2.store.state(3).claims), sorted(state.claims))
+        self.assertEqual(rig2.updater.entity_labels, rig.updater.entity_labels)
+
+    def test_labels_survive_save_and_restore(self):
+        rig, _ = self.write()
+        with tempfile.TemporaryDirectory() as tmp:
+            rig.updater.save(Path(tmp))
+            again = Updater(rig.info, rig.log, rig.store,
+                            llm_writer(rig.config, rig.client, rig.info), rig.config)
+            again.restore_state(Path(tmp))
+        self.assertEqual(again.entity_labels, rig.updater.entity_labels)
+
+    def test_ir_and_planner_parse_queries_naming_the_ids(self):
+        import json
+
+        from grace.context.pipeline.query.grammar import to_text
+        from grace.context.pipeline.query.ir import QueryTypeError
+        from grace.context.pipeline.query.planner import Planner, PlanningContext, run_plan
+        from grace.eval.runner.probes.retrieval_recall import load_extracted_graphs
+        from grace.llm.client import ChatClient, Endpoint
+        from grace.llm.records import CallLedger
+        from tests.llm.fakes import WordCounter
+
+        rig, _ = self.write()
+        with self.assertRaises(QueryTypeError):   # the raw surface name is not in the grammar
+            parse("SELECT ?x WHERE { (Caroline's mom, livesIn, ?x) }")
+        for entity in rig.updater.entity_labels:
+            query = parse(f"SELECT ?x WHERE {{ ({entity}, ?p, ?x) }}")
+            self.assertEqual(to_text(query).split("(")[1].split(",")[0], entity)  # bare name
+        self.assertEqual(answers(rig.store, "SELECT ?x WHERE { (Carolines_mom, livesIn, ?x) }",
+                                 3), {(Entity("Sweden"),)})
+        self.assertEqual(answers(rig.store, "SELECT ?s WHERE { (?s, hasMember, Jose) }", 3),
+                         {(Entity("Carolines_mom_2"),)})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "graphs" / rig.info.history_id
+            rig.store.save(out / "store")
+            rig.updater.save(out)
+            graph = load_extracted_graphs(Path(tmp), [rig.info.history_id])[rig.info.history_id]
+            predicates, entities = graph.fragment("Where does Caroline's mom live?")
+            self.assertIn(("Carolines_mom", ("Caroline's mom",)),
+                          [(e.id, e.names) for e in entities])
+            ir = "SELECT ?x WHERE { (Carolines_mom, livesIn, ?x) [Caroline, inform] }"
+            content = json.dumps({"ir": ir, "variables": [], "fallback_channels": ["bm25"]})
+            replies = [{"choices": [{"message": {"content": content}}],
+                        "usage": {"completion_tokens": 5}}]
+            client = ChatClient(Endpoint("http://fake/v1", "m", "m@1"),
+                                CallLedger(Path(tmp) / "calls.jsonl", "run-t"), WordCounter(),
+                                transport=lambda *a: replies.pop(0), max_attempts=1,
+                                sleep=lambda s: None)
+            ctx = PlanningContext(rig.info.history_id, "q@3", 3,
+                                  "Where does Caroline's mom live?", "2023-05-08", predicates,
+                                  entities, graph.speakers)
+            plan = Planner(client=client).plan(ctx)
+        self.assertEqual((plan.route, plan.failure), ("llm", None))
+        plan, result = run_plan(plan, rig.store, 3)
+        self.assertEqual({a.values for a in result.answers}, {(Entity("Sweden"),)})
 
 class CommitFallbackTest(RigTest):
     def test_rejected_change_set_commits_empty_and_later_versions_continue(self):
