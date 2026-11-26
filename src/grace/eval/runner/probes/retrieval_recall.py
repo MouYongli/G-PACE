@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -175,7 +175,9 @@ class ExtractedGraph:
     The planner sees a fragment chosen per question (this probe's selection, not a GRACE design
     decision): the predicates used in the graph ranked by word overlap with the question (camel
     case split, crude stemming), then by use; the entities of the graph ranked the same way, then
-    by frequency; the speakers always. At most `max_predicates` and `max_entities`.
+    by frequency; the speakers always. At most `max_predicates` and `max_entities`. An entity is
+    shown under its ID with the surface name the writer made it from (`entity_labels`, saved in
+    `writer.json`) as its name, and ranked by the words of both.
     """
 
     store: ClaimStore
@@ -185,6 +187,11 @@ class ExtractedGraph:
     speakers: tuple[str, ...]
     max_predicates: int = 30
     max_entities: int = 30
+    entity_labels: Mapping[str, str] = field(default_factory=dict)
+
+    def _names(self, entity: str) -> tuple[str, ...]:
+        label = self.entity_labels.get(entity)
+        return (label,) if label and label != entity else (entity,)
 
     def fragment(self, question: str) -> tuple[tuple[PredicateInfo, ...],
                                                tuple[EntityInfo, ...]]:
@@ -194,9 +201,10 @@ class ExtractedGraph:
         predicates = tuple(PredicateInfo(p, self.predicate_specs[p])
                            for p in preds[:self.max_predicates])
         others = [e for e in self.entity_counts if e not in self.speakers]
-        ranked = sorted(others, key=lambda e: (-len(q & _words(e)), -self.entity_counts[e], e))
-        entities = tuple([EntityInfo(s, (s,), "speaker") for s in self.speakers]
-                         + [EntityInfo(e, (e,)) for e in ranked[:self.max_entities]])
+        ranked = sorted(others, key=lambda e: (-len(q & (_words(e) | _words(self._names(e)[0]))),
+                                               -self.entity_counts[e], e))
+        entities = tuple([EntityInfo(s, self._names(s), "speaker") for s in self.speakers]
+                         + [EntityInfo(e, self._names(e)) for e in ranked[:self.max_entities]])
         return predicates, entities
 
 
@@ -230,7 +238,8 @@ def load_extracted_graphs(writer_run: Path, history_ids: Iterable[str], *,
             state.attributions.values(), key=lambda a: (a.version, a.attribution_id))))
         specs = {p: vocabulary.predicates[p].exclusive for p in uses}
         out[hid] = ExtractedGraph(store, specs, dict(uses), dict(entities), speakers,
-                                  max_predicates, max_entities)
+                                  max_predicates, max_entities,
+                                  dict(record.get("entity_labels", {})))
     return out
 
 

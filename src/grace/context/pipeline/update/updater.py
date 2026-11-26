@@ -27,7 +27,13 @@ restored from the log and the store resumes correctly.
    (knowledge versions follow the evidence message, plan 8.4): entity equivalences, then claims,
    then stances. A claim that repeats a currently accepted proposition becomes an attribution and an
    evidence link on it. A new claim goes through the attribution guard (`guard.py`); a stance that
-   asks to end a claim goes through its removal rule. `commit.py` commits the change set.
+   asks to end a known claim must first quote evidence that mentions that claim
+   (`validate.ending_evidence`; dropped with reason `ended_without_quote` or
+   `ended_without_evidence` and counted in the note `ending_dropped` otherwise), then goes through
+   the guard's removal rule. `commit.py` commits the change set.
+
+Entity IDs are grammar-safe names made by `validate.EntityTable`; the surface names they came
+from are kept in `entity_labels` and saved in the writer state (`writer.json`).
 
 Every call of a unit, including retries, invalid outputs and failed attempts, is in the cost
 ledger by construction (`grace.llm.client`); `UnitResult.call_ids` lists them with their statuses.
@@ -71,6 +77,7 @@ from grace.context.pipeline.update.validate import (
     ResolvedAlias,
     ResolvedClaim,
     ResolvedStance,
+    ending_evidence,
     resolve_patch,
     speaker_of,
 )
@@ -106,7 +113,7 @@ class WriterConfig:
     message_chars: int | None = 4000
     earlier_chars: int | None = 600
     decoding: Mapping[str, Any] = field(default_factory=lambda: {"temperature": 0.0,
-                                                                 "max_tokens": 2048})
+                                                                 "max_tokens": 4096})
 
     def __post_init__(self) -> None:
         if self.context_messages < 0:
@@ -265,6 +272,7 @@ class Updater:
         self.guard = Guard(enabled=self.config.guard)
         self.segmenter = Segmenter(self.config.granularity, history)
         self.failures: Counter = Counter()      # first version of a unit -> failed extractions
+        self.entity_labels: dict[str, str] = {}  # entity ID -> surface name it was made from
 
     # -- engine entry points -------------------------------------------------------------------
 
@@ -306,7 +314,8 @@ class Updater:
     def state_record(self) -> dict[str, Any]:
         return {"history_id": self.history.history_id, "head": self.store.head,
                 "vocabulary": self.vocabulary.to_record(),
-                "failures": {str(k): v for k, v in sorted(self.failures.items())}}
+                "failures": {str(k): v for k, v in sorted(self.failures.items())},
+                "entity_labels": dict(sorted(self.entity_labels.items()))}
 
     def save(self, directory: Path) -> Path:
         path = Path(directory) / STATE_FILE
@@ -321,6 +330,7 @@ class Updater:
             raise ValueError(f"{directory}: writer state does not match the restored store")
         self.vocabulary = LocalVocabulary.from_record(self.vocabulary.seed, record["vocabulary"])
         self.failures = Counter({int(k): v for k, v in record["failures"].items()})
+        self.entity_labels = dict(record.get("entity_labels", {}))
 
     # -- units ---------------------------------------------------------------------------------
 
@@ -402,7 +412,7 @@ class Updater:
     def _apply(self, unit: Unit, patch: ClaimPatch, request: WriterInput,
                result: UnitResult) -> None:
         state = self.store.state(self.store.head)
-        entities = EntityTable.from_state(state, request.participants)
+        entities = EntityTable.from_state(state, request.participants, self.entity_labels)
         ordered = ClaimPatch(tuple(sorted(patch.claims, key=lambda c: c.message)),
                              patch.stances, patch.aliases)
         added_before = len(self.vocabulary.added)
@@ -410,6 +420,9 @@ class Updater:
                                    request.candidates.handles)
         result.dropped += resolution.dropped
         result.notes.update(resolution.notes)
+        self.entity_labels.update(entities.new_labels)
+        if entities.normalised:
+            result.notes["entity_id_normalised"] += entities.normalised
         additions = self.vocabulary.added[added_before:]
         local_ids: dict[str, str] = {}
         for message in unit.messages:
@@ -525,6 +538,18 @@ class Updater:
         if claim_id not in state.claims and claim_id not in {c.claim_id for c in pending.claims}:
             result.dropped.append(Dropped("stance", "unknown_claim", claim_id))
             return
+        if rs.ends is not None and not rs.local and claim_id in state.claims:
+            # Ending a known claim needs a quote that mentions it (validate.ending_evidence).
+            claim = state.claims[claim_id]
+            quote = (rs.message.text[rs.span.start:rs.span.end] if rs.span is not None
+                     else None)
+            label = (self.entity_labels.get(claim.object.id)
+                     if isinstance(claim.object, Entity) else None)
+            reason = ending_evidence(claim.predicate, claim.object, quote, label)
+            if reason is not None:
+                result.dropped.append(Dropped("stance", reason, claim_id))
+                result.notes["ending_dropped"] += 1
+                return
         key = (claim_id, rs.speaker, rs.stance)
         if key in attributed:
             result.notes["duplicate_in_message"] += 1
