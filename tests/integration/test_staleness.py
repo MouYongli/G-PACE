@@ -31,7 +31,9 @@ from pathlib import Path
 from grace.cli.data.changeseq_crosscheck import own_positive
 from grace.context.memory.graph.changeset import ChangeSet
 from grace.context.memory.graph.entities import EntityEquivalence
+from grace.context.memory.graph.entries import EvidenceLink
 from grace.context.views.dependencies import NEGATED
+from grace.context.views.render import display
 from grace.context.views.staleness import (
     SOUND,
     STRATEGIES,
@@ -40,7 +42,7 @@ from grace.context.views.staleness import (
     make_arm,
     make_strategy,
 )
-from grace.context.views.staleness.base import REBUILDS
+from grace.context.views.staleness.base import REBUILDS, Staleness, fingerprint_staleness
 from grace.context.views.staleness.pattern import ClaimPatternPush
 from grace.context.views.store import CITATION_REPAIR, FULL_REBUILD, ViewStore
 from grace.eval.datasets.changeseq.build import generate_sequence
@@ -357,6 +359,108 @@ class InvalidationTest(unittest.TestCase):
                                             ChangeSet(HISTORY, 17, vocabulary_version="v2"))
         self.assertTrue(second.invalidated)
         self.assertEqual({c.action for c in read.checks}, {FULL_REBUILD})
+
+
+class EvidencePerAnswerTest(unittest.TestCase):
+    """User decision of 2026-11-26 (T020): evidence is recorded per answer.
+
+    At version 8 the violin claim gains an evidence link to message m7, which the clarinet answer
+    already cites. The flat evidence set of the view does not change, but the violin answer's
+    evidence does: the list view is citation-stale, and only the violin sentence is patched.
+    """
+
+    VIEW = "list:melanie:playsInstrument"
+    COUNT = "count:melanie:playsInstrument"
+
+    @staticmethod
+    def change() -> ChangeSet:
+        return ChangeSet(HISTORY, 8, evidence_links=(
+            EvidenceLink("e_violin_m7", "c_violin", "m7", None, 8),))
+
+    def setup(self, arm=None):
+        graph = build_store(upto=7)
+        store = ViewStore(HISTORY)
+        store.materialise(graph)
+        strategy = None
+        if arm is not None:
+            strategy = make_arm(arm, store)
+            strategy.prime(graph.changesets())
+        cs = self.change()
+        graph.commit(cs)
+        return graph, store, strategy, cs
+
+    def evidence(self, view) -> dict[str, tuple[str, ...]]:
+        return {display(r.values[0]): r.evidence for r in view.rows if not r.aggregate}
+
+    def test_flat_set_unchanged_per_answer_changed(self):
+        graph, store, _, _ = self.setup()
+        old = store.get(self.VIEW)
+        self.assertEqual(self.evidence(old), {"violin": ("m2",), "clarinet": ("m7",)})
+        evaluation, _ = store.evaluate(self.VIEW, graph, 8)
+        new = {display(r.values[0]): r.evidence for r in evaluation.rows}
+        self.assertEqual(new, {"violin": ("m2", "m7"), "clarinet": ("m7",)})
+        # The case the flat set cannot see: same union over all answers, same witnesses.
+        self.assertEqual(old.evidence(), frozenset(e for es in new.values() for e in es))
+        fresh = evaluation.result.fingerprints()
+        self.assertEqual(fresh["answers"], old.fingerprints["answers"])
+        self.assertEqual(fresh["witnesses"], old.fingerprints["witnesses"])
+        self.assertNotEqual(fresh["evidence"], old.fingerprints["evidence"])
+        self.assertEqual(fingerprint_staleness(store, self.VIEW, graph, 8),
+                         Staleness(citation=True))
+
+    def test_citation_repair_patches_that_answer_only(self):
+        graph, store, strategy, _ = self.setup("requery")
+        read = strategy.read(graph, 8, read_id="r8", view_ids=[self.VIEW])
+        (check,) = read.checks
+        self.assertEqual((check.fingerprint, check.action), ("citation", CITATION_REPAIR))
+        self.assertEqual(check.units_rendered, 0)
+        view = store.get(self.VIEW)
+        cited = {display(view.row(s.rows[0]).values[0]): s.evidence for s in view.sentences}
+        self.assertEqual(cited, {"violin": ("m2", "m7"), "clarinet": ("m7",)})
+
+    def test_sound_arms_detect_it(self):
+        for arm in SOUND_ARMS:
+            with self.subTest(arm=arm):
+                graph, store, strategy, cs = self.setup(arm)
+                write = strategy.write(cs, graph)
+                if arm not in ("rebuild_every_turn", "requery"):  # no write-side marks
+                    self.assertIn((self.VIEW, "citation"),
+                                  {(m.view_id, m.level) for m in write.marks})
+                strategy.read(graph, 8, read_id="r8")
+                view = store.get(self.VIEW)
+                self.assertEqual(self.evidence(view)["violin"], ("m2", "m7"))
+                self.assertEqual(fingerprint_staleness(store, self.VIEW, graph, 8),
+                                 Staleness())
+
+    def test_count_view_answer_is_the_count(self):
+        """A count has one answer, the count, whose evidence is the union over its members; it is
+        unchanged here, so the reference judges the count view not stale. Its maintenance still
+        patches the member rows (rows are compared by row ID), and the aggregate sentence, which
+        cites the union, keeps its citations."""
+        graph, store, _, _ = self.setup()
+        self.assertEqual(fingerprint_staleness(store, self.COUNT, graph, 8), Staleness())
+        before = store.get(self.COUNT).sentences
+        event = store.maintain(self.COUNT, graph, 8, read_id="r8")
+        self.assertEqual(event.action, CITATION_REPAIR)
+        self.assertEqual([s.evidence for s in store.get(self.COUNT).sentences],
+                         [s.evidence for s in before])
+
+
+class AttributionOptionTest(unittest.TestCase):
+    """User decision of 2026-11-26: the attribution constraint cannot be switched off."""
+
+    def test_option_is_refused(self):
+        store = ViewStore("x")
+        for name in ("claim_pattern_push", "used_claims_patterns", "push_confirm"):
+            with self.subTest(name=name), self.assertRaises(StrategyError):
+                make_strategy(name, store, attribution=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "arms.yaml"
+            path.write_text("arms:\n  loose: {strategy: claim_pattern_push, attribution: false}\n",
+                            encoding="utf-8")
+            with self.assertRaises(StrategyError):
+                load_arms(path)
+        self.assertFalse(any("attribution" in options for _, options in load_arms().values()))
 
 
 if __name__ == "__main__":

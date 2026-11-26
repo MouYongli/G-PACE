@@ -1,0 +1,126 @@
+# T013 Write-budget estimate and break-even curves (docs/work/tasks/T013-write-budget.md; plan 8.2
+# and 8.4). Development data only. Driven by `uv run python -m grace.cli.write_budget`:
+#   measure-c - one probe run against a local Qwen3-8B server on an exclusive GPU: the compute
+#               ratio c of cache-hit input from a latency fit over a designed grid of new and
+#               cached prompt tokens (no benchmark data; synthetic filler text)
+#   estimate  - one probe run, CPU only, no model: writer tokens per LoCoMo history at each
+#               extraction granularity, the full-history read cost priced at c from measured
+#               records, and the break-even read count M*(c) over c in [0, 1]
+# Run paths below are relative to runs_root (configs/common/paths.yaml).
+experiment: T013
+version: 1
+
+model_config: configs/models/qwen3-8b.yaml   # primary model; its pinned tokenizer counts every token
+seed: 0
+
+benchmark: locomo
+split: dev                                   # the 2 development histories (conv-26, conv-49)
+
+# Break-even curves are evaluated on c = 0, 1/steps, ..., 1; c* (the smallest c at which payback
+# falls within the history's own reads) is searched on a grid 10 times finer.
+c_grid_steps: 100
+
+# Extraction granularity: the unit of one writer call. Segments are runs of `size` consecutive
+# messages inside one session (never crossing a session boundary; the last one of a session may be
+# shorter). A session is one LoCoMo `session_<k>` (the record's segment_id).
+granularities:
+  - {name: message, unit: message}
+  - {name: segment-4, unit: segment, size: 4}
+  - {name: segment-8, unit: segment, size: 8}
+  - {name: segment-16, unit: segment, size: 16}
+  - {name: session, unit: session}
+
+# Writer call model (paper calculation; no GRACE writer exists before T022). One call costs
+#   prefix_tokens                       instructions, claim schema, predicate vocabulary, examples:
+#                                       identical in every call, so priced at c after the first
+#                                       call of a history (stable content first, plan 8.1)
+#   + candidate_base_tokens + candidate_tokens_per_message * n
+#                                       candidate entities and existing claims to link against
+#   + the tokens of the `context_messages` messages before the unit (continuity, coreference)
+#   + the tokens of the unit's n messages, rendered as the raw-text engine renders them
+#   + output_tokens_per_call + output_tokens_per_message * n   (the extracted claims)
+# Everything but the prefix is priced in full. Anchors: the planner's pinned system prompt is
+# about 2,000 tokens (counted in the run); Graphiti's per-message extraction prompts on LoCoMo
+# average 1,000-2,500 input tokens per call (T034); the slot-table writer emits about 35 output
+# tokens per message (E001). Three scenarios bracket the unknowns.
+writer:
+  default_scenario: central
+  scenarios:
+    low:
+      prefix_tokens: 1200
+      candidate_base_tokens: 100
+      candidate_tokens_per_message: 20
+      context_messages: 2
+      output_tokens_per_message: 30
+      output_tokens_per_call: 10
+    central:
+      prefix_tokens: 2500
+      candidate_base_tokens: 150
+      candidate_tokens_per_message: 40
+      context_messages: 4
+      output_tokens_per_message: 60
+      output_tokens_per_call: 20
+    high:
+      prefix_tokens: 5000
+      candidate_base_tokens: 300
+      candidate_tokens_per_message: 80
+      context_messages: 8
+      output_tokens_per_message: 120
+      output_tokens_per_call: 40
+
+# Read side.
+read:
+  # The cached full-history row, measured (plan 8.2): E001 cell full-cached on LoCoMo dev, Qwen3-8B
+  # with prefix caching, every answer attempt priced at c with its server-reported cached tokens.
+  full_history_run: E001/artifacts/manager/E001/E001-20261125T181644Z-4e97
+  # GRACE's answer call A_i: a working context at the 1,024-token memory level. Proxy: the
+  # measured answer calls of the rrf baseline at memory level 1024 on the same reads (E001 cell
+  # baselines).
+  answer_run: E001/artifacts/manager/E001/E001-20261125T182212Z-2cd5
+  # GRACE's read-side planning U_i: planner calls per read with the pinned plan-query prompt
+  # (counted) plus the history's vocabulary fragment, both stable and priced at c, then the request
+  # and the output in full. low: a rule template answers every read (no LLM call); high: plan plus
+  # one compile repair on every read.
+  planner_prompt: plan-query
+  planner:
+    low: {calls_per_read: 0, vocabulary_tokens: 0, request_tokens: 0, output_tokens: 0}
+    central: {calls_per_read: 1, vocabulary_tokens: 300, request_tokens: 80, output_tokens: 150}
+    high: {calls_per_read: 2, vocabulary_tokens: 800, request_tokens: 80, output_tokens: 300}
+
+# Measured per-message writers, priced at c from their own call records, as reference rows.
+reference_writers:
+  slot-table: [E001/artifacts/manager/E001/E001-20261125T182206Z-c9b2]
+  summary-rewrite: [E001/artifacts/manager/E001/E001-20261125T182207Z-6a24]
+  graphiti: [T034/artifacts/manager/T034/T034-20261125T192354Z-37a7,
+             T034/artifacts/manager/T034/T034-20261125T192354Z-dca9]
+
+# Measured cache ratios marked on the curves. `value` is quoted; `run` reads the `c` of a
+# measure-c run's compute-ratio.json; `run` with `regime` computes c in one regime of that run from
+# median latencies (regime_ratio): 24,576 cached + 128 new tokens is the warm full-history read of
+# LoCoMo (about 26K cached history, about 100 new tokens).
+cache_ratios:
+  - label: T013 exclusive-GPU latency fit (pooled)
+    run: T013/artifacts/manager/T013/T013-20261126T044914Z-811f
+  - label: T013 exclusive GPU, warm-read regime
+    run: T013/artifacts/manager/T013/T013-20261126T044914Z-811f
+    regime: {cached: 24576, new: 128}
+  - label: E001 pooled latency fit (unreliable, shared GPU)
+    value: 0.081
+  - label: T030 GPU-seconds ratio, LoCoMo (upper bound)
+    value: 0.385
+
+# measure-c: latency = a + b_new * new + b_cached * cached over answer-type calls with one output
+# token (prefill only), c = b_cached / b_new. Every trial starts its system message with a unique
+# nonce, so nothing is shared between trials. A trial with cached > 0 first sends the system
+# message with a short request (a cold call of about `cached` tokens, also used in the fit), then
+# the same system message with a request of about `new` tokens, whose system part is served from
+# the cache. Filler is seeded random words; the fit uses the server-reported cached tokens.
+compute_ratio:
+  served_model: Qwen/Qwen3-8B
+  server_args: [--max-model-len, "32768", --enable-prompt-tokens-details]
+  cached_tokens: [0, 2048, 8192, 16384, 24576]
+  new_tokens: [128, 1024, 4096]
+  repeats: 5
+  warmup_calls: 5
+  max_tokens: 1
+  bootstrap: 1000

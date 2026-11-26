@@ -1,0 +1,188 @@
+\section{Soundness}\label{sec:s-soundness}
+
+Throughout, $\G^0\subseteq\G^1=\G^0\cup\Dlt$, every entry of $\Dlt$ has a stamp greater than
+every stamp in $\G^0$, and $\equiv_{\G^0}=\equiv_{\G^1}$ (A5).
+
+\begin{definition}[Triggers]\label{def:triggers}
+An entry $e\in\Dlt$ is an \emph{answer trigger} of pattern $P$ if
+\begin{description}
+\item[(T1)] $e$ is a claim and $e\matches_{\G^1}P$; or
+\item[(T2)] $P$ has a bracket, $e$ is an attribution on a claim $c$, and some $(\theta,c,e)$
+  satisfies (m1) and (m2) in $\G^1$; or
+\item[(T3)] $e$ is a supersession event on a claim $c$ with $c\matches_{\G^1}P$.
+\end{description}
+It is a \emph{citation trigger} of $P$ if
+\begin{description}
+\item[(T4)] $P$ is positive, $e$ is an evidence link on a claim $c$ and $c\matches_{\G^1}P$.
+\end{description}
+\end{definition}
+
+\noindent If $P$ has a bracket, a new claim that matches $P$ matches it through an attribution,
+which is new as well (S1.1: it names $c$, so its stamp is at least $\vs(c)$); so (T1) is
+subsumed by (T2) for such patterns, which is how the implementation treats it.
+
+\begin{lemma}[Locality]\label{lem:locality}
+Let $\G,\mathcal K$ be graphs with the same equivalence and $N_\G(c)=N_{\mathcal K}(c)$ for a
+claim $c$. Then $P$ has the same rows with claim $c$ on $\G$ and on $\mathcal K$, and every filter
+has the same value on such a row in both.
+\end{lemma}
+\begin{proof}
+(m1) reads the fields of $c$ and $\equiv$; (m2) reads $\att(c)$, the fields of its members and
+$\equiv$; (m3) reads $\sups(c)$; (m4) reads $\tau(c)$ and $\effend(c)$, which depends on
+$\sups(c)$ only. A filter reads the binding, $\equiv$, $\tau(c)$ and $\effend(c)$.
+\end{proof}
+
+\noindent In the implementation this is a property of the compiled SPARQL: the triples generated
+for a pattern mention only the claim node, attribution nodes about it, supersession nodes that
+point to it, and the class members of entity constants (assumption A3).
+
+\begin{lemma}[Atom invariance]\label{lem:atom}
+If no entry of $\Dlt$ is an answer trigger of $P$, then
+$\rows{P}{\G^1}{}=\rows{P}{\G^0}{}$, and $\sups_{\G^1}(c)=\sups_{\G^0}(c)$ for the claim $c$ of
+every such row.
+\end{lemma}
+\begin{proof}
+($\subseteq$) Let $\mu=(\theta,c,a)\in\rows{P}{\G^1}{}$; then $c\matches_{\G^1}P$, witnessed by
+$\theta$ and $a$. If $c\in\Dlt$, $c$ is a (T1) trigger; so $c\in\G^0$. If $a\neq\ast$ and
+$a\in\Dlt$, $a$ is a (T2) trigger; so $a\in\G^0$. A supersession event on $c$ in $\Dlt$ would be a
+(T3) trigger; so $\sups_{\G^1}(c)=\sups_{\G^0}(c)$. Attributions on $c$ in $\Dlt$ other than $a$
+do not enter (m1)--(m4) for $\mu$. Hence $\mu$ satisfies (m1)--(m4) in $\G^0$ (the conditions read
+only $c$, $a$, $\sups(c)$, $\tau(c)$ and $\equiv$), so $\mu\in\rows{P}{\G^0}{}$.
+
+($\supseteq$) Let $\mu=(\theta,c,a)\in\rows{P}{\G^0}{}$. Then $c,a\in\G^0\subseteq\G^1$ and
+$c\matches_{\G^1}P$ with the same $\theta$ and $a$. A supersession event on $c$ in $\Dlt$ would be
+a (T3) trigger, so $\sups_{\G^1}(c)=\sups_{\G^0}(c)$, and (m1)--(m4) hold in $\G^1$.
+\end{proof}
+
+\begin{lemma}[Body]\label{lem:body}
+If no entry of $\Dlt$ is an answer trigger of any pattern of $B$ (positive or negated), then
+$\rows{B}{\G^1}{}=\rows{B}{\G^0}{}$, and every row has the same filter values in both graphs.
+\end{lemma}
+\begin{proof}
+By induction over the structure of the body, $E::=P\mid E\bowtie E\mid\sigma_\varphi(E)\mid
+E\rhd_\Psi N$, with the hypothesis that $E$ has the same rows in both graphs and that every
+claim occurring in a row has the same supersession events in both.
+\emph{Atom:} Lemma~\ref{lem:atom}.
+\emph{Join:} rows of $E_1\bowtie E_2$ are the pairs of rows that agree on shared variables;
+agreement reads only bindings.
+\emph{Filter:} $\varphi$ on a row reads the binding, $\equiv$, $\tau^\pm$ of a claim in the row and
+$\effend$ of that claim, which depends only on its supersession events; by hypothesis these are
+equal, so $\varphi$ selects the same rows.
+\emph{Anti-join:} a row $\vec\mu$ of $E$ is kept iff no $\nu\in\rows{N}{}{}$ agrees with it and
+satisfies $\Psi$ with it; $\rows{N}{}{}$ is equal in both graphs by Lemma~\ref{lem:atom}, the
+supersession events of its claims are equal, and $\Psi$ reads only bindings and those claims'
+$\tau$ and $\effend$, so the same rows are kept. Claims of $N$ do not occur in the result rows.
+\end{proof}
+
+\begin{lemma}[Root and witnesses]\label{lem:root}
+If $\rows{B}{\G^1}{}=\rows{B}{\G^0}{}$, then $\ans$ and $\wit$ of $\Q$ are equal on $\G^1$ and
+$\G^0$.
+\end{lemma}
+\begin{proof}
+Projection, minimisation of witnesses, distinct counting with the union of member witnesses, and
+the latest-state selection are functions of the set of body rows, of $\equiv$ (for
+representatives), and of the stamps and valid-time starts of the claims and attributions in the
+rows, which are fixed when an entry is written. For selection by version, the key of a row is
+$\max(\vs(c_j),\vs(a_j))$ of entries in the row; the selected claims are those of maximum key over
+the same rows.
+\end{proof}
+
+\begin{lemma}[Evidence]\label{lem:evidence}
+If $\wit$ is equal on $\G^1$ and $\G^0$ and no entry of $\Dlt$ is a citation trigger of a positive
+pattern, then $\ev$ is equal.
+\end{lemma}
+\begin{proof}
+Every claim $c$ of a witness lies in a row of some positive $P_i$, so $c\matches_{\G^1}P_i$. An
+evidence link on $c$ in $\Dlt$ would be a (T4) trigger; so $\evs_{\G^1}(c)=\evs_{\G^0}(c)$ for
+every witness claim. Each $\ev_t$ is the set of identifiers of the links of the claims of the
+witnesses of $t$, which are equal, so $\ev$ is equal.
+\end{proof}
+
+\begin{proposition}[Soundness; Proposition~1 of the main text]\label{prop:s-soundness}
+Assume A1, A2 and A5, and let $r_0\le r$, $\Dlt=\G_r\setminus\G_{r_0}$. If no entry of $\Dlt$ is
+an answer trigger of a pattern of $\Q$, the view of $\Q$ with cut-off $r_0$ is not answer-stale at
+$r$ and its witnesses are unchanged. If moreover no entry of $\Dlt$ is a citation trigger, the
+view is not citation-stale.
+\end{proposition}
+\begin{proof}
+By Corollary~\ref{cor:reduction}, compare $\Q$ on $\G^0=\G_{r_0}$ and $\G^1=\G_r$; by A1 every
+stamp in $\Dlt$ exceeds $r_0$, and by A5 the equivalence and the vocabulary are the same. Apply
+Lemmas~\ref{lem:body}, \ref{lem:root} and~\ref{lem:evidence}.
+\end{proof}
+
+\subsection{Deciding per change set}
+
+The implementation sees one change set at a time and marks a view as soon as one change set
+contains a trigger; a view not marked since its cut-off is kept.
+
+\begin{corollary}[Per change set]\label{cor:stepwise}
+Let $v_1<\dots<v_n$ be the committed versions in $(r_0,r]$ and $v_0=r_0$ (not necessarily a
+committed version; $\G_{v_0}=\G_{r_0}$ in any case). If for every $i$ no entry of
+$\Dlt_{v_i}$ is an answer trigger (citation trigger) with respect to $\G^0=\G_{v_{i-1}}$ and
+$\G^1=\G_{v_i}$, then the view is not answer-stale and its witnesses are unchanged (it is not
+citation-stale) at $r$.
+\end{corollary}
+\begin{proof}
+Apply Proposition~\ref{prop:s-soundness} to each pair $(v_{i-1},v_i)$ (A5 for each step) and chain
+the equalities of answers, witnesses and evidence.
+\end{proof}
+
+\noindent The corollary does not need the triggers over $\Dlt$ as a whole to coincide with the
+union of the per-step triggers; for example, a supersession event at $v_1$ on a claim that gains
+its matching attribution only at $v_2$ is a step trigger at $v_2$ (through the attribution), not
+at $v_1$.
+
+\begin{corollary}[Wider matching]\label{cor:wider}
+Replacing $\matches$ in (T1), (T3) and (T4) by any relation that contains it, and the condition of
+(T2) by any condition implied by it, keeps Proposition~\ref{prop:s-soundness} and
+Corollary~\ref{cor:stepwise} true.
+\end{corollary}
+\begin{proof}
+Every entry that is a trigger in the sense of Definition~\ref{def:triggers} remains a trigger, so
+the hypothesis ``no trigger'' becomes stronger.
+\end{proof}
+
+\noindent Ignoring repeated variables or a scope variable's requirement $\omega(c)\neq\bot$ widens
+the matching in this sense ($\matches$ already ignores filters, the world time and the state), and
+so does comparing the predicate only (the predicate-level strategy, which also treats every attribution, event and link
+on a claim of a relevant predicate as a trigger). Dropping the attribution constraint is
+\emph{not} a widening of (T2) unless every attribution on a claim whose positions agree with $P$
+remains a trigger: if only new claims are matched, an acceptance on an existing claim is missed.
+
+\begin{corollary}[Local filters]\label{cor:filters}
+Let $\Phi_P$ be the local filters of $P$. Restrict the triggers of $P$ as follows: (T1) and (T2)
+count only if the new row $(\theta,c,\cdot)$, ignoring (m3) and (m4), satisfies $\Phi_P$ in
+$\G^1$; (T3) counts only if some row of $c$, ignoring (m3) and (m4), satisfies $\Phi_P$ in $\G^0$
+or in $\G^1$; (T4) counts only if some row of $c$, ignoring (m3) and (m4), satisfies $\Phi_P$ in
+$\G^1$. With these restricted triggers, Proposition~\ref{prop:s-soundness} and
+Corollary~\ref{cor:stepwise} remain true.
+\end{corollary}
+\begin{proof}
+Move each local filter into its pattern (S1.4); the body is unchanged. Repeat
+Lemma~\ref{lem:atom} for $P^{\Phi}$. ($\subseteq$) A row $\mu=(\theta,c,a)$ of $P^\Phi$ in $\G^1$
+satisfies $\Phi_P$ in $\G^1$; if $c$ or $a$ were in $\Dlt$ it would be a restricted (T1) or (T2)
+trigger, and a supersession event on $c$ in $\Dlt$ would be a restricted (T3) trigger (witnessed by
+$\mu$ in $\G^1$). So $c,a\in\G^0$, $\sups(c)$ and hence $\effend(c)$ are equal, and $\mu$ satisfies
+(m1)--(m4) and $\Phi_P$ in $\G^0$. ($\supseteq$) A row of $P^\Phi$ in $\G^0$ satisfies $\Phi_P$ in
+$\G^0$, so a supersession event on its claim in $\Dlt$ would be a restricted (T3) trigger; the rest
+is as before. Lemma~\ref{lem:evidence}: a witness claim lies in a row of $P_i^\Phi$ in $\G^1$, so a
+link on it in $\Dlt$ is a restricted (T4) trigger.
+\end{proof}
+
+\noindent The implementation evaluates the local filters of a supersession trigger with the
+effective valid end before and after the change set, and counts a filter it cannot decide (an
+unknown start, a date compared with a date-time) as satisfied, which is a widening
+(Corollary~\ref{cor:wider}). Soundness needs that the matcher never decides a filter false when the
+compiled query would evaluate it true (assumption A9). The two corollaries combine: Corollary~\ref{cor:wider}
+applies to the restricted triggers of Corollary~\ref{cor:filters} as well, so a matcher may widen
+the matching relation and evaluate the local filters, provided every restricted trigger remains
+a trigger.
+
+\subsection{The matching unit}
+
+Under RDF~1.1 standard reification a claim is a star of triples ($\mathtt{rdf{:}subject}$,
+$\mathtt{rdf{:}predicate}$, $\mathtt{rdf{:}object}$, the version stamp); under RDF~1.2 the
+reified triple is one term but the stamp is still a separate triple. Matching a change against the
+triple patterns of the compiled query one by one, as Martin et al.~\cite{martin2010caching} do,
+would match the stamp triple of every new claim against every query. The triggers above match the
+star, with its attribution, as one unit; the argument is otherwise theirs.

@@ -138,7 +138,7 @@ FILTER NOT EXISTS { ?_s_c g:supersedes ?c ; g:kind g:Correction ;
                     g:knownFrom ?_sv_c . FILTER(?_sv_c <= %r%) }                            # historical
 ```
 
-Entity constants become `VALUES ?_k<i> { %k<i>% }`. The state negation is the contract's "currently accepted" form; it does not test the kind of a supersession for current-state queries.
+Entity constants compile to `VALUES ?_k<j> { %k<i>% }` with the variable `?_k<j>` in the triple. At read time `CompiledQuery.bind` fills `%k<i>%` with the members of the constant's entity class at the cut-off; when the class has one member (no merge) it drops the `VALUES` line and writes the IRI in place of `?_k<j>`, so the executed pattern carries the constant itself (same rows; pyoxigraph 0.5.13 evaluates the `VALUES` form of some queries orders of magnitude slower, E004; user decision of 2026-11-26). A class with several members keeps its `VALUES` block. IRIs are percent-encoded by `rdf.entity_iri` and checked to be valid IRI references before substitution; literals write `%` and `?` as `\u0025` and `\u003F`, so no literal can contain a placeholder or a compiler variable. The state negation is the contract's "currently accepted" form; it does not test the kind of a supersession for current-state queries.
 
 **Valid time.** With `AT(valid=d)` each claim must not be known to be outside `[start, end)` at `d`: no `g:validFrom` later than `d`, no own `g:validUntil` at or before `d`, and, when the claim has no own end, no effective end at or before `d`. The **effective valid end** follows the contract: the claim's own end, else the `valid_end` of the earliest change supersession stamped at most the cut-off that states one, else open. An unknown start or end therefore never excludes a claim. Comparisons across `xsd:date` and `xsd:dateTime` are undefined in SPARQL and are treated as unknown.
 
@@ -176,7 +176,7 @@ Evidence is returned as unified evidence IDs (`message_id`, or `message_id#char=
 
 The evidence of an answer is the union of the evidence of the claims in its witnesses. Attributions in a witness contribute no evidence of their own, because plan 3.4 defines evidence over claims; an acceptance is cited through the evidence link the writer adds to the accepted claim (plan 5.3: "one answer depends on two messages at once").
 
-`QueryResult.fingerprints()` returns SHA-256 fingerprints of the canonical answers, witnesses and evidence, the inputs of read-time re-query and of answer- versus citation-staleness (plan 3.4).
+`QueryResult.fingerprints()` returns SHA-256 fingerprints of the canonical answers, witnesses and evidence, the inputs of read-time re-query and of answer- versus citation-staleness (plan 3.4). Witnesses and evidence are both fingerprinted per answer (each answer with its witnesses; each answer with its evidence), not as one set over all answers: when an answer gains a fragment that another answer already cites, its citation changes, and a flat evidence set would not show it (user decision of 2026-11-26, from T020).
 
 **Scope notes.** `result.scope_note(result)` returns "Counted within the scope observed up to version r." for counts and "No matching claim within the scope observed up to version r." for empty results, `None` otherwise. It is generated when the result is read and is not part of the result record or of any fingerprint, so it never makes a view stale.
 

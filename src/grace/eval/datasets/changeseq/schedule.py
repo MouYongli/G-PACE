@@ -34,6 +34,7 @@ from grace.eval.datasets.changeseq.invalidation import (
     DerivedState,
     GoldStaleness,
     Indeterminate,
+    flat_evidence,
     hist_determinate,
     hist_witness,
 )
@@ -163,7 +164,9 @@ class _Builder:
                  extra=None) -> None:
         value = self.gold.value(b.binding_id, r)
         if answer is None:
-            answer, witnesses, evidence = value["ans"], value["wit"], value["ev"]
+            # A question cites the messages of all its answers: the union of the per-answer ev.
+            answer, witnesses = value["ans"], value["wit"]
+            evidence = flat_evidence(value["ev"])
         if outdated is None:
             current = {json.dumps(a, sort_keys=True) for a in answer}
             outdated = [a for a in _flatten(self.gold.values[b.binding_id][1:r])

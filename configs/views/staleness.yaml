@@ -2,7 +2,6 @@
 # Loaded by src/grace/context/views/staleness/__init__.py (`load_arms`). Each arm names a strategy
 # of `STRATEGIES` and its options:
 #   local_filters   use the local filters of each claim pattern (default true)
-#   attribution     use the attribution constraint [u, f] of each claim pattern (default true)
 #   watch_mentions  citation strategies: a new attribution or evidence link on a used claim marks
 #                   the view citation-stale (default false; plan 5.4 watches supersessions only)
 # Which arm the main GRACE configuration uses is set by its engine config, not here.

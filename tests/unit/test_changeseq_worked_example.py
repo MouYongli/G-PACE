@@ -113,10 +113,11 @@ class WorkedExampleTest(unittest.TestCase):
         self.assertEqual(v6["ans"], [["ICE947", "17:25:00"]])
         self.assertEqual(v6["wit"], [[["ICE947", "17:25:00"], [sorted(["c4", "a6", "c5",
                                                                        "a5"])]]])
-        self.assertEqual(v6["ev"], ["m3", "m4"])
+        # Evidence per answer (user decision of 2026-11-26).
+        self.assertEqual(v6["ev"], [[["ICE947", "17:25:00"], ["m3", "m4"]]])
         self.assertEqual(self.gold.value("V2:user:livesIn", 8)["wit"],
                          [["Cologne", [["a10", "c8"]]]])
-        self.assertEqual(self.gold.value("V2:user:livesIn", 6)["ev"], ["m1", "m6"])
+        self.assertEqual(self.gold.value("V2:user:livesIn", 6)["ev"], [["Munich", ["m1", "m6"]]])
         self.assertEqual(self.gold.value("V3:user:playsInstrument", 4)["ans"], [0])
 
     def test_span_staleness_is_not_the_disjunction(self):

@@ -1,0 +1,42 @@
+% Notation shared by the main text (main.tex) and the supplementary material (supplement.tex).
+% Terms follow docs/research/plan.md sections 3.2-3.4; the correspondence with the
+% implementation is recorded in docs/research/formalisation.md.
+
+\spnewtheorem{observation}{Observation}{\bfseries}{\itshape}
+
+% Graph, versions, entries.
+\newcommand{\G}{\mathcal G}
+\newcommand{\Hist}{\mathcal H}
+\newcommand{\Dlt}{\Delta}
+\newcommand{\vs}{\kappa}                 % version stamp of an entry
+\newcommand{\Claims}{\mathsf{C}}
+\newcommand{\Atts}{\mathsf{A}}
+\newcommand{\Evs}{\mathsf{L}}
+\newcommand{\Sups}{\mathsf{S}}
+\newcommand{\kind}{\eta}
+\newcommand{\change}{\textsf{change}}
+\newcommand{\correction}{\textsf{correction}}
+\newcommand{\own}{\textsf{own}}
+\newcommand{\pos}{\textsf{pos}}
+\newcommand{\vend}{\varepsilon}          % valid end stated by a change supersession
+\newcommand{\effend}{\mathrm{end}}       % effective valid end
+\newcommand{\att}{\mathrm{att}}          % attributions on a claim
+\newcommand{\sups}{\mathrm{sup}}         % supersessions of a claim
+\newcommand{\evs}{\mathrm{lnk}}          % evidence links of a claim
+\newcommand{\cls}{\mathrm{cls}}          % entity-equivalence class
+
+% Queries and results.
+\newcommand{\Q}{Q}
+\newcommand{\cut}[2]{#1[#2]}             % Q[r]
+\newcommand{\ans}{\mathrm{ans}}
+\newcommand{\wit}{\mathrm{wit}}
+\newcommand{\ev}{\mathrm{ev}}
+\newcommand{\rows}[3]{[\![#1]\!]_{#2}^{#3}} % rows of E on graph #2 at cut-off #3
+\newcommand{\Pos}{\mathrm{Pos}}
+\newcommand{\Neg}{\mathrm{Neg}}
+\newcommand{\matches}{\models}
+\newcommand{\core}{\mathrm{M}}           % core match relation
+\newcommand{\cur}{\textsf{current}}
+\newcommand{\hist}{\textsf{historical}}
+\newcommand{\latest}{\textsf{latest}}
+\newcommand{\cnt}{\textsf{count}}

@@ -149,7 +149,7 @@ The **outcome** of $(t,b)$ is answer-stale, citation-stale or neither, computed 
 | C4 | answer | — |
 | C5 | answer, or citation (date-only correction) | — |
 | C6 | citation | — |
-| C7 | neither | (a) caught by predicate level, and by claim patterns that ignore attribution constraints or local filters (the `m-past` probe separates the "claim pattern" and "claim pattern with local filters" rungs of plan section 3.4); (b) caught by predicate level only; (c) caught by claim-pattern push without confirmation |
+| C7 | neither | (a) caught by predicate level, and, when only a local filter fails, by claim patterns without local filters (the `m-past` probe separates the "claim pattern" and "claim pattern with local filters" rungs of plan section 3.4); (b) caught by predicate level only; (c) caught by claim-pattern push without confirmation |
 | untouched | neither | Caught only by "rebuild every turn" |
 
 T015 asserts these invariants on every generated sequence, together with the converse: every staleness has a type in C1–C6. A violation is a generator or reference-function bug.
@@ -198,7 +198,7 @@ From the prefix $\Lambda_{\le\kappa}$:
 
 ### 6.2 Semantics of the view templates
 
-$\mathrm{ans}$ is a set, $\mathrm{wit}$ maps each answer to its set of minimal witnesses (each a set of entry IDs), and $\mathrm{ev}$ is the union of $\mathrm{Ev}_\kappa$ over the claims in all witnesses, following plan section 3.4. The pattern column lists the claim patterns in the notation of plan section 3.3; the attribution constraint also fixes report mode own and positive polarity, which the IR must express as a local filter on the attribution (to be confirmed by T017).
+$\mathrm{ans}$ is a set, $\mathrm{wit}$ maps each answer to its set of minimal witnesses (each a set of entry IDs), and $\mathrm{ev}$ maps each answer to the union of $\mathrm{Ev}_\kappa$ over the claims in its witnesses, following plan section 3.4. $\mathrm{ev}$ is kept per answer (user decision of 2026-11-26, from T020), so that an answer gaining a message another answer already cites is citation-stale; a question's gold evidence is the union over its answers. Because the generator links every evidence to the message of its own version, the per-answer and the flat form give the same labels on generated sequences. The pattern column lists the claim patterns in the notation of plan section 3.3; the attribution constraint also fixes report mode own and positive polarity, which the IR must express as a local filter on the attribution (to be confirmed by T017).
 
 | Template | Binding | Claim patterns | Definition at $\kappa$ |
 | --- | --- | --- | --- |

@@ -22,7 +22,10 @@ through one dependency pattern, following the conditions of the soundness propos
 A claim matches a pattern when its subject, predicate, object and scope agree with the pattern's
 constants (entity constants compared on class representatives, as the compiler does), it carries
 an attribution that satisfies the constraint (for supersessions and evidence links, any such
-attribution seen so far), and, with `local_filters`, it passes the pattern's local filters. A filter
+attribution seen so far), and, with `local_filters`, it passes the pattern's local filters. The
+attribution constraint is always applied: there is no option to drop it, because a matcher that
+ignores it would only match new claims and miss a new attribution on an existing claim (user
+decision of 2026-11-26). A filter
 that cannot be decided from the records (an unknown start, mixed date and dateTime, an unexpected
 datatype) counts as passed, so every simplification widens the match and never loses one. For a
 supersession the filters are tried on the claim's valid end before and after the change set,
@@ -234,9 +237,11 @@ def _filters_hold(dp: DependencyPattern, c: Claim, a: Attribution | None, index:
 
 @dataclass(frozen=True)
 class Options:
-    """Which parts of a dependency pattern are used (the rungs of plan 3.4's ladder)."""
+    """Which parts of a dependency pattern are used (the rungs of plan 3.4's ladder).
 
-    attribution: bool = True    # the attribution constraint [u, f]
+    Only the local filters can be switched off; the attribution constraint is always applied.
+    """
+
     local_filters: bool = True  # the pattern's local filters
 
 
@@ -264,7 +269,7 @@ def claim_matches(dp: DependencyPattern, c: Claim, index: Index, options: Option
     if not _spo(p, c, index):
         return False
     upto = index.version if upto is None else upto
-    if options.attribution and p.attribution is not None:
+    if p.attribution is not None:
         candidates = (attribution,) if attribution is not None else tuple(
             index.attributions.get(c.claim_id, ()))
         candidates = tuple(a for a in candidates if _satisfies(p, a, index))
@@ -291,8 +296,7 @@ def triggers(dependencies: tuple[DependencyPattern, ...], cs: ChangeSet, index: 
         if wanted is not None and dp.role not in wanted:
             continue
         p = dp.pattern
-        constrained = options.attribution and p.attribution is not None
-        if not constrained:
+        if p.attribution is None:
             for c in cs.claims:
                 if claim_matches(dp, c, index, options):
                     out.append(Trigger(ANSWER, c.claim_id, "claim", i, dp.role))

@@ -359,7 +359,8 @@ _VALUES = re.compile(r"[ \t]*VALUES (\?_k\d+) \{ (<[^>\s]+>) \}\n")
 
 def inline_constants(sparql: str) -> str:
     """The same SPARQL with every single-IRI `VALUES ?_kN { <iri> }` block removed and `?_kN`
-    replaced by the IRI (a diagnostic only; the engine never runs it)."""
+    replaced by the IRI. An independent reimplementation of the compiler's inlining (since
+    2026-11-26 `CompiledQuery.bind` inlines single-member constants itself); a diagnostic only."""
     values = dict((k, v) for k, v in _VALUES.findall(sparql))
     out = _VALUES.sub("", sparql)
     for var, iri in values.items():
@@ -367,25 +368,53 @@ def inline_constants(sparql: str) -> str:
     return out
 
 
-def query_diagnostics(graph: ScaledGraph, bindings: Sequence[Binding], *,
-                      compiled_families: Iterable[str], repeats: int = 3,
+def diagnostic_bindings(graph: ScaledGraph, block0: Sequence[Binding], families: Iterable[str],
+                        per_family: int, seed: int) -> list[tuple[Binding, bool]]:
+    """Block 0's bindings (flag True) plus, per family, up to `per_family` bindings of the other
+    blocks drawn by a seeded generator (flag False). Block 0's `choice` views are often empty;
+    the sample shows the cost of views with rows on the whole graph."""
+    out = [(b, True) for b in block0]
+    first = {b.view_id for b in block0}
+    rng = random.Random(f"E004-diagnostics:{seed}")
+    for family in families:
+        rest = [b for b in graph.bindings if b.family == family and b.view_id not in first]
+        out += [(b, False) for b in rng.sample(rest, min(per_family, len(rest)))]
+    return out
+
+
+def query_diagnostics(graph: ScaledGraph, bindings: Sequence[Binding | tuple[Binding, bool]], *,
+                      values_families: Iterable[str], repeats: int = 3,
                       config: ViewConfig | None = None) -> list[dict[str, Any]]:
-    """Per binding, the time of its main SPARQL query at the prefix head, as compiled (for the
-    families in `compiled_families` only: the others may take minutes) and with its constants
-    inlined (`inline_constants`), with the row counts of both (they must agree). Minimum of
-    `repeats` timings each."""
+    """Per binding, the time of its main SPARQL query at the prefix head in up to three forms,
+    with the row count of each (they must agree), minimum of `repeats` timings each:
+
+    - `compiled`: the text the engine runs (`CompiledQuery.bind`, single-member constants
+      inlined since 2026-11-26);
+    - `inlined`: the pre-change `VALUES` form inlined by `inline_constants` (an independent
+      check; `inlined_text_equal` says whether it is the same text as `compiled`);
+    - `values`: the pre-change form with every constant bound by `VALUES`
+      (`bind(inline=False)`), only for block-0 bindings of `values_families` (it may take
+      minutes per query on large graphs).
+
+    `bindings` are bindings or (binding, in block 0) pairs; a plain binding counts as block 0.
+    """
     config = config or ViewConfig(state_speaker="user")
     views_store = ViewStore(graph.history_id, config=config)
-    compiled_families = set(compiled_families)
+    values_families = set(values_families)
     store, head = graph.store, graph.store.head
     out = []
-    for b in bindings:
+    for item in bindings:
+        b, block0 = item if isinstance(item, tuple) else (item, True)
         query, _ = views_store.bind(b)
-        main, _ = Compiled.of(query, store.mode).main.bind({})
-        record: dict[str, Any] = {"view_id": b.view_id, "family": b.family}
-        variants = {"inlined": inline_constants(main)}
-        if b.family in compiled_families:
-            variants["compiled"] = main
+        compiled = Compiled.of(query, store.mode).main
+        main, _ = compiled.bind({})
+        values, _ = compiled.bind({}, inline=False)
+        inlined = inline_constants(values)
+        record: dict[str, Any] = {"view_id": b.view_id, "family": b.family, "block0": block0,
+                                  "inlined_text_equal": inlined == main}
+        variants = {"compiled": main, "inlined": inlined}
+        if block0 and b.family in values_families:
+            variants["values"] = values
         for name, sparql in variants.items():
             times, rows = [], None
             for _ in range(repeats):
@@ -417,5 +446,6 @@ def action_counts(periods: Sequence[Period]) -> dict[str, int]:
 
 __all__ = ["ALL", "FAMILY", "GENERATOR_VERSION", "Block", "Measurement", "Period", "ScaleError",
            "ScaledGraph", "action_counts", "admitted", "arm_strategies", "build_graph",
-           "choose_views", "fork_store", "generate_block", "inline_constants", "interleave",
+           "choose_views", "diagnostic_bindings", "fork_store", "generate_block",
+           "inline_constants", "interleave",
            "measure", "place", "query_diagnostics", "read_sets", "repair_signature"]
