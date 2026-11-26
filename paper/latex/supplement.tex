@@ -1,0 +1,47 @@
+% Supplementary material of the GRACE manuscript: formal part.
+% Build with `make supplement` (writes build/supplement.pdf). Shares macros.tex and
+% ../references.bib with main.tex. Plan section 9.2 lists what belongs here: the full proof, the
+% list of fragment assumptions, the refined decision strategies and the full IR grammar.
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+\urlstyle{rm}
+
+\input{macros}
+
+% Supplement sections are numbered S1, S2, ...
+\renewcommand{\thesection}{S\arabic{section}}
+
+\newif\ifanonymous
+\anonymoustrue
+
+\begin{document}
+\sloppy
+
+\title{Supplementary Material: Formalisation and Proofs}
+\ifanonymous
+  \author{Anonymous Author(s)}
+  \authorrunning{Anonymous}
+  \institute{Anonymous Institution(s)}
+\fi
+\maketitle
+
+\input{supplement/overview}
+\input{supplement/model}
+\input{supplement/stability}
+\input{supplement/soundness}
+\input{supplement/exactness}
+\input{supplement/assumptions}
+\input{supplement/grammar}
+
+\bibliographystyle{splncs04}
+\bibliography{references}
+
+\end{document}

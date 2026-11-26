@@ -294,12 +294,12 @@ nodes:
     type: task
     title: Write-budget estimate and break-even curves
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T010, E001]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 109
+    owner: m01-T013
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T013-write-budget.md
   - id: E002
     type: experiment
@@ -405,11 +405,11 @@ nodes:
     type: task
     title: Final formalisation and proof
     milestone: M2
-    status: planned
+    status: review
     depends_on: [D005, T017]
-    issue: null
-    owner: null
-    start: null
+    issue: 108
+    owner: m01-T020
+    start: 2026-11-26
     finish: null
     file: ../tasks/T020-formalisation.md
   - id: T021
