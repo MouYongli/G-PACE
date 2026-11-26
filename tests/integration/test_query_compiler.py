@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import unittest
+from dataclasses import replace
 
 from grace.context.memory.graph.changeset import ChangeSet
 from grace.context.memory.graph.entities import EntityEquivalence
@@ -35,7 +36,7 @@ from grace.context.pipeline.query.compile import absolutize, compile_query
 from grace.context.pipeline.query.execute import execute, run
 from grace.context.pipeline.query.grammar import parse
 from grace.context.pipeline.query.ir import At, Predicate, Query
-from grace.context.pipeline.query.result import Witness, scope_note
+from grace.context.pipeline.query.result import Answer, QueryResult, Witness, scope_note
 
 HISTORY = "t017-fixture"
 MODES = ("rdf11", "rdf12")
@@ -407,6 +408,29 @@ class ProvenanceTest(ModeTest):
         self.assertEqual(a["witnesses"], b["witnesses"])
         self.assertNotEqual(a["evidence"], b["evidence"])
         self.assertNotEqual(f2["answers"], self.result(INSTRUMENTS, 6).fingerprints()["answers"])
+
+    def test_evidence_fingerprint_is_per_answer(self):
+        """User decision of 2026-11-26 (T020): moving a fragment between answers, or adding to
+        one answer a fragment another answer already cites, changes the evidence fingerprint
+        although the flat union over all answers stays the same."""
+        violin, piano = (Answer((Entity(x),), (Witness.of([f"c_{x}"]),)) for x in
+                         ("violin", "piano"))
+
+        def result(ev_violin, ev_piano):
+            return QueryResult(("i",), (replace(violin, evidence=ev_violin),
+                                        replace(piano, evidence=ev_piano)), 3)
+
+        before = result(("m1",), ("m2",)).fingerprints()
+        gained = result(("m1", "m2"), ("m2",)).fingerprints()
+        moved = result(("m2",), ("m1",)).fingerprints()
+        for after in (gained, moved):
+            self.assertEqual(after["answers"], before["answers"])
+            self.assertEqual(after["witnesses"], before["witnesses"])
+            self.assertNotEqual(after["evidence"], before["evidence"])
+        self.assertEqual(result(("m1",), ("m2",)).fingerprints(), before)
+        # Order and duplicates inside one answer's evidence do not matter.
+        self.assertEqual(result(("m1", "m2", "m2"), ("m2",)).fingerprints(),
+                         result(("m2", "m1"), ("m2",)).fingerprints())
 
     def test_without_provenance_skips_the_evidence_query(self):
         result = self.result(INSTRUMENTS + " WITHOUT PROVENANCE", 6)

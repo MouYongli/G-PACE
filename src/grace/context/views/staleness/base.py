@@ -26,7 +26,9 @@ time (`maintain_db_ms`), units rendered and model call IDs. `StrategyLog.summary
 rebuilds, citation repairs and the three times separately.
 
 `fingerprint_staleness` is the exact reference: read-time re-query compared by the answer,
-witness and evidence fingerprints (plan 3.4). Misses and over-marking of every strategy are counted
+witness and evidence fingerprints (plan 3.4), witnesses and evidence keyed by answer
+(`QueryResult.fingerprints`): a view is citation-stale iff the answers are unchanged and some
+answer's witnesses or evidence changed. Misses and over-marking of every strategy are counted
 against it.
 """
 
@@ -244,8 +246,7 @@ class Strategy:
         self.log = StrategyLog(self.name, self.options)
 
     def matching(self) -> Options:
-        return Options(attribution=self.options.get("attribution", True),
-                       local_filters=self.options.get("local_filters", True))
+        return Options(local_filters=self.options.get("local_filters", True))
 
     def prime(self, changesets: Iterable[ChangeSet]) -> None:
         """Index change sets committed before the strategy started (no marks, no log)."""

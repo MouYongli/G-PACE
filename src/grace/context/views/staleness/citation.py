@@ -14,7 +14,7 @@ no longer shows the weakness the plan attributes to the arm.
 `UsedClaimsPlusPatterns` also marks a view answer-stale when a write matches a claim pattern
 inside its negated condition or a pattern it aggregates over (the strongest form of
 citation-based dependency, plan 3.4); matching follows `matching.py`, with local filters and
-attribution constraints unless switched off.
+attribution constraints always applied and local filters unless switched off.
 
 Neither is on the ladder of sound strategies: both miss new matches of views without aggregation,
 and used claims only also misses negation hits and changes of aggregate members (plan 3.4,
@@ -54,7 +54,7 @@ class UsedClaims(Strategy):
 
 class UsedClaimsPlusPatterns(Strategy):
     name = "used_claims_patterns"
-    option_names = ("watch_mentions", "local_filters", "attribution")
+    option_names = ("watch_mentions", "local_filters")
 
     def _marks(self, changeset: ChangeSet, views: list[View]) -> list[Mark]:
         watch = self.options.get("watch_mentions", False)

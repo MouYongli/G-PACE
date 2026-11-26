@@ -129,12 +129,10 @@ class TriggerTest(unittest.TestCase):
         self.assertEqual(found, set())
         # A later endorsing attribution on the existing claim matches (plan 3.3).
         self.assertEqual(m(d, cs(2, atts=[att("a2", "c1", 2)])), {(ANSWER, "a2", POSITIVE)})
-        # Without attribution constraints the bare claim pattern matches the claim itself.
-        m2 = Matcher()
-        loose = m2(d, cs(1, [claim("c1", "user", "plays", Value("violin"), 1)],
-                         [att("a1", "c1", 1, speaker="assistant")]),
-                   Options(attribution=False))
-        self.assertEqual(loose, {(ANSWER, "c1", POSITIVE)})
+        # The attribution constraint cannot be switched off (user decision of 2026-11-26): a
+        # matcher without it would only match new claims and miss the attribution a2 above.
+        with self.assertRaises(TypeError):
+            Options(attribution=False)
 
     def test_attribution_defaults_own_positive_not_derived(self):
         """F1 (plan 3.3): a quote, hypothetical, denial or derived attribution does not satisfy
