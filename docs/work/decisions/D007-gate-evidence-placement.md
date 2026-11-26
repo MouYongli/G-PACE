@@ -41,3 +41,4 @@ A formal run contradicts a pilot number.
 - 2026-11-23: proposed as part of the full project DAG.
 - 2026-11-25: the choice of the second annotator is recorded in this decision (user, 2026-11-25); no separate node.
 - 2026-11-25: the user named a graduate research assistant as the second annotator; the name is to be added when annotation starts.
+- 2026-11-26: T012 first round recorded (in_fragment 262/308 = 85.1%, anonymous annotators, no human kappa; details in the T012 log): the fragment-coverage option is not triggered. User decision: a second group of annotators re-annotates after all other work is finished, with the second annotator labelling all 308 questions; annotators are recorded anonymously and label files are not committed.
