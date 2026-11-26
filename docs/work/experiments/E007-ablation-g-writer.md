@@ -40,3 +40,4 @@ Pending.
 ## Log
 
 - 2026-11-23: created from the full project DAG.
+- 2026-11-26: design inputs from the T022 writer smoke comparison (PR #129), recorded by the integration owner on user decisions: one prompt round on development data to raise Qwen3-32B extraction coverage (45/136 empty units in the smoke run), before the configuration lock (D012), with the same prompt then used for every writer arm; report empty-patch rate and output tokens next to quality (Qwen3-32B used about 2.7 times fewer output tokens than Qwen3-8B on the same input); session granularity needs larger schema array bounds (claims 32, stances 16, same_as 8 are sized for segment-8) and a re-pinned schema.
