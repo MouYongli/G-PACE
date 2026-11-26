@@ -181,7 +181,7 @@ def canonical(result: QueryResult) -> dict[str, Any]:
     wit = sorted([answer(a.values), sorted(sorted((*w.claims, *w.attributions))
                                            for w in a.witnesses)] for a in result.answers)
     return {"ans": sorted(answer(a.values) for a in result.answers), "wit": wit,
-            "ev": sorted({e for a in result.answers for e in a.evidence})}
+            "ev": sorted([answer(a.values), sorted(set(a.evidence))] for a in result.answers)}
 
 
 # ---------------------------------------------------------------------------------------------

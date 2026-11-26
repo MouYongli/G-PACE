@@ -338,7 +338,7 @@ class CheckerNegativeTest(unittest.TestCase):
         b = generate_sequence("train-travel", cell(length=60), 5, "s")
         values = {k: [dict(v) for v in vs] for k, vs in b.gold.values.items()}
         key = next(k for k in values if k.startswith("V2:user"))
-        values[key][-1]["ev"] = values[key][-1]["ev"] + ["m9999"]
+        values[key][-1]["ev"] = values[key][-1]["ev"] + [["nowhere", ["m9999"]]]
         found = regraph.disagreements(b.store, b.plan.bindings(), b.plan.world, values)
         self.assertEqual(len(found), 1)
 

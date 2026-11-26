@@ -58,7 +58,7 @@ class PredicateLevel(Strategy):
 
 class ClaimPatternPush(Strategy):
     name = "claim_pattern_push"
-    option_names = ("local_filters", "attribution")
+    option_names = ("local_filters",)
 
     def _marks(self, changeset: ChangeSet, views: list[View]) -> list[Mark]:
         options = self.matching()

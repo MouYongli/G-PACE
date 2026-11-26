@@ -176,7 +176,7 @@ Evidence is returned as unified evidence IDs (`message_id`, or `message_id#char=
 
 The evidence of an answer is the union of the evidence of the claims in its witnesses. Attributions in a witness contribute no evidence of their own, because plan 3.4 defines evidence over claims; an acceptance is cited through the evidence link the writer adds to the accepted claim (plan 5.3: "one answer depends on two messages at once").
 
-`QueryResult.fingerprints()` returns SHA-256 fingerprints of the canonical answers, witnesses and evidence, the inputs of read-time re-query and of answer- versus citation-staleness (plan 3.4).
+`QueryResult.fingerprints()` returns SHA-256 fingerprints of the canonical answers, witnesses and evidence, the inputs of read-time re-query and of answer- versus citation-staleness (plan 3.4). Witnesses and evidence are both fingerprinted per answer (each answer with its witnesses; each answer with its evidence), not as one set over all answers: when an answer gains a fragment that another answer already cites, its citation changes, and a flat evidence set would not show it (user decision of 2026-11-26, from T020).
 
 **Scope notes.** `result.scope_note(result)` returns "Counted within the scope observed up to version r." for counts and "No matching claim within the scope observed up to version r." for empty results, `None` otherwise. It is generated when the result is read and is not part of the result record or of any fingerprint, so it never makes a view stale.
 

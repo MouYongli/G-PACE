@@ -155,29 +155,35 @@ class DerivedState:
 
 @dataclass(frozen=True)
 class ViewValue:
-    """(ans, wit, ev): ans a frozenset; wit maps each answer to a frozenset of witness sets."""
+    """(ans, wit, ev): ans a frozenset; wit maps each answer to a frozenset of witness sets; ev
+    maps each answer to the evidence of the claims in its witnesses (design section 6.2; per
+    answer since the user decision of 2026-11-26, so that an answer gaining a message another
+    answer already cites is citation-stale)."""
 
     ans: frozenset
     wit: Mapping[Any, frozenset]
-    ev: frozenset
+    ev: Mapping[Any, frozenset]
 
     def canonical(self) -> dict[str, Any]:
         return {"ans": sorted(_jsonable(a) for a in self.ans),
                 "wit": sorted([_jsonable(a), sorted(sorted(w) for w in ws)]
                               for a, ws in self.wit.items()),
-                "ev": sorted(self.ev)}
+                "ev": sorted([_jsonable(a), sorted(es)] for a, es in self.ev.items())}
 
 
 def _jsonable(value: Any) -> Any:
     return list(value) if isinstance(value, tuple) else value
 
 
-def _value(wit: dict[Any, set[frozenset]], claims_of: Iterable[str],
-           S: DerivedState, k: int) -> ViewValue:
-    ev = set()
-    for cid in claims_of:
-        ev |= S.ev(cid, k)
-    return ViewValue(frozenset(wit), {a: frozenset(w) for a, w in wit.items()}, frozenset(ev))
+def _value(wit: dict[Any, set[frozenset]], S: DerivedState, k: int) -> ViewValue:
+    ev = {a: frozenset(m for cid in _witness_claims({a: ws}, S) for m in S.ev(cid, k))
+          for a, ws in wit.items()}
+    return ViewValue(frozenset(wit), {a: frozenset(w) for a, w in wit.items()}, ev)
+
+
+def flat_evidence(canonical_ev: Iterable) -> list[str]:
+    """The union of the per-answer evidence of a canonical value (`ViewValue.canonical()["ev"]`)."""
+    return sorted({m for _, ms in canonical_ev for m in ms})
 
 
 def _witness_claims(wit: Mapping[Any, Iterable[frozenset]], S: DerivedState) -> set[str]:
@@ -194,7 +200,7 @@ def ref_v1(S: DerivedState, b: Binding, k: int) -> ViewValue:
     for c in _v1_k(S, b, k):
         for a in S.endorsing(c.claim_id, k):
             wit[c.object].add(frozenset({c.claim_id, a.attribution_id}))
-    return _value(wit, _witness_claims(wit, S), S, k)
+    return _value(wit, S, k)
 
 
 def v2_candidates(S: DerivedState, b: Binding, k: int) -> list[ClaimRow]:
@@ -208,7 +214,7 @@ def ref_v2(S: DerivedState, b: Binding, k: int) -> ViewValue:
         best = max(K, key=lambda c: (c.version, c.claim_id))
         for a in S.endorsing(best.claim_id, k):
             wit[best.object].add(frozenset({best.claim_id, a.attribution_id}))
-    return _value(wit, _witness_claims(wit, S), S, k)
+    return _value(wit, S, k)
 
 
 def ref_v3(S: DerivedState, b: Binding, k: int) -> ViewValue:
@@ -217,7 +223,7 @@ def ref_v3(S: DerivedState, b: Binding, k: int) -> ViewValue:
     members = ref_v1(S, b, k)
     union = frozenset(e for ws in members.wit.values() for w in ws for e in w)
     wit = {len(members.ans): {union} if union else set()}
-    return _value(wit, _witness_claims(wit, S), S, k)
+    return _value(wit, S, k)
 
 
 def ref_v4(S: DerivedState, b: Binding, k: int) -> ViewValue:
@@ -228,7 +234,7 @@ def ref_v4(S: DerivedState, b: Binding, k: int) -> ViewValue:
                 continue
             for a in S.att(c.claim_id, "user", "request", k):
                 wit[(q, c.object)].add(frozenset({c.claim_id, a.attribution_id}))
-    return _value(wit, _witness_claims(wit, S), S, k)
+    return _value(wit, S, k)
 
 
 def ref_v5(S: DerivedState, b: Binding, k: int) -> ViewValue:
@@ -240,7 +246,7 @@ def ref_v5(S: DerivedState, b: Binding, k: int) -> ViewValue:
             continue
         for a in S.att(cid, "assistant", "offer", k):
             wit[c.object].add(frozenset({cid, a.attribution_id}))
-    return _value(wit, _witness_claims(wit, S), S, k)
+    return _value(wit, S, k)
 
 
 def v6_candidates(S: DerivedState, b: Binding, k: int) -> list[tuple[ClaimRow, AttRow]]:
@@ -264,7 +270,7 @@ def ref_v6(S: DerivedState, b: Binding, k: int) -> ViewValue:
                 for a in accepts:
                     wit[(best.object, d.object)].add(frozenset(
                         {best.claim_id, a.attribution_id, d.claim_id, ad.attribution_id}))
-    return _value(wit, _witness_claims(wit, S), S, k)
+    return _value(wit, S, k)
 
 
 REFERENCE = {"V1": ref_v1, "V2": ref_v2, "V3": ref_v3, "V4": ref_v4, "V5": ref_v5, "V6": ref_v6}

@@ -119,15 +119,16 @@ def evaluate(index: _Index, b: Binding, world: World) -> dict[str, Any]:
         wit[a].add(w)
     if b.template == "V3" and not pairs:
         wit = {0: set()}
-    claims = {e for _, w in pairs for e in w if e in index.state.claims}
-    ev = set().union(*(index.msgs[c] for c in claims)) if claims else set()
+    # Evidence per answer: the messages of the claims in that answer's witnesses.
+    ev = {a: {m for w in ws for e in w if e in index.state.claims for m in index.msgs[e]}
+          for a, ws in wit.items()}
 
     def js(x):
         return list(x) if isinstance(x, tuple) else x
 
     return {"ans": sorted(js(a) for a in answers),
             "wit": sorted([js(a), sorted(sorted(w) for w in ws)] for a, ws in wit.items()),
-            "ev": sorted(ev)}
+            "ev": sorted([js(a), sorted(ms)] for a, ms in ev.items())}
 
 
 def historical(index: _Index, subject: str, predicate: str, tau: str, world: World,

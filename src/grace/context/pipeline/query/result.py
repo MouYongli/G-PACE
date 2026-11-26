@@ -5,6 +5,9 @@
 - `Answer`: one answer tuple with all its minimal witnesses and the evidence of their claims.
 - `QueryResult`: the answers of `Q[r]` on `G_r` plus the evidence per claim; `fingerprints()`
   gives the three fingerprints (answers, witnesses, evidence) that read-time re-query compares.
+  Witnesses and evidence are both fingerprinted per answer (answer -> its witnesses, answer -> its
+  evidence), so a view is citation-stale as soon as one answer's evidence changes, even when the
+  new fragment is already cited by another answer (user decision of 2026-11-26, from T020).
 
 The scope note of empty results and counts is not part of the result or of any fingerprint: a
 program generates it at read time (`scope_note`), so that it never makes a view stale (plan 3.4).
@@ -111,17 +114,26 @@ class QueryResult:
         return frozenset((a.values, a.witnesses) for a in self.answers)
 
     def evidence_set(self) -> frozenset[str]:
+        """The union of the evidence of all answers. Not a staleness input: the evidence
+        fingerprint is per answer (`fingerprints`)."""
         return frozenset(e for a in self.answers for e in a.evidence)
 
     def fingerprints(self) -> dict[str, str]:
-        """SHA-256 of the canonical answers, witnesses and evidence (plan 3.4 staleness)."""
+        """SHA-256 of the canonical answers, witnesses and evidence (plan 3.4 staleness).
+
+        Witnesses and evidence are keyed by answer: a flat evidence set over all answers would not
+        change when an answer gains a fragment that another answer already cites.
+        """
         answers = sorted(json.dumps([value_record(v) for v in a.values], sort_keys=True)
                          for a in self.answers)
         witnesses = sorted(
             json.dumps([[value_record(v) for v in a.values],
                         [w.to_record() for w in a.witnesses]], sort_keys=True)
             for a in self.answers)
-        evidence = sorted(self.evidence_set())
+        evidence = sorted(
+            json.dumps([[value_record(v) for v in a.values], sorted(set(a.evidence))],
+                       sort_keys=True)
+            for a in self.answers)
         return {name: _sha(data) for name, data in (
             ("answers", answers), ("witnesses", witnesses), ("evidence", evidence))}
 
