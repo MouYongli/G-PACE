@@ -2,9 +2,9 @@
 
 `ChangeSetBuilder` collects the entries of one version with history-unique IDs and builds the
 `ChangeSet`; `commit_version` commits it to the claim store. IDs are derived from the version and a
-counter per kind (`c12.1`, `a12.1`, `e12.1`, `s12.1`, `q12.1`), so they are unique across kinds
-within a history because each version is committed once, and a retry of the same unit produces the
-same IDs (the store treats an identical retry as a no-op).
+counter per kind (`c12.1`, `a12.1`, `e12.1`, `s12.1`, `q12.1`, `l12.1`), so they are unique
+across kinds within a history because each version is committed once, and a retry of the same unit
+produces the same IDs (the store treats an identical retry as a no-op).
 
 A change set the store rejects (a commit rule, SHACL, or a contract check of `ChangeSet` itself)
 is not partially written: the version is committed as an empty change set instead, so the
@@ -17,10 +17,11 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from grace.context.memory.graph.changeset import ChangeSet
-from grace.context.memory.graph.entities import EntityEquivalence
+from grace.context.memory.graph.entities import EntityEquivalence, EntityLabel
 from grace.context.memory.graph.entries import (
     Attribution,
     Claim,
+    Entity,
     EntryError,
     EvidenceLink,
     Span,
@@ -33,7 +34,7 @@ from grace.context.memory.graph.store import ClaimStore
 from grace.context.pipeline.update.validate import Stance
 
 PREFIX = {"claim": "c", "attribution": "a", "evidence": "e", "supersession": "s",
-          "equivalence": "q"}
+          "equivalence": "q", "label": "l"}
 
 
 @dataclass
@@ -46,6 +47,7 @@ class ChangeSetBuilder:
     evidence: list[EvidenceLink] = field(default_factory=list)
     supersessions: list[Supersession] = field(default_factory=list)
     merges: list[EntityEquivalence] = field(default_factory=list)
+    labels: list[EntityLabel] = field(default_factory=list)
     _counter: Counter = field(default_factory=Counter)
     _evidence_keys: set = field(default_factory=set)
 
@@ -88,10 +90,24 @@ class ChangeSetBuilder:
         self.merges.append(q)
         return q
 
+    def label(self, entity: str, label: str) -> EntityLabel:
+        x = EntityLabel(self._id("label"), entity, label, self.version)
+        self.labels.append(x)
+        return x
+
+    def named_entities(self) -> set[str]:
+        """Entities the entries so far name: subjects, entity objects, speakers, merged ones."""
+        out = {c.subject for c in self.claims}
+        out |= {c.object.id for c in self.claims if isinstance(c.object, Entity)}
+        out |= {a.speaker for a in self.attributions}
+        out |= {e for q in self.merges for e in (q.entity_a, q.entity_b)}
+        return out
+
     def build(self) -> ChangeSet:
         return ChangeSet(self.history_id, self.version, tuple(self.claims),
                          tuple(self.attributions), tuple(self.evidence),
-                         tuple(self.supersessions), self.vocabulary_version, tuple(self.merges))
+                         tuple(self.supersessions), self.vocabulary_version, tuple(self.merges),
+                         tuple(self.labels))
 
 
 def commit_version(store: ClaimStore, builder: ChangeSetBuilder, *, validate: bool

@@ -7,6 +7,7 @@ Acceptance of T022:
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 import urllib.error
@@ -443,6 +444,49 @@ class EntityIdTest(RigTest):
         rig2, _ = self.write()
         self.assertEqual(sorted(rig2.store.state(3).claims), sorted(state.claims))
         self.assertEqual(rig2.updater.entity_labels, rig.updater.entity_labels)
+
+    def test_labels_are_written_to_the_graph_at_first_use(self):
+        """Contract "Claim graph" 0.3: one versioned label per entity, in the change set of the
+        first version whose entries name it."""
+        rig, results = self.write()
+        self.assertEqual(rig.store.state(0).entity_labels(), {})
+        self.assertEqual(rig.store.state(1).entity_labels(), {"Carolines_mom": "Caroline's mom"})
+        self.assertEqual(rig.store.state(2).entity_labels(), {"Carolines_mom": "Caroline's mom"})
+        self.assertEqual(rig.store.state(3).entity_labels(), rig.updater.entity_labels)
+        stamps = {x.entity: (x.label_id, x.version) for x in rig.store.state(3).labels.values()}
+        self.assertEqual(stamps, {"Carolines_mom": ("l1.1", 1), "Carolines_mom_2": ("l3.1", 3),
+                                  "Jose": ("l3.2", 3), "e_true": ("l3.3", 3)})
+        self.assertEqual([r.counts()["entity_labels"] for r in results], [1, 0, 3])
+        self.assertEqual(rig.store.state(3).display_name("Jose"), "José")
+        self.assertEqual(rig.store.state(3).display_name("Sweden"), "Sweden")   # no label
+
+    def test_labels_restore_from_the_graph_without_writer_labels(self):
+        rig, _ = self.write()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = rig.updater.save(Path(tmp))
+            record = json.loads(path.read_text(encoding="utf-8"))
+            del record["entity_labels"]          # a writer state that predates the labels
+            path.write_text(json.dumps(record), encoding="utf-8")
+            again = Updater(rig.info, rig.log, rig.store,
+                            llm_writer(rig.config, rig.client, rig.info), rig.config)
+            again.restore_state(Path(tmp))
+        self.assertEqual(again.entity_labels, rig.updater.entity_labels)
+
+    def test_recall_probe_reads_labels_from_the_graph(self):
+        from grace.eval.runner.probes.retrieval_recall import load_extracted_graphs
+
+        rig, _ = self.write()
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "graphs" / rig.info.history_id
+            rig.store.save(out / "store")
+            path = rig.updater.save(out)
+            record = json.loads(path.read_text(encoding="utf-8"))
+            record["entity_labels"] = {}         # only the graph carries the names now
+            path.write_text(json.dumps(record), encoding="utf-8")
+            graph = load_extracted_graphs(Path(tmp), [rig.info.history_id])[rig.info.history_id]
+        self.assertEqual(dict(graph.entity_labels), rig.updater.entity_labels)
+        _, entities = graph.fragment("Who plays in the band?")
+        self.assertIn(("Jose", ("José",)), [(e.id, e.names) for e in entities])
 
     def test_labels_survive_save_and_restore(self):
         rig, _ = self.write()
