@@ -15,9 +15,9 @@ marks a view only if its answers, witnesses or evidence change, for queries that
   that every over-mark violates (D1)-(D3). On these fixtures no over-mark occurs, so the second
   check is exercised only by `ConstructedTest`.
 
-The (D3) check compares with the flat evidence set the code fingerprints today; the paper models
-evidence per answer (user decision 2026-11-26), and this check follows when
-`fix/T019-evidence-per-answer` changes the fingerprint.
+The (D3) check compares per answer, as the evidence fingerprint does (`QueryResult.fingerprints`):
+a new link on a claim repeats an identifier only if that identifier is already in the evidence of
+an answer whose witnesses contain the claim (supplement S1.4, `ev_t`).
 
 The evaluation at an old cut-off is recomputed after the fact, which time-travel stability allows
 (supplement S2).
@@ -45,6 +45,7 @@ from grace.context.memory.graph.store import ClaimStore
 from grace.context.pipeline.query.execute import run
 from grace.context.pipeline.query.grammar import parse
 from grace.context.pipeline.query.ir import Bound, Query, State, ValidBound, Var
+from grace.context.pipeline.query.result import QueryResult
 from grace.context.views.dependencies import dependency_patterns
 from grace.context.views.staleness.matching import ANSWER, CITATION, Index, Options, triggers
 from grace.eval.datasets.changeseq.template_families import load_split
@@ -89,9 +90,25 @@ def _parse(trigger: str) -> tuple[str, str]:
     return kind, rest.rsplit("@", 1)[0]
 
 
+def evidence_by_claim(result: QueryResult) -> dict[str, frozenset[str]]:
+    """For each witness claim, the union of `ev_t` over the answers `t` whose witnesses contain it.
+
+    An identifier is in this set for claim `c` iff it is in `ev_t` for some answer `t` with `c` in
+    its witnesses, which is the repetition test of (D3).
+    """
+    out: dict[str, set[str]] = {}
+    for answer in result.answers:
+        for claim_id in {c for w in answer.witnesses for c in w.claims}:
+            out.setdefault(claim_id, set()).update(answer.evidence)
+    return {c: frozenset(ids) for c, ids in out.items()}
+
+
 def violations(graph: ClaimStore, entries: set[tuple[str, str]], r0: int, r: int,
-               evidence_r0: frozenset[str]) -> list[str]:
-    """The trigger entries `(kind, id)` that violate (D1), (D2) or (D3) between r0 and r."""
+               evidence_r0: dict[str, frozenset[str]]) -> list[str]:
+    """The trigger entries `(kind, id)` that violate (D1), (D2) or (D3) between r0 and r.
+
+    `evidence_r0` is `evidence_by_claim` of the result at r0.
+    """
     old, new = graph.state(r0), graph.state(r)
 
     def superseded(state, claim_id: str) -> bool:
@@ -107,7 +124,8 @@ def violations(graph: ClaimStore, entries: set[tuple[str, str]], r0: int, r: int
             out.append(f"D2 {entry}")
         elif kind == "evidence":
             link = new.evidence_links[entry]
-            if superseded(new, link.claim_id) or _unified(link) in evidence_r0:
+            if superseded(new, link.claim_id) \
+                    or _unified(link) in evidence_r0.get(link.claim_id, frozenset()):
                 out.append(f"D3 {entry}")
     return out
 
@@ -163,7 +181,7 @@ class Decision:
         found = [t for v, ts in self.marks.items() if r0 < v <= r for t in ts]
         before, after = run(self.query, self.graph, r0), run(self.query, self.graph, r)
         entries = {(t.kind, t.entry) for t in found}
-        explained = violations(self.graph, entries, r0, r, before.evidence_set())
+        explained = violations(self.graph, entries, r0, r, evidence_by_claim(before))
         return found, before.fingerprints(), after.fingerprints(), explained
 
 
@@ -241,6 +259,22 @@ class ConstructedTest(unittest.TestCase):
         self.assertEqual((fb["answers"], fb["witnesses"]), (fa["answers"], fa["witnesses"]))
         self.assertNotEqual(fb["evidence"], fa["evidence"])
 
+    def test_part_b_span_cited_for_another_answer_is_fresh(self):
+        """A new link on c2 cites m1, which only the violin answer cites. Per answer this violates
+        no condition and changes the evidence of the clarinet answer (a flat evidence set over
+        all answers would not change)."""
+        d = Decision(LIST, [BASE, cs(2, [claim("c2", "clarinet", 2)], [att("a2", "c2", 2)],
+                                     [ev("e2", "c2", 2)]),
+                            cs(3, evs=[ev("e3", "c2", 3, message="m1")])])
+        found, fb, fa, explained = d.between(2, 3)
+        self.assertEqual(explained, [])
+        self.assertTrue(found)
+        self.assertTrue(all(t.level == CITATION for t in found))
+        self.assertEqual((fb["answers"], fb["witnesses"]), (fa["answers"], fa["witnesses"]))
+        self.assertNotEqual(fb["evidence"], fa["evidence"])
+        before, after = run(d.query, d.graph, 2), run(d.query, d.graph, 3)
+        self.assertEqual(before.evidence_set(), after.evidence_set())
+
     def test_conditions_reject_queries_outside_the_proposition(self):
         cases = {
             "Q1": "SELECT ?v WHERE { (melanie, plays, ?v) [user, inform] AS ?c } "
@@ -283,7 +317,8 @@ def check_replay(test: unittest.TestCase, seq: Sequence, label: str, counts) -> 
             after, _ = store.evaluate(c.view_id, graph, r)
             fb, fa = before.result.fingerprints(), after.result.fingerprints()
             entries = {_parse(n) for _, t in raised for n in t}
-            explained = violations(graph, entries, r0, r, before.result.evidence_set())
+            explained = violations(graph, entries, r0, r,
+                                   evidence_by_claim(before.result))
             counts["violating"] += bool(explained)
             counts["over"] += fb == fa
             with test.subTest(sequence=label, view=c.view_id, r0=r0, r=r):
