@@ -475,9 +475,12 @@ def run_judging(exp: Mapping[str, Any], config_path: Path, upstream: list[Path],
     for d in upstream:
         run = json.loads((d / "run.json").read_text(encoding="utf-8"))
         slug = run["data"][0]["benchmark"]
+        predictions = stage.read_jsonl(d / "predictions.jsonl")
+        if not any(p["output"] == "answer" for p in predictions):
+            plan.append((d, slug, 0))  # state reads only (MultiWOZ): nothing to judge
+            continue
         if slug not in inputs:
             inputs[slug] = judge_inputs(slug, exp["benchmarks"][slug], loader)
-        predictions = stage.read_jsonl(d / "predictions.jsonl")
         n = len(stage.judgeable(predictions, inputs[slug][0]))
         plan.append((d, slug, n if limit is None else min(n, limit)))
     guard = stage.SpendGuard(max_usd, sum(n for _, _, n in plan), prices)

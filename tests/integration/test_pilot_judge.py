@@ -140,6 +140,24 @@ class JudgeStageTest(unittest.TestCase):
         self.assertEqual(result.status, "failed")
         self.assertIn("spend", result.failure)
 
+    def test_run_without_answers_is_skipped_without_loading_gold(self):
+        empty = self.tmp / "no-answers"
+        shutil.copytree(self.system, empty)
+        rows = [dict(p, output="unknown", prediction=None) for p in self.predictions]
+        (empty / "predictions.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+        def refuse(slug, spec):
+            raise AssertionError("gold loaded for a run with nothing to judge")
+        with mock.patch.dict(os.environ, ENV):
+            results = cli.run_judging(
+                self.exp, CONFIG, [empty], self.tmp / "judge", judge_config_path=JUDGE_CONFIG,
+                judge_model="comparison_model", prices=PRICES, max_usd=1.0, workers=1,
+                loader=refuse, counter=WordCounter(), environ=ENV,
+                post=ScriptedPost(lambda p: AssertionError("no call expected")), code=CODE,
+                command="test")
+        self.assertEqual(results, [])
+
     def test_missing_environment_variable_is_refused(self):
         with self.assertRaises(RuntimeError) as ctx:
             stage.remote_endpoint({"provider": "azure-openai", "base_url_env": "A",
