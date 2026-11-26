@@ -41,13 +41,15 @@ Consequently, for $r_0\le r$,
 
 \paragraph{Effective valid end.}
 The effective valid end $\effend_\G(c)$ of a claim $c$ in $\G$ is $\tau^+(c)$ if
-$\tau^+(c)\neq\bot$; otherwise $\vend(x)$ for the first $x\in\sups_\G(c)$ with $\kind(x)=\change$
-and $\vend(x)\neq\bot$, in the order of $(\vs(x),\text{identifier})$; and $\bot$ (open, or ended at
-an unknown time) if there is no such $x$.
+$\tau^+(c)\neq\bot$; otherwise, with $X$ the set of $x\in\sups_\G(c)$ with $\kind(x)=\change$
+and $\vend(x)\neq\bot$ and $X_0\subseteq X$ those of smallest stamp, $\min\{\vend(x):x\in X_0\}$;
+and $\bot$ (open, or ended at an unknown time) if $X=\emptyset$. The minimum is defined because
+the stated ends of change events of one claim with the same stamp are required to be comparable
+(all dates, or all date-times with a zone, or all without); it depends on no identifier.
 $\effend_\G(c)$ depends only on $N_\G(c)$. Along a history it changes at most once: it is
-$\bot$ until the first change event with a stated end and fixed afterwards, because later events
-carry larger stamps and entries are never removed (A1 and the order above). Assumption A6 states
-that the implementation uses this same order everywhere.
+$\bot$ until the first change set with a change event with a stated end and fixed afterwards,
+because later events carry larger stamps and entries are never removed (A1 and the rule above).
+Assumption A6 states that the implementation uses this same rule everywhere.
 
 \subsection{Claim patterns and their rows}
 

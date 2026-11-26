@@ -50,6 +50,7 @@ from grace.context.memory.graph.entries import (
     Supersession,
     SupersessionKind,
     Value,
+    effective_change_end,
 )
 from grace.context.pipeline.query.ir import (
     Bound,
@@ -101,9 +102,8 @@ class Index:
         """The effective valid end known at `upto` (contracts.md, "Claim graph")."""
         if claim.valid_time.end is not None:
             return claim.valid_time.end
-        ends = sorted((s for s in self.change_ends.get(claim.claim_id, ()) if s.version <= upto),
-                      key=lambda s: (s.version, s.supersession_id))
-        return ends[0].valid_end if ends else None
+        return effective_change_end(s for s in self.change_ends.get(claim.claim_id, ())
+                                    if s.version <= upto)
 
 
 # ---------------------------------------------------------------------------------------------

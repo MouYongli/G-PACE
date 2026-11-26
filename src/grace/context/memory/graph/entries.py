@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, fields
 from enum import StrEnum
 from typing import Any
@@ -443,6 +443,48 @@ class Supersession:
         data = _fields(cls, record)
         data["kind"] = _enum(cls, "kind", SupersessionKind, data["kind"])
         return cls(**data)
+
+
+def _time_class(value: str) -> str:
+    """`date`, `dateTime` (no zone) or `dateTime+zone`: values of one class are totally ordered
+    in SPARQL as in Python; values of different classes may not be comparable."""
+    if time_datatype(value) == "date":
+        return "date"
+    return "dateTime+zone" if _as_datetime(value).tzinfo is not None else "dateTime"
+
+
+def _instant(value: str) -> _dt.datetime:
+    t = _as_datetime(value)
+    return t.astimezone(_dt.UTC).replace(tzinfo=None) if t.tzinfo is not None else t
+
+
+def check_change_ends(supersessions: Iterable[Supersession], where: str) -> None:
+    """Raise `EntryError` if two change supersessions of one claim with the same stamp state
+    valid ends of different time classes (contracts.md, "Claim graph": the earliest of them must
+    be defined)."""
+    classes: dict[tuple[str, int], tuple[str, str]] = {}
+    for s in supersessions:
+        if s.kind is not SupersessionKind.CHANGE or s.valid_end is None:
+            continue
+        cls = _time_class(s.valid_end)
+        seen = classes.setdefault((s.claim_id, s.version), (cls, s.supersession_id))
+        if seen[0] != cls:
+            raise EntryError(f"{where}: change supersessions {seen[1]} and {s.supersession_id} "
+                             f"of claim {s.claim_id} state valid ends of different kinds "
+                             f"({seen[0]}, {cls}), which are not comparable")
+
+
+def effective_change_end(supersessions: Iterable[Supersession]) -> str | None:
+    """The valid end that change supersessions give a claim (contracts.md, "Claim graph").
+
+    `supersessions` are those of one claim visible at the cut-off. Among the change
+    supersessions that state a valid end, those with the earliest stamp count, and of them the
+    earliest valid end (same-stamp ends are comparable, `check_change_ends`); equal instants in
+    different lexical forms pick the smallest form. None when no change supersession states one.
+    """
+    ends = [(s.version, _instant(s.valid_end), s.valid_end) for s in supersessions
+            if s.kind is SupersessionKind.CHANGE and s.valid_end is not None]
+    return min(ends)[2] if ends else None
 
 
 Entry = Claim | Attribution | EvidenceLink | Supersession

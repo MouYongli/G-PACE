@@ -2,11 +2,8 @@
 
 Every assumption used in S2--S4 is listed here, with the statements that use it. The mapping from
 assumptions to the code and tests that check them is part of the released repository. Most are
-enforced or tested there; two are not fully: the locality part of A3 is checked by reading the
-compiler, not by a test; and A6 holds except that the compiler breaks ties between change events of one
-claim with the same stamp by the string order of their percent-encoded IRIs while the in-memory
-state and the matcher use identifier order, so for two such events whose identifiers sort
-differently once encoded, $\mathrm{end}(c)$ can differ and a mark can be missed.
+enforced or tested there; one is not fully: the locality part of A3 is checked by reading the
+compiler, not by a test.
 
 \begin{description}
 \item[A1 Append-only stamping.] Each committed change set adds entries that all carry its version;
@@ -28,9 +25,9 @@ differently once encoded, $\mathrm{end}(c)$ can differ and a mark can be missed.
   change lies between the two versions compared (for Corollary~\ref{cor:stepwise}: in any step).
   When one occurs, every resident view of the history is invalidated, outside the scope of the
   propositions. Used by Proposition~\ref{prop:s-soundness} and everything after it.
-\item[A6 Effective valid end.] The effective valid end is that of S1.1, with the same order
-  (stamp, then identifier) among change events of one claim in the compiled query, in the
-  in-memory graph state and in the change matcher. Used by Lemma~\ref{lem:locality} and
+\item[A6 Effective valid end.] The effective valid end is that of S1.1, with the same rule
+  (earliest stamp, then earliest stated end) among change events of one claim in the compiled
+  query, in the in-memory graph state and in the change matcher. Used by Lemma~\ref{lem:locality} and
   Corollary~\ref{cor:filters}.
 \item[A7 No time of reading.] Filters and the world time compare with constants only; a query with
   relative time is resolved to absolute dates when the read is planned, marked temporary and never

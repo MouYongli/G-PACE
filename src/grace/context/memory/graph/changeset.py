@@ -25,6 +25,7 @@ from grace.context.memory.graph.entries import (
     Supersession,
     _check_id,
     _check_version,
+    check_change_ends,
 )
 
 RECORD_FIELDS = ("history_id", "version", "entries", "vocabulary_version", "entity_merges")
@@ -66,6 +67,7 @@ class ChangeSet:
             if item.entry_id in seen:
                 raise EntryError(f"ChangeSet {self.version}: duplicate entry ID {item.entry_id}")
             seen.add(item.entry_id)
+        check_change_ends(self.supersessions, f"ChangeSet {self.version}")
 
     def entries(self) -> Iterator[Entry]:
         """The four kinds of entries, in the order claims, attributions, evidence, supersessions."""
