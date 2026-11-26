@@ -433,7 +433,8 @@ class EvidencePerAnswerTest(unittest.TestCase):
                                  Staleness())
 
     def test_count_view_answer_is_the_count(self):
-        """A count has one answer, the count, whose evidence is the union over its members; it is
+        """User decision of 2026-11-26: the members of a count are not answers for the evidence
+        rule. A count has one answer, the count, whose evidence is the union over its members; it is
         unchanged here, so the reference judges the count view not stale. Its maintenance still
         patches the member rows (rows are compared by row ID), and the aggregate sentence, which
         cites the union, keeps its citations."""
