@@ -1,0 +1,23 @@
+# T022 follow-up · A small real-model smoke run of GRACE's writer on development data (user
+# decision of 2026-11-26; task file docs/work/tasks/T022-writer.md). Driver:
+#   uv run python -m grace.cli.writer_smoke --config configs/experiments/T022-writer-smoke.yaml \
+#       --writer-url http://127.0.0.1:<port>/v1 [--limit n]
+# Goals: the server accepts the output schema as response_format (json_schema); invalid-output,
+# retry and split rates and token cost from calls.jsonl; a qualitative look at a sample of change
+# sets (no gold claims exist for LoCoMo, so no accuracy); and the extracted graphs as input of the
+# T025 graph channel (configs/experiments/T022-writer-smoke-recall.yaml).
+# Not E006 (graph quality) and not E007 (writer scale and granularity). Development splits only;
+# the driver refuses any other split kind.
+experiment: T022
+seed: 0
+writer_config: configs/common/writer.yaml   # segment-8, temperature 0, seed 0, json_schema
+model_config: configs/models/qwen3-8b.yaml   # D006 primary model; thinking off (chat template)
+samples: 30                                  # units in samples.json (seeded)
+serving:
+  model: Qwen/Qwen3-8B@b968826d9c46dd6066d109eabc6255188de91218
+  server: vLLM (envs/serve, scripts/serve-model.sh)
+
+benchmarks:
+  # LoCoMo development histories conv-26 and conv-49 (plan 6.5).
+  - slug: locomo
+    split: dev

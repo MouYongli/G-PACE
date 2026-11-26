@@ -122,7 +122,7 @@ prompts:
       speaker, message (the new message, last).
   extract-claims:
     call_type: extract
-    sha256: 870c286a62e576d57610c1e8a5612849e52198e386d5a57b8e9fba31280c92f3
+    sha256: f5ddcd844ee51a3f688c80e9cb292b38adc16494fce46f8125e370f1bb7c2bc9
     schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
     schema_sha256: 36b3189354b8ae24b18683bcebf5e4c4b6047c90d7f140b8565f64a949052b96
     note: >-

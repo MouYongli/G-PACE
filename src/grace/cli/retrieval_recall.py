@@ -7,7 +7,8 @@
 
 Runs `grace.eval.runner.probes.retrieval_recall` over every benchmark of the config (development
 splits only) and writes, in a new run directory under
-`$PROJECT_ROOT/runs/T025/artifacts/manager/T025/<run-id>/`:
+`$PROJECT_ROOT/runs/<experiment>/artifacts/manager/<experiment>/<run-id>/` (experiment T025, or
+T022 for the graph channel on the graphs of a T022 writer run, `graph: extracted`):
 
 - `run.json`, `resolved-config.yaml`, `run.log`, `calls.jsonl` (contracts.md, Experiment run);
 - `records/<benchmark>/` the checked benchmark records (incl. `gold.jsonl`, scoring side only);
@@ -49,7 +50,26 @@ from grace.llm.embeddings import EmbeddingClient
 from grace.llm.records import CallLedger
 from grace.llm.tokens import HFTokenCounter, TokenizerPin, locate_snapshot
 
-EXPERIMENT = "T025"
+EXPERIMENTS = ("T025", "T022")   # T022: graph channel on graphs of a T022 writer run
+
+
+def writer_run_dir(run_id: str) -> Path:
+    """Directory of a T022 writer run (`grace.cli.writer_smoke`)."""
+    return shared_dir("runs_root") / "T022" / "artifacts" / "manager" / "T022" / run_id
+
+
+def check_writer_run(path: Path) -> dict[str, Any]:
+    """The upstream record of a writer run whose graphs feed the graph channel; the run must be
+    completed, at a clean SHA, and not cut short by `--limit` (contracts.md, Experiment run)."""
+    run_json = path / "run.json"
+    record = json.loads(run_json.read_text(encoding="utf-8"))
+    resolved = yaml.safe_load((path / "resolved-config.yaml").read_text(encoding="utf-8"))
+    if record["status"] != "completed" or record["code_dirty"]:
+        raise ValueError(f"{path}: writer run is not completed at a clean SHA")
+    if resolved.get("limit") is not None:
+        raise ValueError(f"{path}: writer run was limited to {resolved['limit']} messages")
+    return {"run_id": record["run_id"], "stage": record["stage"], "path": path.as_posix(),
+            "run_json_sha256": rundir.file_sha256(run_json)}
 PLANNER_CONFIG = REPO_ROOT / "configs" / "common" / "planner.yaml"
 
 
@@ -61,7 +81,7 @@ def benchmark_config(entry: dict[str, Any]) -> BenchmarkConfig:
     bc = (BenchmarkConfig.from_dict(entry["config"]) if "config" in entry
           else load_config(entry["slug"]))
     if bc.splits[entry["split"]].kind != "development":
-        raise ValueError(f"{entry['slug']}/{entry['split']}: T025 reads development splits only")
+        raise ValueError(f"{entry['slug']}/{entry['split']}: development splits only")
     return bc
 
 
@@ -79,8 +99,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     config_path = args.config if args.config.is_absolute() else REPO_ROOT / args.config
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    if config["experiment"] != EXPERIMENT:
-        parser.error(f"config is for {config['experiment']!r}, not {EXPERIMENT}")
+    if config["experiment"] not in EXPERIMENTS:
+        parser.error(f"config is for {config['experiment']!r}, not one of {EXPERIMENTS}")
+    experiment = config["experiment"]
     base = RetrievalConfig.load(REPO_ROOT / config["retrieval_config"])
     conditions = [probe.Condition.from_dict(n, c) for n, c in config["conditions"].items()]
     cutoffs = [int(k) for k in config["cutoffs"]]
@@ -90,9 +111,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     entries = [e for e in config["benchmarks"]
                if args.benchmarks is None or e["slug"] in args.benchmarks]
     configs = {e["slug"]: benchmark_config(e) for e in entries}
+    writer_runs = {e["slug"]: writer_run_dir(e["writer_run"]) for e in entries
+                   if e.get("graph") == "extracted"}
+    upstream = [check_writer_run(path) for path in writer_runs.values()]
 
-    run_parent = shared_dir("runs_root") / EXPERIMENT / "artifacts" / "manager"
-    run_dir = rundir.create(run_parent, EXPERIMENT, args.run_id)
+    run_parent = shared_dir("runs_root") / experiment / "artifacts" / "manager"
+    run_dir = rundir.create(run_parent, experiment, args.run_id)
     run_id = run_dir.name
     log = (run_dir / "run.log").open("a", encoding="utf-8")
 
@@ -116,7 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
              "split": e["split"], "path": bc.source_dir(root).as_posix()}
             for e, (slug, bc) in zip(entries, configs.items(), strict=True)]
     run = rundir.RunJson(run_dir, {
-        "run_id": run_id, "experiment": EXPERIMENT, "stage": "probe", "upstream": [],
+        "run_id": run_id, "experiment": experiment, "stage": "probe", "upstream": upstream,
         "code_sha": code.sha, "code_dirty": code.dirty,
         "config_path": config_path.relative_to(REPO_ROOT).as_posix(),
         "config_sha256": rundir.file_sha256(run_dir / "resolved-config.yaml"),
@@ -160,8 +184,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             for t in records.read_tasks:
                 tasks[t.history_id].append(t)
             history_ids = [h.history_id for h in records.histories]
-            graphs = (probe.load_gold_graphs(bc.source_dir(root), history_ids)
-                      if entry.get("graph") == "gold" else {})
+            kind = entry.get("graph", "none")
+            if kind == "gold":
+                graphs = probe.load_gold_graphs(bc.source_dir(root), history_ids)
+            elif kind == "extracted":
+                graphs = probe.load_extracted_graphs(
+                    writer_runs[slug], history_ids,
+                    max_predicates=int(entry.get("fragment_predicates", 30)),
+                    max_entities=int(entry.get("fragment_entities", 30)))
+            elif kind == "none":
+                graphs = {}
+            else:
+                raise ValueError(f"{slug}: unknown graph kind {kind!r}")
             say(f"{slug}: {len(history_ids)} histories, {len(records.read_tasks)} reads, "
                 f"graph={entry.get('graph', 'none')}")
 

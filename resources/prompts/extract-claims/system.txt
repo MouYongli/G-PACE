@@ -4,7 +4,9 @@ What to extract:
 - Facts about the participants and the things in their lives: identity, family and relationships, pets, possessions, home and location, work and studies, health, hobbies and activities, preferences and opinions, plans and goals, events they took part in, and the tasks they pursue together.
 - For a task (a booking, a purchase, a plan): the requirements a speaker states, the options a speaker offers or suggests, and whether an option is accepted or rejected.
 - Not: general knowledge, explanations, advice, instructions, the content of texts, code or stories written on request, greetings, small talk, or questions that assert nothing.
-- Most messages hold zero to three claims. A message with nothing worth remembering gets no entries.
+- Not the conversation itself: greetings, thanks, compliments, reactions to what the other participant said ("Wow, that's cool!", "You've got guts"), questions to the other participant, or feelings about the chat. Never write claims such as greeted, askedAbout, expressedInterest, expressedPraise or expressedHappiness for these. Ask: would this still be worth knowing about the person in a month?
+- Most messages hold zero to three claims. A message with nothing worth remembering gets no entries; in casual chat that is most messages.
+- Time: whenever a message places a claim in time ("yesterday", "last year", "next month", "in 2022", "since college"), keep the phrase in time_expression. When the date follows from the message date shown, also give valid_from (for an event, the day it happened).
 
 Claims ("claims"), one object per claim:
 - message: the number of the message that makes the claim.
@@ -45,3 +47,12 @@ New messages:
 [3] Ana (2024-04-20): Fine, I'll take TP1950. Please book it.
 Answer:
 {"claims": [{"message": 1, "subject": "Ana", "predicate": "livesIn", "object": "Porto", "object_type": "entity", "function": "inform", "time_expression": "last month", "quote": "I moved to Porto last month"}, {"message": 1, "subject": "Ana", "predicate": "playsInstrument", "object": "cello", "object_type": "entity", "function": "inform", "quote": "I picked up the cello"}, {"id": "n1", "message": 2, "subject": "Ana's flight booking", "predicate": "selectedService", "object": "TP1950", "object_type": "entity", "function": "offer", "quote": "There is flight TP1950"}, {"message": 2, "subject": "TP1950", "predicate": "departureDate", "object": "2024-05-03", "object_type": "date", "function": "inform", "quote": "2024-05-03"}], "stances": [{"message": 1, "claim": "k2", "function": "inform", "polarity": "negative", "ends": "change", "quote": "I don't play the piano any more"}, {"message": 3, "claim": "n1", "function": "accept", "quote": "I'll take TP1950"}], "same_as": []}
+
+Example. Known claims: (none)
+New messages:
+[1] Jon (2023-03-14): Hey Gina! Long time no see. How are you?
+[2] Gina (2023-03-14): Hi Jon! Busy as always. I ran my first half marathon last Sunday!
+[3] Jon (2023-03-14): Wow, congrats! That's amazing. How did it go?
+[4] Gina (2023-03-14): Great! My sister Ana came to cheer. I've been running since college.
+Answer:
+{"claims": [{"message": 2, "subject": "Gina", "predicate": "participatedIn", "object": "half marathon", "object_type": "entity", "exclusive": false, "function": "inform", "time_expression": "last Sunday", "valid_from": "2023-03-12", "quote": "I ran my first half marathon last Sunday"}, {"message": 4, "subject": "Gina", "predicate": "hasSibling", "object": "Ana", "object_type": "entity", "exclusive": false, "function": "inform", "quote": "My sister Ana"}, {"message": 4, "subject": "Ana", "predicate": "attended", "object": "half marathon", "object_type": "entity", "exclusive": false, "function": "inform", "quote": "Ana came to cheer"}, {"message": 4, "subject": "Gina", "predicate": "hasHobby", "object": "running", "object_type": "entity", "exclusive": false, "function": "inform", "time_expression": "since college", "quote": "I've been running since college"}], "stances": [], "same_as": []}
