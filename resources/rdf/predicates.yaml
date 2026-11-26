@@ -1,0 +1,26 @@
+# Domain predicates, exclusivity rules and the alias table of the claim graph (plan 5.2,
+# "Vocabulary: a stable core plus local extension"). Loaded by
+# src/grace/context/memory/graph/vocabulary.py; contracts.md, "Claim graph".
+#
+# exclusive: true  -> the predicate has an exclusivity rule: at most one currently accepted value
+#                     per (subject, scope). Only such predicates admit supersession by a replacing
+#                     claim under the attribution guard (plan 3.2).
+# exclusive: false -> multi-valued; values coexist and are never superseded by a new value.
+#
+# This seed list covers the running examples of plan 3.5 and the worked example of
+# docs/research/change-sequences.md (6.5). Extraction (T022) and the generator (T015) add the
+# predicates they need through a reviewed change to this file, before the configuration lock (D012).
+version: v1
+predicates:
+  livesIn: {exclusive: true}
+  playsInstrument: {exclusive: false}
+  maintains: {exclusive: false}
+  selectedService: {exclusive: false}
+  arriveBy: {exclusive: true}
+  destination: {exclusive: true}
+  scheduledArrival: {exclusive: true}
+aliases:
+  arrive by: arriveBy
+  no later than: arriveBy
+  lives in: livesIn
+  plays: playsInstrument

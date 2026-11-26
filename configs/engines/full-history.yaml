@@ -1,0 +1,11 @@
+# Raw text: the full history, no prefix caching (plan 7.2). Run with --budget full; with a token
+# budget the same engine is "truncation to the same budget" (newest messages that fit).
+engine: raw
+description: Full history without prefix caching
+prefix_caching: false
+params:
+  last_k: null
+  window_tokens: 32768   # Qwen3-8B native window (plan 7.1); overflow is disclosed in the context
+  # E001 decision (probe run E001-20261125T180821Z-b7d9): the window holds the whole answering
+  # call; reserve = output 256 + largest fixed prompt part 592 + 64, rounded up to 128.
+  prompt_reserve_tokens: 1024

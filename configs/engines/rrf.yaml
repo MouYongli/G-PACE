@@ -1,0 +1,21 @@
+# Text retrieval over message chunks, channel rrf (plan 7.2). top_k is a placeholder until it is
+# fixed on development data; the read budget decides how many of the top_k fit.
+engine: retrieval
+description: Text retrieval, channel rrf
+prefix_caching: false
+params:
+  channel: rrf
+  top_k: 20
+  rrf_k: 60
+  bm25_k1: 1.5
+  bm25_b: 0.75
+  order: chronological
+  # Qwen3-Embedding query instruction; a placeholder until frozen on development data (plan 7.1:
+  # "query instruction strings frozen and published").
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+# Embedding model of the dense channel (plan 7.1). The harness reaches it over the OpenAI-compatible
+# /embeddings API of a separate server (`--embed-url`), through grace.llm.embeddings.
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B

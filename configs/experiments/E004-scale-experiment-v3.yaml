@@ -1,0 +1,53 @@
+# E004 Scale experiment, design version 3 (docs/work/experiments/E004-scale-experiment.md,
+# "Addendum: design version 3"). Version 2 (configs/experiments/E004-scale-experiment.yaml) stays
+# frozen with its 30 completed runs. User decision of 2026-11-26: the T017 compiler now writes
+# single-member entity constants directly into the triple patterns instead of binding them with
+# `VALUES` (src/grace/context/pipeline/query/compile.py, `CompiledQuery.bind`), and all six
+# template families are rerun on large graphs. CPU only, no model call (template rendering).
+#   uv run python -m grace.cli.scale plan|run|summary --config configs/experiments/E004-scale-experiment-v3.yaml
+# Changes against version 2: `six` runs on blocks {16, 64, 256} x views {8, 32, 128, 512} like
+# `four` (a number of views above the admitted bindings is not run: 15 per block for `six`, so
+# 512 views need 35 blocks); `four` is rerun on the same grid with the new compiler for a
+# like-for-like comparison; diagnostics time the engine's text, the probe's inlining of the
+# pre-change form and (block 0, up to 64 blocks for pending and choice) the pre-change VALUES
+# form, plus a seeded sample of other views per family. Everything else is unchanged.
+experiment: E004
+version: 3   # 2026-11-26: inlined single-IRI constants; six families on large graphs
+
+generator:
+  version: changeseq-generator-2
+  families: [hotel-stay, apartment-search, train-travel, flight-travel, car-rental]
+  block_length: 512        # messages per block
+  prefix_length: 256       # messages per block committed before measuring (graph size)
+  density: 10.0            # C1-C5 macros per 100 messages (the generator default mix)
+
+mixes:
+  six: [list, current, count, constraints, pending, choice]
+  four: [list, current, count, constraints]
+
+graphs:
+  - {mix: six, blocks: [16, 64, 256], views: [8, 32, 128, 512]}
+  - {mix: four, blocks: [16, 64, 256], views: [8, 32, 128, 512]}
+
+grid:
+  read_scope: [4, all]                    # views checked per read: 4 drawn per read, or all
+  writes_per_read: [1, 4, 16, 64, 256]    # committed change sets between consecutive reads
+
+seeds: [1, 2]          # graph realisations: block generation, view choice and read draws
+repetitions: 3         # timing repetitions of every (cell, seed); arm order rotated per repetition
+reads: 16              # read periods per measurement
+
+arms:
+  push: claim_pattern_filters   # claim-pattern push with local filters, no confirmation
+  pull: requery                 # read-time re-query with fingerprints
+  hybrid: push_confirm          # push filter plus read-time confirmation
+
+diagnostics:
+  repeats: 3                       # timings per query (minimum reported)
+  slow_families: [pending, choice] # their pre-change VALUES form is timed only up to
+  values_slow_max_blocks: 64       # this many blocks (the engine's text always)
+  sample_per_family: 12            # extra views per family drawn from the other blocks
+
+budget:
+  max_hours_per_run: 8             # a run that exceeds this fails (recorded, not retried silently)
+  parallel_runs: 10                # runs started concurrently (of 224 logical CPUs, shared)

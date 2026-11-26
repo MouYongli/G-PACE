@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grace/llm/answer.json",
+  "title": "Output of the answering LLM (plan 5.6): answer, state, one further retrieval, or unknown",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "output": {"const": "answer"},
+        "answer": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+          ]
+        },
+        "cited_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      },
+      "required": ["output", "answer", "cited_ids"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "output": {"const": "state"},
+        "state": {"type": "object", "additionalProperties": {"type": "string"}},
+        "cited_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "required": ["output", "state", "cited_ids"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "output": {"const": "retrieve"},
+        "query": {"type": "string", "minLength": 1}
+      },
+      "required": ["output", "query"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "output": {"const": "unknown"},
+        "cited_ids": {"type": "array", "maxItems": 0}
+      },
+      "required": ["output", "cited_ids"],
+      "additionalProperties": false
+    }
+  ]
+}

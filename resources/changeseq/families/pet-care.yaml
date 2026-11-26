@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: pet-care
+group: health
+title: Pet care
+companions: [Ronja, Idris, Wiebke, Enzo, Saskia]
+multi:
+  predicate: ownsPet
+  noun: pets
+  lexicon: [cat, dog, rabbit, parrot, hamster, tortoise, ferret, guinea pig, canary, goldfish]
+  first: "I have a {o}"
+  second: "you have a {o}"
+  third: "{x} has a {o}"
+  first_neg: "I no longer have a {o}"
+  third_neg: "{x} no longer has a {o}"
+  ask_first: "Which pets do I have?"
+  ask_third: "Which pets does {x} have?"
+  count_first: "How many kinds of pets do I have?"
+  count_third: "How many kinds of pets does {x} have?"
+exclusive:
+  predicate: insuredWith
+  noun: health insurer
+  lexicon: [Alpina Health, Nordkasse, Medivita, Sanaplus, Vitalis Care, Corvia Health,
+            Helvo Insurance, Prima Salus, Orbis Health, Lumen Care]
+  first: "I am insured with {o}"
+  second: "you are insured with {o}"
+  third: "{x} is insured with {o}"
+  change_first: "I switched my health insurance to {o}"
+  change_third: "{x} switched health insurance to {o}"
+  past_first: "I was insured with {o}"
+  past_third: "{x} was insured with {o}"
+  ask_first: "Who am I insured with?"
+  ask_third: "Who is {x} insured with?"
+task:
+  noun: pet sitting booking
+  constraints:
+    - {predicate: visitFrequency, datatype: string, request: "the sitter should come {v}",
+       lexicon: [once a day, twice a day, every other day, three times a day, every morning, every evening]}
+    - {predicate: stayLength, datatype: string, request: "it is for {v}",
+       lexicon: [3 nights, 5 nights, 7 nights, 10 nights, 14 nights, 21 nights]}
+  catalogue: {predicate: firstVisit, datatype: time, noun: first visit time,
+              phrase: "can make the first visit at {v}",
+              lexicon: ["07:05:00", "08:25:00", "09:50:00", "12:40:00", "14:20:00", "16:05:00", "18:35:00", "20:05:00"]}
+  items:
+    - {id: sitter-paws, label: Paws and Whiskers}
+    - {id: sitter-tails, label: Happy Tails}
+    - {id: sitter-fellfreunde, label: Fellfreunde}
+    - {id: sitter-pals, label: Pet Pals Nord}
+    - {id: sitter-pfote, label: Kleine Pfote}
+    - {id: sitter-tierhueter, label: Tierhüter}
+    - {id: sitter-snout, label: Snout Scouts}
+    - {id: sitter-bark, label: Bark Avenue}
+    - {id: sitter-purrfect, label: Purrfect Stay}
+    - {id: sitter-furry, label: Furry Friends Care}

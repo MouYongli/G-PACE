@@ -1,0 +1,38 @@
+# Blind judge (T004; plan 6.7 "Judge calibration", 7.1 "Judging").
+# Code: grace.eval.analysis.judging.judge (blind_judge). The judge sees only question, reference and
+# response; calls are booked as evaluation overhead (call_type judge, trigger evaluation).
+judge: blind
+version: 1                        # bump on any change below; judgements name the judge config
+prompt: judge                     # configs/common/prompts.yaml
+prompt_sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2
+parse: one_word                   # CORRECT / INCORRECT, else verdict invalid (judge.parse_label)
+model:                            # primary judge (decision D006): local, open weights, never retired
+  provider: vllm                  # served with scripts/serve-model.sh; reserve GPUs in runs/compute.yaml
+  hf_repo: deepseek-ai/DeepSeek-V4-Flash-0731
+  revision: 7872f01b1d1fe23eabc4c98b48bffcef5a386062
+  served_name: deepseek-ai/DeepSeek-V4-Flash-0731
+  licence: MIT
+  note: no Jinja chat template (encoding/encoding_dsv4.py); token counting and thinking mode are
+    settled before E001 judges anything
+comparison_model:                 # E001 only: agreement with the primary judge and with human labels
+  provider: azure-openai          # D006: secondary judge, budget EUR 50 for the whole project
+  model: gpt-4.1-mini
+  version: "2025-04-14"           # Azure lifecycle page: retires 2027-04-14 (deployments 2027-10-14)
+  deployment: Sweden Central, standard (not batch)
+  base_url_env: AZURE_OPENAI_ENDPOINT     # https://<resource>.openai.azure.com/openai/v1
+  deployment_env: AZURE_OPENAI_DEPLOYMENT # sent as `model`
+  api_key_env: AZURE_OPENAI_API_KEY       # never written to the repository
+  auth_header: api-key
+decoding:
+  temperature: 0.0
+  max_tokens: 10
+  seed: 0
+judged_outputs: [answer]          # unknown and invalid are scored by rule (Evaluation section)
+calibration:
+  # Agreement with human labels (Evaluation section, "Judge calibration"). Measured in E001 on
+  # development data only; the numbers are a known gap until then.
+  sample_size: 200
+  sample: stratified by benchmark and by the judge's verdict, development reads of the pilot runs
+  annotators: 2
+  label_file: human-labels.jsonl  # grace.eval.analysis.judging.human.read_labels format
+  report: [judge_vs_adjudicated kappa, observed agreement, between-annotator kappa, judge_invalid]

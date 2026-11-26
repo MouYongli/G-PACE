@@ -1,0 +1,29 @@
+{
+  "comment": "run.json templates of one staged end-of-history run: one ingestion serves two budget levels, one judge and one score stage. ${PROJECT_ROOT} and ${RUN_DIR} are replaced by temporary directories in tests/contracts/test_experiment_run.py; upstream paths and run_json_sha256 are filled in by the test.",
+  "resources_sha256": "dd877878e9f558bf95177a3526c22bb25915b4e6d4fa67bbb8f7824d7d204d86",
+  "common": {
+    "experiment": "E000",
+    "status": "completed",
+    "code_sha": "0123456789abcdef0123456789abcdef01234567",
+    "code_dirty": false,
+    "config_path": "configs/experiments/E000-fixture.yaml",
+    "config_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "resources_sha256": "dd877878e9f558bf95177a3526c22bb25915b4e6d4fa67bbb8f7824d7d204d86",
+    "data": [
+      {"benchmark": "locomo", "version": "3eb6f2c", "manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222", "split": "fixture", "path": "${PROJECT_ROOT}/data/locomo/3eb6f2c"}
+    ],
+    "project_root": "${PROJECT_ROOT}",
+    "seed": 0,
+    "environment": {"python": "3.12", "lock_sha256": "3333333333333333333333333333333333333333333333333333333333333333", "host": "fixture-host", "device": "cpu"},
+    "started_at": "2026-11-25T00:00:00Z",
+    "finished_at": "2026-11-25T00:10:00Z",
+    "failure": null
+  },
+  "runs": [
+    {"run_id": "E000-20261125T000000Z-0001", "stage": "ingest", "upstream": [], "n_records": 5, "command": "python -m grace.cli.run.system --stage ingest"},
+    {"run_id": "E000-20261125T001000Z-0002", "stage": "read", "upstream": ["E000-20261125T000000Z-0001"], "n_records": 3, "command": "python -m grace.cli.run.system --stage read --budget 256"},
+    {"run_id": "E000-20261125T001000Z-0003", "stage": "read", "upstream": ["E000-20261125T000000Z-0001"], "n_records": 3, "command": "python -m grace.cli.run.system --stage read --budget 512"},
+    {"run_id": "E000-20261125T002000Z-0004", "stage": "judge", "upstream": ["E000-20261125T001000Z-0002"], "n_records": 3, "command": "python -m grace.cli.run.judge"},
+    {"run_id": "E000-20261125T003000Z-0005", "stage": "score", "upstream": ["E000-20261125T001000Z-0002", "E000-20261125T002000Z-0004"], "n_records": 3, "command": "python -m grace.cli.run.score"}
+  ]
+}

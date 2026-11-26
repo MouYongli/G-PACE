@@ -1,0 +1,21 @@
+# Development smoke set of the change-sequence generator (task T015). Development families only
+# (resources/changeseq/split.yaml); template renderer (development and test renderer, not the
+# paper's renderer; dev-model.yaml is the same set with the model renderer of D006). Grids follow
+# docs/research/change-sequences.md section 10 at reduced size: G-A schedules on rho = 10, and
+# one sequence per family at each other density level with the uniform schedules of G-S.
+dataset: change-seq-dev-smoke
+seed: 20261125
+renderer: template-v1
+cells:
+  - families: [train-travel, flight-travel, car-rental, hotel-stay, apartment-search]
+    density: [10]
+    length: 200
+    schedules: [A20d1, A20d5, U2, U5, U10, U25, U50, P10]
+    primary_schedule: A20d1
+    sequences_per_family: 2
+  - families: [train-travel, flight-travel, car-rental, hotel-stay, apartment-search]
+    density: [1, 3, 30]
+    length: 200
+    schedules: [U10, U2, U5, U25, U50]
+    primary_schedule: U10
+    sequences_per_family: 1

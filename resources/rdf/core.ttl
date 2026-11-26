@@ -1,0 +1,121 @@
+# GRACE core vocabulary (plan 5.2, "Vocabulary mapping"; contracts.md, "Claim graph").
+# Frozen during development and shared by every history; domain predicates are in predicates.yaml.
+# The example.org namespace is a placeholder until the release namespace is decided.
+#
+# Mapping to standard vocabularies:
+#   claim node      RDF 1.1 standard reification (rdf:Statement) or RDF 1.2 reifier (rdf:reifies)
+#   attribution     GRaSP-style attribution node; prov:wasAttributedTo -> speaker
+#   provenance      PROV-O: prov:wasDerivedFrom -> source message; supersession ~ prov:Invalidation
+#   span anchors    Web Annotation oa:TextPositionSelector
+#   valid time      OWL-Time interval, left-closed, right-open (g:validFrom / g:validUntil)
+#   knowledge time  version numbers (g:knownFrom); no W3C vocabulary covers bitemporality
+
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix oa:   <http://www.w3.org/ns/oa#> .
+@prefix schema: <https://schema.org/> .
+@prefix g:    <https://example.org/grace/ns#> .
+
+g: a owl:Ontology ;
+    rdfs:label "GRACE core vocabulary" ;
+    owl:versionInfo "1" .
+
+# ---- Core concepts (plan 5.2, "a stable core plus local extension") ---------------------------
+
+g:Entity a owl:Class ; rdfs:label "Entity" ;
+    rdfs:comment "Anything a claim can be about: a person, an item, a task, an event." .
+g:Person a owl:Class ; rdfs:subClassOf g:Entity, prov:Agent ; rdfs:label "Person" .
+g:Event a owl:Class ; rdfs:subClassOf g:Entity ; rdfs:label "Event" .
+g:Request a owl:Class ; rdfs:subClassOf g:Entity ; rdfs:label "Request" ;
+    rdfs:seeAlso schema:Action ;
+    rdfs:comment "A task the user asked for; its constraints are claims with the request as subject." .
+g:Offer a owl:Class ; rdfs:subClassOf g:Entity ; rdfs:label "Offer" ;
+    rdfs:seeAlso schema:Reservation ;
+    rdfs:comment "A pending reservation; confirmed after acceptance." .
+g:Confirmation a owl:Class ; rdfs:subClassOf g:Entity ; rdfs:label "Confirmation" ;
+    rdfs:seeAlso schema:ReservationConfirmed .
+
+# ---- Entry kinds (plan 3.2) ------------------------------------------------------------------
+
+g:Claim a owl:Class ; rdfs:subClassOf prov:Entity ; rdfs:label "Claim" ;
+    rdfs:comment """A proposition (subject, predicate, object, scope, valid time). It is not
+asserted: under RDF 1.1 it is an rdf:Statement, under RDF 1.2 a reifier of a triple term.""" .
+g:Attribution a owl:Class ; rdfs:subClassOf prov:Entity ; rdfs:label "Attribution" ;
+    rdfs:comment "One stance of one speaker on one claim (GRaSP attribution)." .
+g:EvidenceLink a owl:Class ; rdfs:subClassOf prov:Entity ; rdfs:label "Evidence link" ;
+    rdfs:comment "Support of a claim by a message, optionally a character span of it." .
+g:Supersession a owl:Class ; rdfs:subClassOf prov:Invalidation ; rdfs:label "Supersession event" ;
+    rdfs:comment "From its version on, the claim is no longer currently accepted." .
+g:EntityEquivalence a owl:Class ; rdfs:label "Entity equivalence" ;
+    rdfs:comment "Two entities denote the same thing from its version on; not one of the four entry kinds." .
+
+# ---- Properties ------------------------------------------------------------------------------
+
+g:knownFrom a owl:DatatypeProperty ; rdfs:range xsd:integer ; rdfs:label "known from" ;
+    rdfs:comment """Version stamp of an entry: the version of the commit that added it. For a
+supersession event it is the supersession version. Maps PROV generation and invalidation times to
+version numbers (plan 5.2, knowledge time).""" ;
+    rdfs:seeAlso prov:generatedAtTime, prov:invalidatedAtTime .
+
+g:scope a owl:DatatypeProperty ; rdfs:domain g:Claim ; rdfs:range xsd:string .
+g:validFrom a owl:DatatypeProperty ; rdfs:domain g:Claim ; rdfs:label "valid from" ;
+    rdfs:comment "Inclusive start of the valid interval; absent when unknown." ;
+    skos:closeMatch time:hasBeginning .
+g:validUntil a owl:DatatypeProperty ; rdfs:domain g:Claim ; rdfs:label "valid until" ;
+    rdfs:comment "Exclusive end of the valid interval; absent when open." ;
+    skos:closeMatch time:hasEnd .
+g:validTimeExpression a owl:DatatypeProperty ; rdfs:domain g:Claim ; rdfs:range xsd:string ;
+    rdfs:comment "The source's temporal phrase, kept when it cannot be or was resolved." .
+
+g:about a owl:ObjectProperty ; rdfs:domain g:Attribution ; rdfs:range g:Claim .
+g:function a owl:ObjectProperty ; rdfs:domain g:Attribution ; rdfs:range skos:Concept ;
+    rdfs:comment "Communicative function, a concept of the scheme in functions.ttl." .
+g:reportMode a owl:ObjectProperty ; rdfs:domain g:Attribution ; rdfs:range skos:Concept .
+g:polarity a owl:ObjectProperty ; rdfs:domain g:Attribution ; rdfs:range skos:Concept .
+g:certainty a owl:ObjectProperty ; rdfs:domain g:Attribution ; rdfs:range skos:Concept .
+g:derived a owl:DatatypeProperty ; rdfs:domain g:Attribution ; rdfs:range xsd:boolean ;
+    rdfs:comment "An assistant restatement: not independent support." .
+
+g:supports a owl:ObjectProperty ; rdfs:domain g:EvidenceLink ; rdfs:range g:Claim .
+
+g:supersedes a owl:ObjectProperty ; rdfs:domain g:Supersession ; rdfs:range g:Claim .
+g:kind a owl:ObjectProperty ; rdfs:domain g:Supersession ; rdfs:range skos:Concept .
+g:replacedBy a owl:ObjectProperty ; rdfs:domain g:Supersession ; rdfs:range g:Claim .
+g:licensedBy a owl:ObjectProperty ; rdfs:domain g:Supersession ; rdfs:range g:Attribution ;
+    rdfs:comment "The stance that licensed the supersession under the attribution guard." .
+g:validEnd a owl:DatatypeProperty ; rdfs:domain g:Supersession ;
+    rdfs:comment """For a supersession of kind change: the world time from which the superseded
+claim no longer holds, when stated. Absent: unknown, at most the world time of the superseding
+message. Never present on a correction.""" ;
+    skos:closeMatch time:hasEnd .
+
+g:entityA a owl:ObjectProperty ; rdfs:domain g:EntityEquivalence .
+g:entityB a owl:ObjectProperty ; rdfs:domain g:EntityEquivalence .
+
+# ---- Value schemes ---------------------------------------------------------------------------
+
+g:ReportModes a skos:ConceptScheme ; skos:prefLabel "Report modes" .
+g:OwnStatement a skos:Concept ; skos:inScheme g:ReportModes ; skos:prefLabel "own statement" .
+g:Quote a skos:Concept ; skos:inScheme g:ReportModes ; skos:prefLabel "quoting another" .
+g:Hypothetical a skos:Concept ; skos:inScheme g:ReportModes ; skos:prefLabel "hypothetical" .
+
+g:Polarities a skos:ConceptScheme ; skos:prefLabel "Polarity" .
+g:Positive a skos:Concept ; skos:inScheme g:Polarities ; skos:prefLabel "positive" .
+g:Negative a skos:Concept ; skos:inScheme g:Polarities ; skos:prefLabel "negative" .
+
+g:Certainties a skos:ConceptScheme ; skos:prefLabel "Certainty (GRaSP factuality values)" .
+g:Certain a skos:Concept ; skos:inScheme g:Certainties ; skos:prefLabel "certain" .
+g:Probable a skos:Concept ; skos:inScheme g:Certainties ; skos:prefLabel "probable" .
+g:Possible a skos:Concept ; skos:inScheme g:Certainties ; skos:prefLabel "possible" .
+g:Underspecified a skos:Concept ; skos:inScheme g:Certainties ; skos:prefLabel "underspecified" .
+
+g:SupersessionKinds a skos:ConceptScheme ; skos:prefLabel "Supersession kinds" .
+g:Change a skos:Concept ; skos:inScheme g:SupersessionKinds ; skos:prefLabel "change" ;
+    skos:definition "The world changed; the claim held until then and stays in the past state." .
+g:Correction a skos:Concept ; skos:inScheme g:SupersessionKinds ; skos:prefLabel "correction" ;
+    skos:definition "The claim was mistaken; it is excluded from the past state as well." .

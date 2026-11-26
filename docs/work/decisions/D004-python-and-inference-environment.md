@@ -8,7 +8,7 @@ created: 2026-11-22
 
 ## Context
 
-The plan (section 7) runs Qwen3-8B for writing, planning, rendering and reading, an embedding model, and a long-context second reader, all locally; the write side of LongMemEval-S alone is estimated at 80M to 680M tokens. Everything else (claim graph, SPARQL, BM25, exact cosine, statistics, judging aggregation) needs only CPU. The machine has 8 NVIDIA B200 GPUs (Blackwell, sm_100) shared with other users, driver 580 (CUDA 13.0 runtime), a system CUDA toolkit 13.5 that is newer than the driver supports, and system Python 3.12. vLLM pins its own torch and CUDA wheels and changes often. With `requires-python = ">=3.10"`, CI resolved on 3.10 while runs would use 3.12.
+The plan (section 7) runs Qwen3-8B for writing, planning, rendering and answering, an embedding model, and a long-context second answering model, all locally; the write side of LongMemEval-S alone is estimated at 80M to 680M tokens. Everything else (claim graph, SPARQL, BM25, exact cosine, statistics, judging aggregation) needs only CPU. The machine has 8 NVIDIA B200 GPUs (Blackwell, sm_100) shared with other users, driver 580 (CUDA 13.0 runtime), a system CUDA toolkit 13.5 that is newer than the driver supports, and system Python 3.12. vLLM pins its own torch and CUDA wheels and changes often. With `requires-python = ">=3.10"`, CI resolved on 3.10 while runs would use 3.12.
 
 ## Decision
 

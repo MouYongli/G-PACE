@@ -1,0 +1,2 @@
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "task_id": "ctx-001:q1", "annotation": "main", "reference": "Brask", "evidence_ids": null, "evidence_segment_ids": null, "evidence_unresolved": [], "labels": {"competency": "conflict_resolution"}}
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "task_id": "ctx-001:q2", "annotation": "main", "reference": "Rell", "evidence_ids": null, "evidence_segment_ids": null, "evidence_unresolved": [], "labels": {"competency": "conflict_resolution"}}

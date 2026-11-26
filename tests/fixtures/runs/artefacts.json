@@ -1,0 +1,35 @@
+{
+  "comment": "One example record per intermediate artefact of the Experiment run section of docs/research/contracts.md; each key is the file the record belongs to.",
+  "contexts.jsonl": {
+    "read_id": "conv-syn-1:q1@5", "history_id": "conv-syn-1", "version": 5, "budget_tokens": 256, "tokens": 41,
+    "text": "[D1:2] Caro: I adopted a cat named Pip.\n[view cat-names] Caro's cat is Pip [D1:2].",
+    "fragments": [
+      {"fragment_id": "f1", "kind": "message", "evidence_ids": ["D1:2"], "tokens": 14},
+      {"fragment_id": "f2", "kind": "view", "evidence_ids": ["D1:2"], "tokens": 12}
+    ]
+  },
+  "traces/write.jsonl": {
+    "history_id": "conv-syn-1", "version": 4, "message_ids": ["D2:1"], "call_ids": ["c008"],
+    "stale_marks": [{"view_id": "instruments-mel", "strategy": "claim-pattern", "level": "answer"}],
+    "timings_ms": {"extract": 812.0, "commit": 3.5, "staleness": 0.4}
+  },
+  "traces/read.jsonl": {
+    "read_id": "conv-syn-1:q1@5", "history_id": "conv-syn-1", "version": 5,
+    "candidates": [{"id": "D1:2", "channel": "bm25", "score": 7.1}, {"id": "view:cat-names", "channel": "graph", "score": 1.0}],
+    "included_ids": ["D1:2"], "provenance": {"f2": ["D1:2"]}, "view_hits": ["cat-names"],
+    "staleness_decisions": [{"view_id": "cat-names", "strategy": "claim-pattern", "decision": "fresh", "action": "reuse"}],
+    "further_retrieval": false, "call_ids": ["c010"], "timings_ms": {"query": 4.2, "assembly": 1.1}
+  },
+  "changesets.jsonl": {
+    "history_id": "conv-syn-1", "version": 4,
+    "entries": {"claims": ["c:mel-plays-clarinet"], "attributions": ["a:mel-inform-clarinet"], "evidence_links": ["e:clarinet-D2:1"], "supersessions": []},
+    "vocabulary_version": "v1", "entity_merges": []
+  },
+  "judgements.jsonl": {
+    "read_id": "conv-syn-1:q1@5", "task_id": "conv-syn-1:q1", "annotation": "3eb6f2c", "judge": "blind-judge-fixture",
+    "verdict": "correct", "raw_output": "CORRECT", "call_id": "c013"
+  },
+  "snapshot/manifest.json": {
+    "histories": [{"history_id": "conv-syn-1", "version": 5, "files": [{"path": "conv-syn-1/graph.nq", "sha256": "4444444444444444444444444444444444444444444444444444444444444444"}]}]
+  }
+}

@@ -1,0 +1,13 @@
+Speaker: {{speaker}} ({{persona}}; register: {{register}})
+Date: {{date}}
+Earlier messages (oldest first):
+{{previous}}
+
+Meaning: {{meaning}}
+Facts: {{facts}}
+Discourse requirement: {{discourse}}
+Must mention: {{required}}
+May mention: {{allowed}}
+Must not mention: {{forbidden}}
+
+Write the {{speaker}}'s message.

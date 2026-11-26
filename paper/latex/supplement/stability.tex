@@ -1,0 +1,38 @@
+\section{Cut-off Reads and Time-travel Stability}\label{sec:s-stability}
+
+\begin{lemma}[Cut-off collapse]\label{lem:collapse}
+If every entry of $\G$ has stamp at most $r_0$ and $r\ge r_0$, then $\cut{\Q}{r}$ and
+$\cut{\Q}{r_0}$ have the same answers, witnesses and evidence on $\G$.
+\end{lemma}
+\begin{proof}
+$\G{\restriction}r=\G=\G{\restriction}r_0$, and both reads evaluate $\Q$ on this graph.
+\end{proof}
+
+\begin{lemma}[Time-travel stability]\label{prop:s-stability}
+Under A1 and A2, for $r\ge r_0$, $\cut{\Q}{r_0}$ has the same answers, witnesses and evidence on
+$\G_r$ as on $\G_{r_0}$.
+\end{lemma}
+\begin{proof}
+$\cut{\Q}{r_0}$ on $\G_r$ is $\Q$ on $\G_r{\restriction}r_0$, which is $\G_{r_0}$ by
+\eqref{eq:truncate}; and $\cut{\Q}{r_0}$ on $\G_{r_0}$ is $\Q$ on $\G_{r_0}{\restriction}r_0=
+\G_{r_0}$.
+\end{proof}
+
+\noindent The lemma uses no property of the query beyond A2: it holds for supersession
+events, valid ends, evidence links and entity equivalences alike, because each is an entry with a
+stamp. It does not need A5, since equivalence entries are stamped too; it assumes only that the
+query itself is not recompiled in between, which a vocabulary change would do. A fixed cut-off view (an explicit \texttt{AT(known=}$r_0$\texttt{)}) is therefore
+never stale, and the staleness strategies skip such views.
+
+\begin{corollary}[Reduction]\label{cor:reduction}
+For $r_0\le r$, the view of $\Q$ at cut-off $r_0$ is answer-stale (citation-stale) at $r$ iff
+$\Q$ evaluated on $\G_r{\restriction}r=\G_r$ and on $\G_{r_0}$ differ in answers (agree in answers
+and differ in witnesses or evidence).
+\end{corollary}
+\begin{proof}
+By definition $\cut{\Q}{r}$ on $\G_r$ is $\Q$ on $\G_r$, and $\cut{\Q}{r_0}$ on $\G_{r_0}$ is $\Q$
+on $\G_{r_0}$.
+\end{proof}
+
+\noindent So the two graphs compared below are $\G^0=\G_{r_0}$ and $\G^1=\G_r=\G^0\cup\Dlt$, both
+evaluated without a cut-off; by A1 every entry of $\Dlt$ has stamp greater than $r_0$.

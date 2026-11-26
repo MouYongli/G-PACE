@@ -1,0 +1,148 @@
+# Scorer registry (T004; Evaluation section of docs/research/contracts.md). Registered before any
+# formal comparison: per benchmark, each metric's code, upstream source, direction, annotation,
+# population (denominator), abstention rule and invalid-output policy. The benchmark cards in
+# docs/research/benchmarks.md (data owner) point here for their Evaluation field.
+#
+# population.include: a gold label and the values that enter the denominator (all reads if absent).
+# abstention: the gold label that marks a task as unanswerable; an `unknown` prediction is correct
+#   exactly on those tasks (scorers without an abstention rule score `unknown` as wrong).
+# upstream.verified: true once the implementation reproduced upstream's code exactly (equal floats)
+#   on development-split and synthetic inputs, run with upstream's own code at `revision` (T004
+#   acceptance item 2; evidence in runs/T004/artifacts/scorer-upstream/, regression test
+#   tests/analysis/test_upstream_scorers.py). `deviation` states what differs where it is false.
+version: 1
+aggregation:                      # decision D002 (Evaluation section, "Aggregation")
+  cross_benchmark: none           # no overall score across benchmarks, in the main text or elsewhere
+  point_estimate: micro           # mean over the reads (questions or turns) of the population
+  sensitivity: macro              # mean of cluster means, supplementary, where clusters differ in size
+  overall_vs_strata: pooled       # the overall value pools all reads; it is not a mean of strata
+  descriptive_below: 100          # strata with fewer reads get no test (plan 6.9: 96, about 62, 30)
+  interval: cluster-bootstrap-95  # percentile bootstrap over clusters, paired for differences
+  bootstrap_resamples: 10000
+  invalid_policy: count_as_wrong  # every registered metric
+  failed_runs: missing            # no imputation; the cell is empty and the reason is reported
+benchmarks:
+  locomo:
+    cluster_unit: conversation (sample_id)   # plan 6.9
+    metrics:
+      - name: f1
+        code: grace.eval.analysis.metrics.answer:locomo_score
+        direction: higher
+        annotation: 3eb6f2c
+        population: {include: {label: category, in: [1, 2, 3, 4]}}
+        strata: [category]
+        invalid_policy: count_as_wrong
+        upstream: {repo: snap-research/locomo, file: task_eval/evaluation.py,
+                   revision: 3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376, verified: true}
+      - name: f1-adversarial
+        code: grace.eval.analysis.metrics.answer:locomo_score
+        direction: higher
+        annotation: 3eb6f2c
+        population: {include: {label: category, in: [5]}}
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: snap-research/locomo, file: task_eval/evaluation.py,
+                   revision: 3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376, verified: true}
+        note: Reported separately with the judging rule stated (plan 6.5).
+      - name: judge-accuracy
+        code: grace.eval.analysis.metrics.answer:judged_values
+        judge: blind
+        direction: higher
+        annotation: 3eb6f2c
+        population: {include: {label: category, in: [1, 2, 3, 4]}}
+        strata: [category]
+        abstention: {label: category, value: 5}
+        invalid_policy: count_as_wrong
+  longmemeval-s:
+    cluster_unit: instance (question_id)   # plan 6.9
+    metrics:
+      - name: official-judge-accuracy
+        code: grace.eval.analysis.metrics.answer:judged_values
+        judge: longmemeval-official
+        direction: higher
+        annotation: 98d7416   # data version of longmemeval-s (contracts.md, Gold `annotation`)
+        population: {}
+        strata: [question_type]
+        abstention: {label: abstention, value: true}
+        invalid_policy: count_as_wrong
+      - name: judge-accuracy
+        code: grace.eval.analysis.metrics.answer:judged_values
+        judge: blind
+        direction: higher
+        annotation: 98d7416   # data version of longmemeval-s (contracts.md, Gold `annotation`)
+        population: {}
+        strata: [question_type]
+        abstention: {label: abstention, value: true}
+        invalid_policy: count_as_wrong
+  multiwoz:
+    cluster_unit: dialogue (dialogue_id)   # plan 6.9
+    # One set of predictions scored against each annotation (plan 6.5).
+    metrics:
+      - name: jga
+        code: grace.eval.analysis.metrics.dst:joint_goal
+        direction: higher
+        annotations: ["2.4", "2.2", "2.1"]
+        population: {}
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        note: Registered definition in grace.eval.analysis.metrics.dst; no single official scorer covers 2.4, 2.2 and 2.1.
+        deviation: >-
+          No official scorer for this definition: the MultiWOZ 2.4 repository (smartyfh/MultiWOZ2.4
+          at 6807c1d) ships no evaluator. Tomiinek/MultiWOZ_Evaluation (cd3f0ee, get_dst) covers
+          2.2 only and matches values fuzzily (partial_ratio > 95) after its own slot and value
+          normalisation; on identical normalised states it agrees with this exact-match JGA
+          except where one value is a near-substring of the other (T004 evidence).
+      - name: slot-f1
+        code: grace.eval.analysis.metrics.dst:slot_f1
+        direction: higher
+        annotations: ["2.4", "2.2", "2.1"]
+        population: {}
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        deviation: >-
+          Mean of per-turn slot F1 (D002 micro over reads). Tomiinek/MultiWOZ_Evaluation reports
+          one F1 over all (slot, value) pairs pooled across turns, with fuzzy value matching.
+  change-seq:
+    cluster_unit: scenario family   # plan 6.9
+    # Registered 2026-11-26 with the user's approval (E005; T004 is done). Primary scorer of the
+    # controlled change sequences (docs/research/change-sequences.md section 9: "Acc, normalised
+    # set match as primary scorer, the blind judge as secondary"); the blind judge is not
+    # registered here yet. The rule is the module docstring of the code: normalised tokens
+    # (case-folded, number words zero to twenty as digits, runs of non-alphanumerics as token
+    # boundaries); every string of every gold item mentioned and no other string of the candidate
+    # pool (gold and outdated values of the same history and view template); an answer to an
+    # abstention task is correct when it mentions no pool string; outdated values may be
+    # mentioned on presupposition questions (premise_outdated).
+    metrics:
+      - name: set-match
+        code: grace.eval.analysis.metrics.changeseq:set_match
+        direction: higher
+        annotation: generator   # the change-seq adapter's gold (the generator's answer sets)
+        population: {include: {label: question_type,
+                               in: [changed, uniform, presupposition, abstention]}}
+        strata: [question_type, template, change_type]
+        abstention: {label: expected_abstention, value: true}
+        invalid_policy: count_as_wrong
+        note: >-
+          Deterministic, no judge and no upstream scorer (own definition). Population: questions
+          about the state at the read version; historical questions are scored by the same rule
+          as set-match-historical.
+      - name: set-match-historical
+        code: grace.eval.analysis.metrics.changeseq:set_match
+        direction: higher
+        annotation: generator
+        population: {include: {label: question_type, in: [known_then, seen_from_now]}}
+        strata: []
+        abstention: {label: expected_abstention, value: true}
+        invalid_policy: count_as_wrong
+        note: >-
+          Questions about the state at an earlier knowledge version or world time (design 3.5);
+          reported as a descriptive stratum where no system component states them (E005).
+  halumem-medium:
+    cluster_unit: user   # plan 6.9
+    metrics: []   # pending: official QA and memory-point scoring use an LLM judge; register before E001 uses it
+  memoryagentbench:
+    cluster_unit: context   # plan 6.9
+    metrics: []   # pending: register per subset before E001 uses it

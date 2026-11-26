@@ -1,0 +1,52 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: car-rental
+group: travel
+title: Car rental
+companions: [Henrik, Leila, Dario, Freya, Bogdan]
+multi:
+  predicate: speaksLanguage
+  noun: languages
+  lexicon: [Danish, Dutch, Polish, Czech, Italian, Spanish, Portuguese, Greek, Finnish, Swedish]
+  first: "I speak {o}"
+  second: "you speak {o}"
+  third: "{x} speaks {o}"
+  first_neg: "I no longer speak {o}"
+  third_neg: "{x} no longer speaks {o}"
+  ask_first: "Which languages do I speak?"
+  ask_third: "Which languages does {x} speak?"
+  count_first: "How many languages do I speak?"
+  count_third: "How many languages does {x} speak?"
+exclusive:
+  predicate: livesIn
+  noun: home city
+  lexicon: [Munich, Cologne, Hamburg, Leipzig, Dresden, Bremen, Hanover, Nuremberg, Stuttgart, Freiburg]
+  first: "I live in {o}"
+  second: "you live in {o}"
+  third: "{x} lives in {o}"
+  change_first: "I moved to {o}"
+  change_third: "{x} moved to {o}"
+  past_first: "I lived in {o}"
+  past_third: "{x} lived in {o}"
+  ask_first: "Where do I live?"
+  ask_third: "Where does {x} live?"
+task:
+  noun: car rental
+  constraints:
+    - {predicate: carCategory, datatype: string, request: "I need a {v}",
+       lexicon: [compact car, estate car, minivan, convertible, small van, electric car]}
+    - {predicate: pickupStation, datatype: string, request: "I want to pick it up at {v}",
+       lexicon: [Central Station, Airport Terminal 1, Harbour Office, Old Town Office, Trade Fair Office, North Station]}
+  catalogue: {predicate: pickupTime, datatype: time, noun: pickup time,
+              phrase: "is ready for pickup at {v}",
+              lexicon: ["07:15:00", "08:45:00", "10:20:00", "12:05:00", "13:35:00", "15:10:00", "16:40:00", "18:25:00"]}
+  items:
+    - {id: car-octavia, label: Skoda Octavia}
+    - {id: car-golf, label: VW Golf}
+    - {id: car-astra, label: Opel Astra}
+    - {id: car-clio, label: Renault Clio}
+    - {id: car-focus, label: Ford Focus}
+    - {id: car-yaris, label: Toyota Yaris}
+    - {id: car-leon, label: Seat Leon}
+    - {id: car-tipo, label: Fiat Tipo}
+    - {id: car-ceed, label: Kia Ceed}
+    - {id: car-308, label: Peugeot 308}

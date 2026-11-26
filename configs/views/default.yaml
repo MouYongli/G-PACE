@@ -1,0 +1,21 @@
+# Resident views of the main configuration (plan 5.4, "View selection"; T018).
+# Loaded by src/grace/context/views/template_families.py (`load_view_config`). The template
+# families themselves live in resources/views/ (one file each: query template, sentence pattern).
+families: [list, current, count, constraints, pending, choice]
+# A view is instantiated for a binding once the number of distinct claims in the witnesses of its
+# query reaches this threshold. PROVISIONAL: to be frozen on development data before the
+# configuration lock (D012). Per-family overrides go under `thresholds` (family: integer).
+instantiation_threshold: 1
+thresholds: {}
+# Speaker IDs and the choice predicate the task families are bound with (the conventions of the
+# change-sequence generator, src/grace/eval/datasets/changeseq/template_families.py).
+speakers: {user: user, assistant: assistant}
+choice_predicate: selectedService
+# Speaker whose `inform` the entity families (list, current, count) require: null admits any
+# speaker; the change-sequence reference (V1-V3) uses the authority speaker `user`.
+state_speaker: null
+rendering:
+  mode: template            # template | llm (ablation C)
+  prompt: render-view       # resources/prompts/render-view, pinned in configs/common/prompts.yaml
+  max_rows_per_call: 16
+  decoding: {temperature: 0.0, max_tokens: 512}

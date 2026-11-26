@@ -1,0 +1,2 @@
+{"benchmark": "halumem-medium", "split": "fixture", "history_id": "user-001", "read_id": "user-001:q1@2", "task_id": "user-001:q1", "version": 2, "kind": "question", "question": "What is the user's job?", "state_schema": null, "asked_at": null, "asked_at_raw": null}
+{"benchmark": "halumem-medium", "split": "fixture", "history_id": "user-001", "read_id": "user-001:q2@4", "task_id": "user-001:q2", "version": 4, "kind": "question", "question": "What is the user's job?", "state_schema": null, "asked_at": null, "asked_at_raw": null}

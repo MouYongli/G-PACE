@@ -1,0 +1,17 @@
+# Arms of the staleness-decision comparison (plan 5.4, ablation A; T019).
+# Loaded by src/grace/context/views/staleness/__init__.py (`load_arms`). Each arm names a strategy
+# of `STRATEGIES` and its options:
+#   local_filters   use the local filters of each claim pattern (default true)
+#   watch_mentions  citation strategies: a new attribution or evidence link on a used claim marks
+#                   the view citation-stale (default false; plan 5.4 watches supersessions only)
+# Which arm the main GRACE configuration uses is set by its engine config, not here.
+arms:
+  never_invalidate: {strategy: never_invalidate}
+  rebuild_every_turn: {strategy: rebuild_every_turn}
+  used_claims: {strategy: used_claims, watch_mentions: false}
+  used_claims_patterns: {strategy: used_claims_patterns, watch_mentions: false, local_filters: true}
+  predicate_level: {strategy: predicate_level}
+  claim_pattern: {strategy: claim_pattern_push, local_filters: false}
+  claim_pattern_filters: {strategy: claim_pattern_push, local_filters: true}
+  requery: {strategy: requery}
+  push_confirm: {strategy: push_confirm, local_filters: true}

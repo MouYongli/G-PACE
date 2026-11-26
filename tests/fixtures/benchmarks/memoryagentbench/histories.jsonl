@@ -1,0 +1,1 @@
+{"benchmark": "memoryagentbench", "split": "fixture", "history_id": "ctx-001", "subset": "factconsolidation-6k", "n_messages": 2, "segments": [{"segment_id": "chunk_1", "first_version": 1, "last_version": 1, "timestamp": null, "timestamp_raw": null}, {"segment_id": "chunk_2", "first_version": 2, "last_version": 2, "timestamp": null, "timestamp_raw": null}]}

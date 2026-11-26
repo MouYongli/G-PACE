@@ -1,0 +1,54 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: hotel-stay
+group: lodging
+title: Hotel stay
+companions: [Charlotte, Emeka, Astrid, Rafael, Mei]
+multi:
+  predicate: followsDiet
+  noun: diets
+  lexicon: [vegetarian, vegan, gluten-free, lactose-free, halal, kosher, nut-free, low-sodium,
+            pescatarian, low-sugar]
+  first: "I follow a {o} diet"
+  second: "you follow a {o} diet"
+  third: "{x} follows a {o} diet"
+  first_neg: "I no longer follow a {o} diet"
+  third_neg: "{x} no longer follows a {o} diet"
+  ask_first: "Which diets do I follow?"
+  ask_third: "Which diets does {x} follow?"
+  count_first: "How many diets do I follow?"
+  count_third: "How many diets does {x} follow?"
+exclusive:
+  predicate: worksIn
+  noun: field of work
+  lexicon: [education, nursing, architecture, pharmacy, journalism, accounting, logistics, insurance,
+            publishing, catering]
+  first: "I work in {o}"
+  second: "you work in {o}"
+  third: "{x} works in {o}"
+  change_first: "I switched to working in {o}"
+  change_third: "{x} switched to working in {o}"
+  past_first: "I worked in {o}"
+  past_third: "{x} worked in {o}"
+  ask_first: "What field do I work in?"
+  ask_third: "What field does {x} work in?"
+task:
+  noun: hotel booking
+  constraints:
+    - {predicate: roomType, datatype: string, request: "I need a {v}",
+       lexicon: [single room, double room, twin room, suite, family room, studio room]}
+    - {predicate: checkInDay, datatype: string, request: "I will check in on {v}",
+       lexicon: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]}
+  catalogue: {predicate: checkInFrom, datatype: time, noun: check-in time,
+              phrase: "allows check-in from {v}",
+              lexicon: ["12:30:00", "13:15:00", "14:00:00", "14:45:00", "15:30:00", "16:15:00", "17:00:00", "18:30:00"]}
+  items:
+    - {id: hotel-lindenhof, label: Hotel Lindenhof}
+    - {id: hotel-seeblick, label: Hotel Seeblick}
+    - {id: hotel-adler, label: Parkhotel Adler}
+    - {id: hotel-am-markt, label: Hotel Am Markt}
+    - {id: hotel-sonnenhof, label: Hotel Sonnenhof}
+    - {id: hotel-krone, label: Hotel Krone}
+    - {id: hotel-rheinblick, label: Hotel Rheinblick}
+    - {id: hotel-bergfried, label: Hotel Bergfried}
+    - {id: hotel-alte-post, label: Hotel Alte Post}
+    - {id: hotel-kastanie, label: Hotel Kastanie}

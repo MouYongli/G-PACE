@@ -1,0 +1,16 @@
+# Template family "current choice" (plan 5.4; change-sequences.md 6.2, V6): the item the user
+# accepted last and has not rejected, joined with the facts the assistant informed about it (for a
+# train: its arrival time). The fact predicate is a variable because the catalogue predicate
+# differs between domains; the reference fixes it per scenario family.
+family: choice
+reference: V6
+binding: task
+title: "current choice for {subject}"
+query: |
+  SELECT ?item ?attribute ?value WHERE {
+    ($subject, $choice, ?item) [$user, accept] AS ?c .
+    (?item, ?attribute, ?value) [$assistant, inform]
+    NOT EXISTS { ($subject, $choice, ?item) [$user, reject] }
+  }
+  LATEST BY version OF ?c
+sentence: "Current choice for {subject}: {item}, {attribute} {value}."

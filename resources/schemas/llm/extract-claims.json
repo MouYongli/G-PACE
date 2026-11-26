@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grace/llm/extract-claims.json",
+  "title": "Output of the writer call (plan 5.1, 5.6): a claim patch anchored to the messages of one extraction unit",
+  "description": "Array bounds (user decision of 2026-11-26) end repetition loops under constrained decoding; they are sized for units of at most 8 messages (configs/common/writer.yaml, segment-8): claims 32 (4 per message; the prompt asks for 0 to 3; the largest valid output of the Qwen3-8B smoke run T022-20261126T184442Z-2a64 had 30, the 99th percentile 27), stances 16 (2 per message; legitimate outputs there had at most 4 per message, two messages with 13 and 17 were spurious endings), same_as 8 (none observed). A larger unit (session granularity, E007) needs larger bounds and a re-pinned schema.",
+  "type": "object",
+  "properties": {
+    "claims": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 16},
+          "message": {"type": "integer", "minimum": 1},
+          "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+          "predicate": {"type": "string", "minLength": 1, "maxLength": 80},
+          "object": {"type": "string", "minLength": 1, "maxLength": 300},
+          "object_type": {"enum": ["entity", "string", "integer", "boolean", "date", "dateTime", "time"]},
+          "exclusive": {"type": "boolean"},
+          "function": {"enum": ["request", "offer", "accept", "reject", "confirm", "inform", "commit", "question"]},
+          "report_mode": {"enum": ["own", "quote", "hypothetical"]},
+          "polarity": {"enum": ["positive", "negative"]},
+          "certainty": {"enum": ["certain", "probable", "possible", "underspecified"]},
+          "derived": {"type": "boolean"},
+          "correction": {"type": "boolean"},
+          "scope": {"type": ["string", "null"], "maxLength": 80},
+          "valid_from": {"type": ["string", "null"], "maxLength": 32},
+          "valid_until": {"type": ["string", "null"], "maxLength": 32},
+          "time_expression": {"type": ["string", "null"], "maxLength": 120},
+          "quote": {"type": ["string", "null"], "maxLength": 600}
+        },
+        "required": ["message", "subject", "predicate", "object"],
+        "additionalProperties": false
+      }
+    },
+    "stances": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": {"type": "integer", "minimum": 1},
+          "claim": {"type": "string", "minLength": 1, "maxLength": 16},
+          "function": {"enum": ["request", "offer", "accept", "reject", "confirm", "inform", "commit", "question"]},
+          "report_mode": {"enum": ["own", "quote", "hypothetical"]},
+          "polarity": {"enum": ["positive", "negative"]},
+          "certainty": {"enum": ["certain", "probable", "possible", "underspecified"]},
+          "derived": {"type": "boolean"},
+          "ends": {"enum": ["change", "correction", null]},
+          "valid_until": {"type": ["string", "null"], "maxLength": 32},
+          "quote": {"type": ["string", "null"], "maxLength": 600}
+        },
+        "required": ["message", "claim", "function"],
+        "additionalProperties": false
+      }
+    },
+    "same_as": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "same_as": {"type": "string", "minLength": 1, "maxLength": 200}
+        },
+        "required": ["message", "name", "same_as"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["claims", "stances"],
+  "additionalProperties": false
+}
