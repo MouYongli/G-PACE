@@ -38,16 +38,19 @@ _ROW = re.compile(r"^\[(?P<id>[^\]]+)\] (?P<values>.*)$")
 
 
 def responder(messages):
-    """Fake model: renders each row as 'Noted: <values>.'; answers like the harness fake."""
+    """Fake model: renders each row as 'Noted: <values> (<view title>).' (the title names the
+    binding's subject, which the rendering check requires); answers like the harness fake."""
     system, user = messages[0]["content"], messages[-1]["content"]
     if system.startswith("You turn the result rows"):
+        head, rows = user.split("Rows:\n", 1)
+        title = head.rsplit("View: ", 1)[1].strip()
         sentences = []
-        for line in user.split("Rows:\n", 1)[1].splitlines():
+        for line in rows.splitlines():
             match = _ROW.match(line)
             if match:
                 values = [kv.split(" = ", 1)[1] for kv in match["values"].split("; ")]
-                sentences.append({"rows": [match["id"]], "text": "Noted: " + ", ".join(values)
-                                  + "."})
+                sentences.append({"rows": [match["id"]],
+                                  "text": f"Noted: {', '.join(values)} ({title})."})
         return json.dumps({"sentences": sentences})
     return fake_responder(messages)
 

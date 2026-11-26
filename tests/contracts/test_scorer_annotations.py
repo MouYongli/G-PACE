@@ -13,7 +13,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = ROOT / "configs" / "common" / "scorers.yaml"
 # Derived gold named on the benchmark cards (contracts.md, Gold; T006 builds the MultiWOZ one).
-DERIVED = {"multiwoz": {"2.4-current-choice"}}
+# change-seq: the generator's gold, the only annotation of the adapter
+# (src/grace/eval/datasets/benchmarks/changeseq.py), while configs/benchmarks/change-seq.yaml
+# is not bound yet.
+DERIVED = {"multiwoz": {"2.4-current-choice"}, "change-seq": {"generator"}}
 
 
 def known_annotations(slug: str) -> set[str]:

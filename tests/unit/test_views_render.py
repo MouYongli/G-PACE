@@ -12,6 +12,7 @@ from grace.context.pipeline.query.ir import Predicate
 from grace.context.pipeline.query.result import Witness
 from grace.context.views.dependencies import dependency_patterns
 from grace.context.views.render import (
+    LLMRenderer,
     RenderSpec,
     check_sentence,
     display,
@@ -62,6 +63,70 @@ class CheckTest(unittest.TestCase):
 
     def test_empty(self):
         self.assertEqual(check_sentence("...", ["x"]), "empty sentence")
+
+
+class BindingConstantTest(unittest.TestCase):
+    """The rendering check requires the binding's subject (E005, user decision 2026-11-26)."""
+
+    CONSTRAINTS = RenderSpec("constraints requested for train booking A", ("constraint", "value"),
+                             subject="train booking A",
+                             sentence="Requested for {subject}: {constraint} {value}.")
+
+    def rows(self):
+        r1 = Row("r1", (Predicate("arriveBy"), Value("12:00:00", "time")))
+        r2 = Row("r2", (Predicate("departFrom"), Entity("Bonn")))
+        return {"r1": r1, "r2": r2}
+
+    def check(self, spec, text, unit=("r1",)):
+        rows = self.rows()
+        return LLMRenderer._check(spec, rows, [("r1",), ("r2",)], [unit], text)
+
+    def test_sentence_without_its_task_fails(self):
+        reason = self.check(self.CONSTRAINTS, "The constraint is arrive by 12:00.")
+        self.assertEqual(reason, "binding constant 'train booking A' is missing")
+
+    def test_sentence_naming_its_task_passes(self):
+        for text in ("Requested for train booking A: arrive by 12:00.",
+                     "Train booking A must arrive by 12:00.",
+                     "For train-booking A, the user wants to arrive by 12:00."):
+            self.assertIsNone(self.check(self.CONSTRAINTS, text), text)
+
+    def test_template_sentence_passes_its_own_check(self):
+        rows = self.rows()
+        text = template_sentence(self.CONSTRAINTS, rows, ("r1",))
+        self.assertEqual(text, "Requested for train booking A: arrive by 12:00.")
+        self.assertIsNone(self.check(self.CONSTRAINTS, text))
+
+    def test_another_task_does_not_stand_in(self):
+        self.assertIn("binding constant",
+                      self.check(self.CONSTRAINTS, "Train booking B must arrive by 12:00."))
+
+    def test_row_values_are_still_required(self):
+        self.assertIn("missing", self.check(self.CONSTRAINTS, "Train booking A: arrive by."))
+
+    def test_predicate_and_title_are_not_required(self):
+        spec = RenderSpec("speaks language of Jonas", ("value",), subject="Jonas",
+                          predicate="speaksLanguage", sentence="{subject} {predicate} {value}.")
+        rows = {"r1": Row("r1", (Entity("Polish"),))}
+        self.assertEqual(spec.required_constants(), ("Jonas",))
+        self.assertIsNone(LLMRenderer._check(spec, rows, [("r1",)], [("r1",)],
+                                             "Jonas speaks Polish."))
+        self.assertIn("binding constant", LLMRenderer._check(spec, rows, [("r1",)], [("r1",)],
+                                                             "The language is Polish."))
+
+    def test_view_without_binding_requires_only_its_rows(self):
+        spec = RenderSpec("t", ("value",))
+        self.assertEqual(spec.required_constants(), ())
+        rows = {"r1": Row("r1", (Entity("Polish"),))}
+        self.assertIsNone(LLMRenderer._check(spec, rows, [("r1",)], [("r1",)], "Polish."))
+
+    def test_check_sentence_binding_argument(self):
+        self.assertIsNone(check_sentence("Request 1 needs 20:45.", ["20:45"], [], [],
+                                         ["request 1"]))
+        self.assertEqual(check_sentence("It needs 20:45.", ["20:45"], [], [], ["request 1"]),
+                         "binding constant 'request 1' is missing")
+        # Numbers of a binding constant are permitted like those of an allowed value.
+        self.assertIsNone(check_sentence("Request 1: 20:45.", ["20:45"], binding=["request 1"]))
 
 
 class RowsTest(unittest.TestCase):
