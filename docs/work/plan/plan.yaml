@@ -305,12 +305,12 @@ nodes:
     type: experiment
     title: Rough natural staleness distribution
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T002, T009]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 110
+    owner: m01-E002
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../experiments/E002-rough-staleness-distribution.md
   - id: D006
     type: decision
