@@ -28,7 +28,7 @@ result on every $\G_r$, $r\ge r_0$: only reads whose cut-off moves can go stale.
 $\ans(\cut{\Q}{r},\G)$ is the answer set; the witnesses $\wit$ of an answer are its minimal sets
 of claims and constraint-satisfying attributions over the positive part (why-provenance
 \cite{buneman2001why}; a count takes the union over its members, a selection the witnesses of the
-selected claim); $\ev$ is the set of evidence spans of the witness claims.
+selected claim); $\ev$ gives each answer the evidence spans of its witness claims.
 
 \begin{definition}[Two-level staleness]
 At version $r\ge r_0$, a view of $\Q$ with cut-off $r_0$ is \emph{answer-stale} iff
@@ -69,15 +69,17 @@ reads, claim patterns with attribution constraints, and witnesses and evidence; 
 when decided per write and with each pattern's local filters.
 
 \begin{proposition}[Exactness]\label{prop:exactness}
-With local filters, the decision marks a view iff its answers, witnesses or evidence change,
-provided $\Q$ has a single pattern, without negation, count, selection, world time, repeated or
-scope variables, or undecidable filters or filters on $\mathrm{end}(c)$; and no claim reached by a claim, attribution or
-evidence trigger is superseded by $r$, no supersession trigger hits a claim superseded at $r_0$,
-and no evidence trigger repeats a cited span (Supplement~S4).
+Let the \emph{decision} mark a view whenever a committed change set since its cut-off contains a
+trigger of one of its patterns, with each pattern's local filters applied. It marks a view iff
+its answers, witnesses or evidence change, provided $\Q$ is a current-state query with
+provenance and a single pattern, without negation, count, selection, world time, repeated or
+scope variables, undecidable filters or filters on $\mathrm{end}(c)$; and no claim reached by a
+claim, attribution or evidence trigger is superseded by $r$, no supersession trigger hits a claim
+superseded at $r_0$, and no evidence trigger repeats a cited span (Supplement~S4).
 \end{proposition}
 
 \noindent Otherwise the decision over-approximates: a new claim without a join partner, an entry
 matching the negated pattern but no answer, a claim with an earlier start under selection by valid
-time. Even under the conditions a mark does not tell answer from citation staleness (a second
+time, a change event under a historical query. Even under the conditions a mark does not tell answer from citation staleness (a second
 acceptance changes only the witnesses). Exact instance-level decision is re-evaluation, so
 read-time re-query with fingerprints is the reference for every strategy.

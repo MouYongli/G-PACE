@@ -94,7 +94,8 @@ pattern, then $\ev$ is equal.
 \begin{proof}
 Every claim $c$ of a witness lies in a row of some positive $P_i$, so $c\matches_{\G^1}P_i$. An
 evidence link on $c$ in $\Dlt$ would be a (T4) trigger; so $\evs_{\G^1}(c)=\evs_{\G^0}(c)$ for
-every witness claim, and $\ev$, the set of their identifiers, is equal.
+every witness claim. Each $\ev_t$ is the set of identifiers of the links of the claims of the
+witnesses of $t$, which are equal, so $\ev$ is equal.
 \end{proof}
 
 \begin{proposition}[Soundness; Proposition~1 of the main text]\label{prop:s-soundness}
@@ -115,7 +116,8 @@ The implementation sees one change set at a time and marks a view as soon as one
 contains a trigger; a view not marked since its cut-off is kept.
 
 \begin{corollary}[Per change set]\label{cor:stepwise}
-Let $r_0=v_0<v_1<\dots<v_n=r$ be the committed versions in $[r_0,r]$. If for every $i$ no entry of
+Let $v_1<\dots<v_n$ be the committed versions in $(r_0,r]$ and $v_0=r_0$ (not necessarily a
+committed version; $\G_{v_0}=\G_{r_0}$ in any case). If for every $i$ no entry of
 $\Dlt_{v_i}$ is an answer trigger (citation trigger) with respect to $\G^0=\G_{v_{i-1}}$ and
 $\G^1=\G_{v_i}$, then the view is not answer-stale and its witnesses are unchanged (it is not
 citation-stale) at $r$.
@@ -140,9 +142,9 @@ Every entry that is a trigger in the sense of Definition~\ref{def:triggers} rema
 the hypothesis ``no trigger'' becomes stronger.
 \end{proof}
 
-\noindent Ignoring repeated variables, a scope variable's requirement $\omega(c)\neq\bot$, non-local
-filters, the world time or the state widens the matching in this sense, and so does comparing the
-predicate only (the predicate-level strategy, which also treats every attribution, event and link
+\noindent Ignoring repeated variables or a scope variable's requirement $\omega(c)\neq\bot$ widens
+the matching in this sense ($\matches$ already ignores filters, the world time and the state), and
+so does comparing the predicate only (the predicate-level strategy, which also treats every attribution, event and link
 on a claim of a relevant predicate as a trigger). Dropping the attribution constraint is
 \emph{not} a widening of (T2) unless every attribution on a claim whose positions agree with $P$
 remains a trigger: if only new claims are matched, an acceptance on an existing claim is missed.
@@ -171,7 +173,10 @@ link on it in $\Dlt$ is a restricted (T4) trigger.
 effective valid end before and after the change set, and counts a filter it cannot decide (an
 unknown start, a date compared with a date-time) as satisfied, which is a widening
 (Corollary~\ref{cor:wider}). Soundness needs that the matcher never decides a filter false when the
-compiled query would evaluate it true (assumption A9).
+compiled query would evaluate it true (assumption A9). The two corollaries combine: Corollary~\ref{cor:wider}
+applies to the restricted triggers of Corollary~\ref{cor:filters} as well, so a matcher may widen
+the matching relation and evaluate the local filters, provided every restricted trigger remains
+a trigger.
 
 \subsection{The matching unit}
 

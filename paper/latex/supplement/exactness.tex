@@ -5,18 +5,21 @@ filters'': for each committed version $v\in(r_0,r]$ it computes the restricted t
 Corollary~\ref{cor:filters} with respect to $\G_{v-1}$ and $\G_v$, and marks the view if one
 exists, at answer level if one of them is an answer trigger and at citation level otherwise. By
 Corollaries~\ref{cor:stepwise} and~\ref{cor:filters}, $D$ has no false negatives. The question is
-when it has no false positives.
+when it has no false positives. The level of $D$ over the interval is the strongest level of
+the marks raised in it.
 
 \paragraph{Conditions on the query.}
 \begin{description}
-\item[(Q1)] One positive pattern $P$, no negated pattern, and a projection at the root (counting
-  and selection are treated in Remarks~\ref{rem:count} and~\ref{rem:latest}).
-\item[(Q2)] Current state and no world time.
+\item[(Q1)] One positive pattern $P$, no negated pattern, a projection at the root (counting
+  and selection are treated in Remarks~\ref{rem:count} and~\ref{rem:latest}), and provenance
+  expansion on (without provenance every $\ev_t$ is empty and every (T4) trigger over-marks).
+\item[(Q2)] Current state (not historical) and no world time.
 \item[(Q3)] No variable occurs twice in $P$ (the speaker variable included), and the scope
   position is not a variable.
 \item[(Q4)] No filter uses $\mathrm{end}(\lambda_P)$, and the matcher decides every filter on the
-  written fields exactly as the model does (no unknown start in a $\mathrm{start}$ comparison, no
-  date compared with a date-time).
+  written fields exactly as the model does. The second part is partly a condition on the data:
+  no claim reached by a trigger has an unknown start compared by a $\mathrm{start}$ filter, and
+  no date is compared with a date-time.
 \end{description}
 Under (Q3) the matcher's relation coincides with $\matches$; under (Q4) the value of a filter on a
 row does not depend on the version, since it reads only fields fixed when entries are written.
@@ -25,15 +28,17 @@ row does not depend on the version, since it reads only fields fixed when entrie
 \begin{description}
 \item[(D1)] No claim reached by a (T1) or (T2) trigger is superseded in $\G_r$.
 \item[(D2)] No (T3) trigger points to a claim already superseded in $\G_{r_0}$.
-\item[(D3)] No (T4) trigger points to a claim superseded in $\G_r$, and no (T4) trigger has an
-  identifier already in $\ev(\cut{\Q}{r_0},\G_{r_0})$.
+\item[(D3)] No (T4) trigger points to a claim superseded in $\G_r$, and no (T4) trigger on a claim
+  $c$ has an identifier already in $\ev_t(\cut{\Q}{r_0},\G_{r_0})$ for an answer $t$ whose witnesses
+  contain $c$.
 \end{description}
 
 \begin{proposition}[Exactness; Proposition~2 of the main text]\label{prop:s-exactness}
 Assume A1--A9, (Q1)--(Q4) and (D1)--(D3). Then (a)~$D$ raises an answer-level mark iff the
 answers or the witnesses change between $r_0$ and $r$; (b)~$D$ marks the view at all iff the
-answers, the witnesses or the evidence change; in particular, a citation-level mark is raised iff
-the view is citation-stale with unchanged witnesses.
+answers, the witnesses or the evidence change; in particular, if the answers and witnesses are
+unchanged and the evidence changes, $D$ marks the view and no mark it raises in $(r_0,r]$ is at
+answer level (the strongest mark is at citation level).
 \end{proposition}
 \begin{proof}
 The ``if'' directions are soundness (Corollaries~\ref{cor:stepwise} and~\ref{cor:filters}). For
@@ -61,8 +66,13 @@ In every case the witnesses change.
 (b) If some trigger is an answer trigger, apply (a). Otherwise there is a (T4) link $\ell$ on a
 claim $c$ with a row $(\theta,c,a)$ satisfying (m1), (m2) and $\Phi_P$ in $\G_v$. By (D3), $c$ is
 current in $\G_r$, so the row is a body row at $r$ and $c$ is a witness claim; hence
-$\mathrm{id}(\ell)\in\ev(\cut{\Q}{r},\G_r)$, which by (D3) is not in the evidence at $r_0$. With no
-answer trigger the answers and witnesses are unchanged (soundness), so the view is citation-stale.
+$\mathrm{id}(\ell)\in\ev_t(\cut{\Q}{r},\G_r)$ for the answer $t$ of that row. With no answer
+trigger the answers and witnesses are unchanged (soundness), so $t$ is an answer at $r_0$ with $c$
+in its witnesses, and by (D3) $\mathrm{id}(\ell)\notin\ev_t(\cut{\Q}{r_0},\G_{r_0})$; the view is
+citation-stale.
+The last claim of the statement is the contrapositive of the ``only if'' part of (a): if answers
+and witnesses are unchanged, no answer-level mark is raised, and by the ``if'' part of (b) some
+mark is.
 \end{proof}
 
 \noindent The level of a mark is not exact even under these conditions: an answer-level mark
@@ -80,9 +90,11 @@ in no row at $r$, so it leaves the union or the group disappears. Part (b) is un
 \end{proof}
 
 \begin{remark}[Latest by version]\label{rem:latest}
-For a latest-state selection by version over the single pattern, every restricted (T1) or (T2)
-trigger satisfying (D1) changes the witnesses; a (T3) trigger on a claim that is not selected at
-$r_0$ need not (Example~\ref{ex:latest-version}).
+Under (Q2)--(Q4), for a latest-state selection by version over the single pattern, every
+restricted (T1) or (T2) trigger (a claim or attribution insertion) satisfying (D1) changes the
+witnesses. A (T3) trigger on a claim that is not selected at $r_0$ need not
+(Example~\ref{ex:latest-version}), nor need a (T4) trigger on an unselected claim, whose evidence
+is not cited.
 \end{remark}
 \begin{proof}
 The new row $\mu'$ found in (a) contains an entry $e\in\Dlt$, so its key is at least
@@ -100,8 +112,8 @@ names follow the running examples of the main text.
 \begin{example}[Join without a partner]\label{ex:join}
 $\Q$: \texttt{SELECT ?t ?arr WHERE \{ (req1, selectedService, ?t)[user, accept] .
 (?t, scheduledArrival, ?arr) \}}. $\Dlt$ adds the claim \texttt{(TR9, scheduledArrival,
-"21:00:00")} with its attribution and link, while TR9 was never selected. It is a (T2) trigger of
-the second pattern, but joins with no row of the first.
+"21:00:00"\textasciicircum\textasciicircum time)} with its attribution and link, while TR9 was
+never selected. The second pattern has no bracket, so the claim is a (T1) trigger of it, but joins with no row of the first.
 \end{example}
 
 \begin{example}[Negated pattern without an answer]\label{ex:neg}
@@ -139,9 +151,9 @@ acceptance is added to a claim that is already superseded (violates (D1)).
 \end{example}
 
 \begin{example}[Evidence]\label{ex:evidence}
-(i)~A new link on a matching claim cites a span whose identifier is already in $\ev$, for example
-the message already cited for another witness claim; $\ev$ is a set of identifiers and does not
-change (violates (D3)). (ii)~A new link on a superseded matching claim (violates (D3)).
+(i)~A new link on a matching claim cites a span whose identifier is already cited for the same
+answer, for example the same message cited again for the same claim; $\ev_t$ is a set of
+identifiers and does not change (violates (D3)). (ii)~A new link on a superseded matching claim (violates (D3)).
 \end{example}
 
 \begin{example}[Level of a mark]\label{ex:level}
@@ -185,7 +197,8 @@ answers, witnesses and evidence directly and is exact with respect to the claim 
 claim about the decidability or complexity of \emph{static} query--update independence for this
 fragment; the undecidability results of Levy and Sagiv~\cite{levy1993independent} concern more
 expressive query languages. Nor do we claim a new invalidation algorithm, the first soundness
-result for SPARQL cache invalidation, or an incremental maintenance algorithm. A citation-based policy is correct
-for monotone queries under deletion; an append-only graph has no deletion, supersession events
+result for SPARQL cache invalidation, or an incremental maintenance algorithm. For monotone queries, deleting an
+entry outside every witness leaves the answers unchanged, which follows from why-provenance
+\cite{buneman2001why}, so a citation-based policy is correct for them under deletion; an append-only graph has no deletion, supersession events
 play its role through the built-in negation of every current-state query, and they are exactly
 the insertions such a policy observes.

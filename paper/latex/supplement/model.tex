@@ -46,7 +46,8 @@ and $\vend(x)\neq\bot$, in the order of $(\vs(x),\text{identifier})$; and $\bot$
 an unknown time) if there is no such $x$.
 $\effend_\G(c)$ depends only on $N_\G(c)$. Along a history it changes at most once: it is
 $\bot$ until the first change event with a stated end and fixed afterwards, because later events
-carry larger stamps (assumption A6).
+carry larger stamps and entries are never removed (A1 and the order above). Assumption A6 states
+that the implementation uses this same order everywhere.
 
 \subsection{Claim patterns and their rows}
 
@@ -117,6 +118,10 @@ W(\vec\mu)=\{c_1,\dots,c_k\}\cup\{a_i:a_i\neq\ast\}
 \]
 for its witness. The root of the query is one of
 \begin{itemize}
+\item[] Before the root operator, every entity value bound to an answer variable or to the counted
+  variable is replaced by the representative of its class (the least member), so grouping,
+  minimisation and distinct counting see representatives; $\theta(\vec\mu)$ below denotes the
+  binding after this replacement. Join variables still compare entities as written.
 \item a projection on variables $X$: the answers are $\{\theta(\vec\mu)|_X\}$, and the witnesses
   of answer $t$ are the $\subseteq$-minimal sets among $\{W(\vec\mu):\theta(\vec\mu)|_X=t\}$;
 \item a distinct count of variable $y$ grouped by $X$: for each group $g$, with members
@@ -131,13 +136,16 @@ for its witness. The root of the query is one of
   key of a claim is the maximum key of its rows; the rows kept are all rows of the claims with
   maximum key (ties keep every tied claim), and the projection then applies to them.
 \end{itemize}
-Entity values in answers are replaced by their class representative. The answer set is
-$\ans(\Q,\G)$ and $\wit(\Q,\G)$ is the set of pairs (answer, its witnesses). The evidence is
+The answer set is
+$\ans(\Q,\G)$ and $\wit(\Q,\G)$ is the set of pairs (answer, its witnesses). The evidence is recorded per answer: for an answer $t$,
 \[
-\ev(\Q,\G)=\{\mathrm{id}(\ell):\ell\in\evs_\G(c),\ c\in\textstyle\bigcup\text{claims of the
-witnesses}\}.
+\ev_t(\Q,\G)=\{\mathrm{id}(\ell):\ell\in\evs_\G(c),\ c\text{ a claim of a witness of }t\},
 \]
-Attributions in witnesses contribute no evidence of their own.
+and $\ev(\Q,\G)$ is the set of pairs $(t,\ev_t(\Q,\G))$. Recording evidence per answer, not as
+one set over all answers, makes a new citation of a span visible even when the span is already
+cited for another answer, as the sentence-level citations of a view require.
+Attributions in witnesses contribute no evidence of their own. A query written
+\texttt{WITHOUT PROVENANCE} has $\ev_t=\emptyset$ for every answer by definition; its witnesses are still computed.
 
 \paragraph{Cut-off.}
 $\cut{\Q}{r}$ evaluated on $\G$ is, by definition, $\Q$ evaluated on $\G{\restriction}r$ (with

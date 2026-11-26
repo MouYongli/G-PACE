@@ -51,7 +51,8 @@ Datatype   ::= "string" | "integer" | "boolean" | "date" | "dateTime" | "time"
   \texttt{derived=\_} relax the defaults $\rho_P=\own$, $\pi_P=$ positive, $\delta_P=$ false.
   A constraint can only keep or relax a default, never require a quote, a hypothetical, a denial or
   a derived attribution. Certainty is not constrained.
-\item The scope \texttt{\_} accepts any scope, \texttt{default} only the default scope.
+\item The scope \texttt{\_} accepts any scope, \texttt{default} only the default scope; an omitted
+  scope means \texttt{\_}.
 \item \texttt{AT(known=r)} (the default) is a moving cut-off, the version read; an integer fixes the
   cut-off (a time-travel read, never stale). \texttt{AT(valid=}$d$\texttt{)} is the world time of
   (m4). \texttt{state=current} (the default) and \texttt{state=historical} are the two forms of

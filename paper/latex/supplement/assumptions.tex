@@ -1,8 +1,12 @@
 \section{Fragment Assumptions}\label{sec:s-assumptions}
 
-Every assumption used in S2--S4 is listed here, with the statements that use it. Each is enforced
-or tested by the released implementation; the mapping from assumptions to the code and tests that
-check them is part of the released repository.
+Every assumption used in S2--S4 is listed here, with the statements that use it. The mapping from
+assumptions to the code and tests that check them is part of the released repository. Most are
+enforced or tested there; two are not fully: the locality part of A3 is checked by reading the
+compiler, not by a test; and A6 holds except that the compiler breaks ties between change events of one
+claim with the same stamp by the string order of their percent-encoded IRIs while the in-memory
+state and the matcher use identifier order, so for two such events whose identifiers sort
+differently once encoded, $\mathrm{end}(c)$ can differ and a mark can be missed.
 
 \begin{description}
 \item[A1 Append-only stamping.] Each committed change set adds entries that all carry its version;
