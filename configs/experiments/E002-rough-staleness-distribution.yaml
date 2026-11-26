@@ -1,0 +1,52 @@
+# E002 · Rough natural staleness distribution (plan 6.5 "Measuring the natural distribution of
+# staleness", RQ2; experiment file docs/work/experiments/E002-rough-staleness-distribution.md).
+# Driver: `uv run python -m grace.cli.staleness` (subcommands `extract`, `measure`).
+# Written before the first formal run; later changes are logged in the experiment file.
+experiment: E002
+seed: 0
+
+# Development histories only (no held-out data before the T033 preregistration tag). `roles`:
+# speaker labels of a user/assistant history; null for a history of two peers (LoCoMo), whose
+# task families are then measured in both speaker orientations.
+benchmarks:
+  locomo:
+    split: dev
+    roles: null
+    participants: "{a} and {b}, two friends talking over several sessions"
+  longmemeval-s:
+    split: dev
+    roles: {user: user, assistant: assistant}
+    participants: "user (the person this memory serves) and assistant (an AI assistant)"
+
+# Stage `ingest`: one extraction call per message (call type `extract`, trigger `write`).
+extraction:
+  model_config: configs/models/qwen3-32b.yaml   # D006 writer-scale model; thinking off
+  prompt: extract-claims-rough                  # resources/prompts/, pinned in configs/common/prompts.yaml
+  decoding: {temperature: 0.0, top_p: 1.0, max_tokens: 1024, seed: 0}
+  max_attempts: 3          # transport retries per call; invalid output is not retried
+  message_chars: 8000      # the new message is clipped beyond this (0.5 % of LongMemEval dev text)
+  earlier_messages: 2      # preceding messages shown for reference resolution
+  earlier_chars: 600       # each clipped to this
+  max_claims: 40           # known claims shown (recent first, then word overlap)
+  max_predicates: 60       # most used predicates shown
+  recent_versions: 4       # claims touched in the last 4 messages always qualify
+  workers: 100             # histories extracted in parallel (each history is sequential)
+
+# Stage `probe`: replay of the extraction run's change sets.
+views:
+  base_config: configs/views/default.yaml
+  instantiation_threshold: 1      # as configs/views/default.yaml (provisional there)
+  state_speaker: null             # entity families admit any speaker's inform
+  choice_predicate: selectedOption   # the predicate the extraction prompt prescribes for offers
+measurement:
+  full_check: {locomo: true, longmemeval-s: false}   # re-query every view at every version
+  processes: 24                    # histories replayed in parallel (CPU)
+
+# Decision rule for D007, fixed before the first run: the three change types that citation-based
+# dependencies miss by design (C2, C3, C4) count as rare on a benchmark when their answer-stale
+# events are below `max_per_thousand` per 1,000 messages AND below `max_share` of all answer-stale
+# events. "Rare" on both benchmarks supports D007's option "RQ2 rests on the controlled sequences".
+decision_rule: {max_per_thousand: 1.0, max_share: 0.10}
+
+# Sample of typed staleness events written for a later human audit (not labelled in E002).
+audit_sample: {per_type: 20, seed: 20261126}

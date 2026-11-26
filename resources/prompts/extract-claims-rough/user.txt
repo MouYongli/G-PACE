@@ -1,0 +1,14 @@
+Participants: {{participants}}
+Date: {{date}}
+
+Known predicates (name: single or multi):
+{{predicates}}
+
+Known claims (id: subject | predicate | object | stances):
+{{claims}}
+
+Earlier messages:
+{{earlier}}
+
+New message, from {{speaker}}:
+{{message}}
