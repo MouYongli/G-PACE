@@ -20,7 +20,12 @@ Parameters stay placeholders in the text, so one compiled query serves every rea
 - `%r%` is the cut-off version, replaced by `ClaimStore.query` with the integer of the version
   read (never a SPARQL variable and never a hard-coded constant: plan 5.3).
 - `%k<i>%` stands for the members of the entity-equivalence class of an entity constant at the
-  cut-off; `CompiledQuery.bind` fills them (without merges, the constant itself).
+  cut-off; `CompiledQuery.bind` fills them (without merges, the constant itself). An entity in a
+  triple position is compiled as `VALUES ?_k<j> { %k<i>% }` plus the variable `?_k<j>` in the
+  triple; when its class has one member, `bind` drops the `VALUES` line and writes the IRI in
+  place of the variable (same rows: a one-row `VALUES` joined on an otherwise unbound variable
+  is a constant; pyoxigraph 0.5.13 evaluates the inlined form much faster, E004). Classes with
+  several members keep the `VALUES` block.
 - `%claims%` in `evidence` is the list of witness claim nodes.
 
 Compilation is a pure function of the query and the serialisation mode: the same query always
@@ -31,6 +36,7 @@ compile time and marks the query temporary (plan 3.3): it may answer a read, nev
 from __future__ import annotations
 
 import datetime as _dt
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 
@@ -79,20 +85,62 @@ class CompiledQuery:
     slots: tuple[PatternSlot, ...]
     key: str | None               # ordering-key column for LATEST
     constants: tuple[tuple[str, str, str], ...]  # (placeholder, entity ID, separator)
+    # (placeholder, variable) of every constant bound by `VALUES ?variable { placeholder }`
+    values_vars: tuple[tuple[str, str], ...] = ()
 
-    def bind(self, classes: Mapping[str, Sequence[str]] | None = None) -> tuple[str, str | None]:
+    def bind(self, classes: Mapping[str, Sequence[str]] | None = None, *,
+             inline: bool = True) -> tuple[str, str | None]:
         """`main` and `count` with every entity constant replaced by its class members.
 
         `classes` maps an entity ID to the members of its equivalence class at the cut-off;
-        entities not in it stand for themselves. `%r%` is left for `ClaimStore.query`.
+        entities not in it stand for themselves. `%r%` is left for `ClaimStore.query`. With
+        `inline` (the default), a `VALUES`-bound constant whose class has one member is written
+        directly into its triples; `inline=False` keeps every `VALUES` block (the form compiled
+        before E004, kept for equivalence tests and diagnostics).
         """
         classes = classes or {}
+        values_vars = dict(self.values_vars)
         texts = [self.main, self.count]
         for placeholder, entity, sep in self.constants:
             members = sorted(set(classes.get(entity, ())) | {entity})
-            value = sep.join(rdf.entity_iri(m).value.join("<>") for m in members)
+            iris = [_iri_ref(m) for m in members]
+            var = values_vars.get(placeholder)
+            if inline and var is not None and len(iris) == 1:
+                texts = [_inline(t, placeholder, var, iris[0]) if t is not None else None
+                         for t in texts]
+                continue
+            value = sep.join(iris)
             texts = [t.replace(placeholder, value) if t is not None else None for t in texts]
         return texts[0], texts[1]
+
+
+# Characters that may not occur in a SPARQL IRIREF (SPARQL 1.1, production 139).
+_IRI_FORBIDDEN = re.compile(r'[\x00-\x20<>"{}|^`\\]')
+
+
+def _iri_ref(entity_id: str) -> str:
+    """`<iri>` of an entity, refused if the IRI could break out of the IRI reference.
+
+    `rdf.entity_iri` percent-encodes the ID, so this never fires for IDs built through it; the
+    check guards the text substitution in `bind` against a future change of that encoding.
+    """
+    iri = rdf.entity_iri(entity_id).value
+    if _IRI_FORBIDDEN.search(iri):
+        raise ValueError(f"entity {entity_id!r} gives an IRI that is not a valid IRIREF: {iri!r}")
+    return f"<{iri}>"
+
+
+def _inline(text: str, placeholder: str, var: str, iri: str) -> str:
+    """Drop the line `VALUES ?var { placeholder }` and write `iri` for every `?var`.
+
+    The variable name is compiler-generated (`_k<j>`, unique per constant) and literals escape
+    `?` and `%` (`_literal`), so `?var` occurs only as that variable.
+    """
+    line = re.compile(rf"^[ \t]*VALUES \?{var} \{{ {re.escape(placeholder)} \}}\n", re.MULTILINE)
+    text, n = line.subn("", text)
+    if n != 1:
+        raise ValueError(f"expected one VALUES block for ?{var}, found {n}")
+    return re.sub(rf"\?{var}(?![A-Za-z0-9_])", lambda _: iri, text)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -100,8 +148,11 @@ class CompiledQuery:
 
 
 def _literal(value: Value) -> str:
+    # `%` and `?` are written as code-point escapes so that a literal can never contain a
+    # placeholder (`%r%`, `%k<i>%`) or a compiler variable that `bind` substitutes.
     text = (value.lexical.replace("\\", "\\\\").replace('"', '\\"')
-            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t"))
+            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+            .replace("%", "\\u0025").replace("?", "\\u003F"))
     return f'"{text}"^^<{XSD}{value.datatype}>'
 
 
@@ -148,7 +199,7 @@ class _Body:
             return f"?{term.name}"
         if isinstance(term, Entity):
             var = self.c.fresh("_k")
-            self.add(f"VALUES ?{var} {{ {self.c.constant(term, ' ')} }}")
+            self.add(f"VALUES ?{var} {{ {self.c.constant(term, ' ', var)} }}")
             return f"?{var}"
         if isinstance(term, Value):
             return _literal(term)
@@ -260,15 +311,18 @@ class _Compiler:
         self.mode = mode
         self.counter = 0
         self.constants: list[tuple[str, str, str]] = []
+        self.values_vars: list[tuple[str, str]] = []
 
     def fresh(self, prefix: str) -> str:
         name = f"{prefix}{self.counter}"
         self.counter += 1
         return name
 
-    def constant(self, entity: Entity, sep: str) -> str:
+    def constant(self, entity: Entity, sep: str, var: str | None = None) -> str:
         placeholder = f"%k{len(self.constants)}%"
         self.constants.append((placeholder, entity.id, sep))
+        if var is not None:
+            self.values_vars.append((placeholder, var))
         return placeholder
 
     def body(self) -> tuple[list[str], list[PatternSlot]]:
@@ -333,7 +387,8 @@ def compile_query(query: Query, mode: rdf.Mode = "rdf11") -> CompiledQuery:
             count += f"\nGROUP BY {groups}"
     return CompiledQuery(query=query, mode=mode, main=main, count=count,
                          evidence=evidence_query(), answer_vars=tuple(answer),
-                         slots=tuple(slots), key=key, constants=tuple(c.constants))
+                         slots=tuple(slots), key=key, constants=tuple(c.constants),
+                         values_vars=tuple(c.values_vars))
 
 
 def evidence_query() -> str:

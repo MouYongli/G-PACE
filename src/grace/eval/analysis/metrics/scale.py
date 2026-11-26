@@ -91,17 +91,34 @@ def load_runs(dirs: Iterable[Path]) -> tuple[list[dict[str, Any]], list[dict[str
 
 
 def diagnostics_by_family(diagnostics: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Median query time per family, as compiled and with constants inlined; and whether the two
-    variants returned the same number of rows wherever both ran."""
+    """Median query time per family in each timed form, over block 0's views, and over the seeded
+    sample of other views (median and maximum); whether every form returned the same number of
+    rows wherever several ran; whether the probe's inlining gave the engine's text.
+
+    Forms (`grace.eval.runner.probes.scale.query_diagnostics`): since 2026-11-26 `compiled` is
+    the engine's text (single-member constants inlined), `inlined` the probe's inlining of the
+    pre-change form and `values` the pre-change form. In runs of design version 2 (code before
+    that date) `compiled` was the pre-change form and there is no `values`."""
     out: dict[str, Any] = {}
     for family in sorted({d["family"] for d in diagnostics}):
-        ds = [d for d in diagnostics if d["family"] == family]
-        entry = {"n": len(ds), "inlined_ms": round(statistics.median(
-            d["inlined_ms"] for d in ds), 4)}
-        compiled = [d for d in ds if "compiled_ms" in d]
-        if compiled:
-            entry["compiled_ms"] = round(statistics.median(d["compiled_ms"] for d in compiled), 4)
-            entry["rows_agree"] = all(d["compiled_rows"] == d["inlined_rows"] for d in compiled)
+        ds = [d for d in diagnostics if d["family"] == family and d.get("block0", True)]
+        entry: dict[str, Any] = {"n": len(ds)}
+        for form in ("compiled", "inlined", "values"):
+            timed = [d[f"{form}_ms"] for d in ds if f"{form}_ms" in d]
+            if timed:
+                entry[f"{form}_ms"] = round(statistics.median(timed), 4)
+        sample = [d for d in diagnostics if d["family"] == family and not d.get("block0", True)]
+        if sample:
+            entry["sample"] = {"n": len(sample),
+                               "compiled_ms": _spread([d["compiled_ms"] for d in sample]),
+                               "with_rows": sum(1 for d in sample if d["compiled_rows"])}
+        agree = [len({d[k] for k in d if k.endswith("_rows")}) == 1
+                 for d in diagnostics if d["family"] == family]
+        entry["rows_agree"] = all(agree)
+        texts = [d["inlined_text_equal"] for d in diagnostics
+                 if d["family"] == family and "inlined_text_equal" in d]
+        if texts:
+            entry["inlined_text_equal"] = all(texts)
         out[family] = entry
     return out
 
