@@ -1,0 +1,51 @@
+# Graphiti on its native backbone (plan 7.2, "External systems"; T034, user decisions of
+# 2026-11-26): the same engine and parameters as graphiti.yaml, except that Graphiti's own LLM calls
+# (extraction, deduplication, timestamps, summaries) go to Azure OpenAI gpt-4.1-mini, the OpenAI
+# model family the pinned graphiti-core defaults to. Answers stay on the run's model (Qwen3-8B,
+# --base-url) with the same prompt as every engine; embeddings stay on Qwen3-Embedding-0.6B
+# (--embed-url), as in graphiti.yaml. Every call goes through grace.llm and lands in calls.jsonl
+# with its own model label. Needs the envs/graphiti environment and the three environment
+# variables named below; development data only.
+# Adaptations accepted by the user: json_schema structured output (sent as response_format, the
+# schema of Graphiti's response model; on Azure this is structured outputs without `strict`, as
+# Graphiti's OpenAI-compatible client sends it) and max_tokens 4,096 per call.
+engine: graphiti
+description: Graphiti (graphiti-core 0.31.2, Kuzu) with its LLM on Azure gpt-4.1-mini, one group per history, one episode per message
+prefix_caching: false
+params:
+  top_k: 10
+  max_tokens: 4096
+  max_coroutines: null
+  structured_output: json_schema
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
+engine_llm:
+  provider: azure-openai            # decision D006: gpt-4.1-mini on Azure, Sweden Central, standard
+  model: gpt-4.1-mini
+  version: "2025-04-14"
+  deployment: Sweden Central, regional standard (not batch)
+  label: gpt-4.1-mini@2025-04-14    # `model` of every call record
+  base_url_env: AZURE_OPENAI_ENDPOINT     # https://<resource>.openai.azure.com/openai/v1
+  deployment_env: AZURE_OPENAI_DEPLOYMENT # sent as `model`
+  api_key_env: AZURE_OPENAI_API_KEY       # never written to the repository
+  auth_header: api-key
+  # input_tokens of an answered attempt: Azure's usage.prompt_tokens (the billed count, including
+  # the response schema the server adds); the local o200k count below is used only where the
+  # server reports none (failed attempts).
+  input_tokens: server
+  # The deployment allows 250 requests and 250,000 tokens per minute, and Azure counts max_tokens
+  # (4,096) of each request against the token limit. A rejected request (HTTP 429) is retried
+  # after 10, 20 and 40 s; every attempt is a call record.
+  transport_attempts: 4
+  backoff_s: 10
+  tokenizer:                       # o200k_base, the tokenizer of gpt-4.1-mini
+    hf_repo: Xenova/gpt-4o
+    revision: 7956d98f2a83b2751a98ea7136fdf7fe6cf54e69
+    file: tokenizer.json
+    sha256: 43a3ad4618a6a938f8c2614154ea10c31ad53a62d5683ae0b0e6133575cef07e
+  decoding:                         # as the run's model (plan 7.1); seed is the run's seed
+    temperature: 0.0
+    top_p: 1.0

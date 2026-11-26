@@ -1,0 +1,18 @@
+# Mem0 (plan 7.2, "External systems"): mem0ai 2.2.1 through the adapter in
+# src/grace/eval/engines/baselines/mem0.py, every LLM and embedding call through grace.llm.
+# top_k and threshold are Mem0's defaults; max_tokens is Mem0's default for its LLM calls. All are
+# placeholders until fixed on development data.
+engine: mem0
+description: Mem0 (mem0ai 2.2.1), one scope per history, one add per message
+prefix_caching: false
+params:
+  top_k: 20
+  threshold: 0.1
+  max_tokens: 2000
+  # Same Qwen3-Embedding query instruction as the dense channel (configs/engines/dense.yaml), so
+  # the two systems embed questions alike; applied to queries at read time only.
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B

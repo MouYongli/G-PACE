@@ -30,3 +30,4 @@ The files in scope; decision D004.
 
 - 2026-11-22: created at the user's request; branch `task/T009-env-setup`.
 - 2026-11-22: rename commit from `chore/rename-grace` cherry-picked onto this branch; stale worktree record pruned.
+- 2026-11-25: research and serving environments rebuilt by the user; `make test` (69 tests) and `make lint` pass; vLLM 0.34.0, torch 2.14.0+cu130 (CUDA 13.0) see 8 B200 GPUs. Smoke test on GPU 6, port 8000: `Qwen/Qwen3.5-9B` at revision `c202236235762e1c871ad0ccb60c8ee5ba337b9a` served and answered one chat request through the OpenAI client. The first attempt failed because `scripts/serve-model.sh` did not put the serving venv on `PATH` (FlashInfer could not find `ninja`); fixed in the same PR. Evidence: `runs/T009/artifacts/smoke/`.

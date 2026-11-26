@@ -1,0 +1,1 @@
+{"benchmark": "longmemeval-s", "split": "fixture", "history_id": "syn_q001", "read_id": "syn_q001@4", "task_id": "syn_q001", "version": 4, "kind": "question", "question": "How long is my commute now?", "state_schema": null, "asked_at": "2023-06-02T09:00:00", "asked_at_raw": "2023/06/02 (Fri) 09:00"}

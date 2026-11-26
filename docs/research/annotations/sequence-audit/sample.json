@@ -1,0 +1,549 @@
+{
+  "task": "T016",
+  "seed": "T016-audit-v1",
+  "dataset": "change-seq-dev-model",
+  "generator_version": "changeseq-generator-2",
+  "generator_code_sha": "574f3a15c0e8e9f8d2328fd1ae18cc207f3fc6c5",
+  "renderer": "mistralai/Mistral-Small-3.2-24B-Instruct-2506@95a6d26c4bfb886c58daf9d3f7332c857cb27b43",
+  "manifest_sha256": "9b147185381de5982ad94560e27d8eb1b20e1d7c41347db6cc66a736355c515a",
+  "parameters": {
+    "per_family": 5,
+    "window": 30,
+    "context": 10,
+    "max_questions": 5,
+    "pilot_windows": 2
+  },
+  "families": [
+    "apartment-search",
+    "car-rental",
+    "flight-travel",
+    "hotel-stay",
+    "train-travel"
+  ],
+  "sequences": {
+    "apartment-search": [
+      "apartment-search-rho1-L200-000",
+      "apartment-search-rho10-L200-000",
+      "apartment-search-rho10-L200-001",
+      "apartment-search-rho3-L200-000",
+      "apartment-search-rho30-L200-000"
+    ],
+    "car-rental": [
+      "car-rental-rho1-L200-000",
+      "car-rental-rho10-L200-000",
+      "car-rental-rho10-L200-001",
+      "car-rental-rho3-L200-000",
+      "car-rental-rho30-L200-000"
+    ],
+    "flight-travel": [
+      "flight-travel-rho1-L200-000",
+      "flight-travel-rho10-L200-000",
+      "flight-travel-rho10-L200-001",
+      "flight-travel-rho3-L200-000",
+      "flight-travel-rho30-L200-000"
+    ],
+    "hotel-stay": [
+      "hotel-stay-rho1-L200-000",
+      "hotel-stay-rho10-L200-000",
+      "hotel-stay-rho10-L200-001",
+      "hotel-stay-rho3-L200-000",
+      "hotel-stay-rho30-L200-000"
+    ],
+    "train-travel": [
+      "train-travel-rho1-L200-000",
+      "train-travel-rho10-L200-000",
+      "train-travel-rho10-L200-001",
+      "train-travel-rho3-L200-000",
+      "train-travel-rho30-L200-000"
+    ]
+  },
+  "windows": [
+    {
+      "window": "pilot-1",
+      "part": "pilot",
+      "family": "hotel-stay",
+      "sequence_id": "hotel-stay-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 98,
+      "end": 127,
+      "context_from": 88,
+      "questions": [
+        "U10:r05:q1",
+        "U10:r05:q2",
+        "U10:r05:q3",
+        "U10:r05:q4"
+      ]
+    },
+    {
+      "window": "pilot-2",
+      "part": "pilot",
+      "family": "flight-travel",
+      "sequence_id": "flight-travel-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 167,
+      "end": 196,
+      "context_from": 157,
+      "questions": [
+        "U10:r09:q1",
+        "U10:r09:q2",
+        "U10:r09:q3"
+      ]
+    },
+    {
+      "window": "apartment-search-rho1-L200-000:w055",
+      "part": "audit",
+      "family": "apartment-search",
+      "sequence_id": "apartment-search-rho1-L200-000",
+      "density": 1,
+      "primary_schedule": "U10",
+      "start": 55,
+      "end": 84,
+      "context_from": 45,
+      "questions": [
+        "U10:r02:q1",
+        "U10:r02:q3",
+        "U10:r03:q1",
+        "U10:r03:q2",
+        "U10:r03:q3"
+      ]
+    },
+    {
+      "window": "apartment-search-rho10-L200-000:w094",
+      "part": "audit",
+      "family": "apartment-search",
+      "sequence_id": "apartment-search-rho10-L200-000",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 94,
+      "end": 123,
+      "context_from": 84,
+      "questions": [
+        "A20d1:r06:q1",
+        "A20d1:r06:q2",
+        "A20d1:r07:q1",
+        "A20d1:r08:q2",
+        "A20d1:r09:q3"
+      ]
+    },
+    {
+      "window": "apartment-search-rho10-L200-001:w021",
+      "part": "audit",
+      "family": "apartment-search",
+      "sequence_id": "apartment-search-rho10-L200-001",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 21,
+      "end": 50,
+      "context_from": 11,
+      "questions": [
+        "A20d1:r01:q2",
+        "A20d1:r02:q1",
+        "A20d1:r03:q3",
+        "A20d1:r04:q1",
+        "A20d1:r05:q2"
+      ]
+    },
+    {
+      "window": "apartment-search-rho3-L200-000:w066",
+      "part": "audit",
+      "family": "apartment-search",
+      "sequence_id": "apartment-search-rho3-L200-000",
+      "density": 3,
+      "primary_schedule": "U10",
+      "start": 66,
+      "end": 95,
+      "context_from": 56,
+      "questions": [
+        "U10:r03:q1",
+        "U10:r03:q3",
+        "U10:r04:q1",
+        "U10:r04:q2",
+        "U10:r04:q3"
+      ]
+    },
+    {
+      "window": "apartment-search-rho30-L200-000:w121",
+      "part": "audit",
+      "family": "apartment-search",
+      "sequence_id": "apartment-search-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 121,
+      "end": 150,
+      "context_from": 111,
+      "questions": [
+        "U10:r06:q1",
+        "U10:r06:q3",
+        "U10:r07:q1",
+        "U10:r07:q2",
+        "U10:r07:q3"
+      ]
+    },
+    {
+      "window": "car-rental-rho1-L200-000:w081",
+      "part": "audit",
+      "family": "car-rental",
+      "sequence_id": "car-rental-rho1-L200-000",
+      "density": 1,
+      "primary_schedule": "U10",
+      "start": 81,
+      "end": 110,
+      "context_from": 71,
+      "questions": [
+        "U10:r04:q1",
+        "U10:r04:q3",
+        "U10:r05:q1",
+        "U10:r05:q2",
+        "U10:r05:q3"
+      ]
+    },
+    {
+      "window": "car-rental-rho10-L200-000:w131",
+      "part": "audit",
+      "family": "car-rental",
+      "sequence_id": "car-rental-rho10-L200-000",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 131,
+      "end": 160,
+      "context_from": 121,
+      "questions": [
+        "A20d1:r11:q1",
+        "A20d1:r11:q2",
+        "A20d1:r11:q3",
+        "A20d1:r11:q4",
+        "A20d1:r14:q1"
+      ]
+    },
+    {
+      "window": "car-rental-rho10-L200-001:w171",
+      "part": "audit",
+      "family": "car-rental",
+      "sequence_id": "car-rental-rho10-L200-001",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 171,
+      "end": 200,
+      "context_from": 161,
+      "questions": [
+        "A20d1:r18:q2",
+        "A20d1:r19:q1",
+        "A20d1:r19:q2",
+        "A20d1:r19:q3",
+        "A20d1:r20:q1"
+      ]
+    },
+    {
+      "window": "car-rental-rho3-L200-000:w056",
+      "part": "audit",
+      "family": "car-rental",
+      "sequence_id": "car-rental-rho3-L200-000",
+      "density": 3,
+      "primary_schedule": "U10",
+      "start": 56,
+      "end": 85,
+      "context_from": 46,
+      "questions": [
+        "U10:r02:q1",
+        "U10:r02:q2",
+        "U10:r02:q3",
+        "U10:r03:q1",
+        "U10:r03:q2"
+      ]
+    },
+    {
+      "window": "car-rental-rho30-L200-000:w167",
+      "part": "audit",
+      "family": "car-rental",
+      "sequence_id": "car-rental-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 167,
+      "end": 196,
+      "context_from": 157,
+      "questions": [
+        "U10:r09:q1",
+        "U10:r09:q2",
+        "U10:r09:q3"
+      ]
+    },
+    {
+      "window": "flight-travel-rho1-L200-000:w027",
+      "part": "audit",
+      "family": "flight-travel",
+      "sequence_id": "flight-travel-rho1-L200-000",
+      "density": 1,
+      "primary_schedule": "U10",
+      "start": 27,
+      "end": 56,
+      "context_from": 17,
+      "questions": [
+        "U10:r01:q1",
+        "U10:r01:q2",
+        "U10:r01:q3",
+        "U10:r02:q2",
+        "U10:r02:q3"
+      ]
+    },
+    {
+      "window": "flight-travel-rho10-L200-000:w155",
+      "part": "audit",
+      "family": "flight-travel",
+      "sequence_id": "flight-travel-rho10-L200-000",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 155,
+      "end": 184,
+      "context_from": 145,
+      "questions": [
+        "A20d1:r13:q2",
+        "A20d1:r13:q3",
+        "A20d1:r15:q2",
+        "A20d1:r15:q3",
+        "A20d1:r16:q2"
+      ]
+    },
+    {
+      "window": "flight-travel-rho10-L200-001:w130",
+      "part": "audit",
+      "family": "flight-travel",
+      "sequence_id": "flight-travel-rho10-L200-001",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 130,
+      "end": 159,
+      "context_from": 120,
+      "questions": [
+        "A20d1:r15:q1",
+        "A20d1:r15:q2",
+        "A20d1:r16:q1",
+        "A20d1:r16:q2",
+        "A20d1:r16:q3"
+      ]
+    },
+    {
+      "window": "flight-travel-rho3-L200-000:w077",
+      "part": "audit",
+      "family": "flight-travel",
+      "sequence_id": "flight-travel-rho3-L200-000",
+      "density": 3,
+      "primary_schedule": "U10",
+      "start": 77,
+      "end": 106,
+      "context_from": 67,
+      "questions": [
+        "U10:r04:q1",
+        "U10:r04:q2",
+        "U10:r04:q3"
+      ]
+    },
+    {
+      "window": "flight-travel-rho30-L200-000:w051",
+      "part": "audit",
+      "family": "flight-travel",
+      "sequence_id": "flight-travel-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 51,
+      "end": 80,
+      "context_from": 41,
+      "questions": [
+        "U10:r02:q1",
+        "U10:r02:q2",
+        "U10:r03:q1",
+        "U10:r03:q2",
+        "U10:r03:q3"
+      ]
+    },
+    {
+      "window": "hotel-stay-rho1-L200-000:w158",
+      "part": "audit",
+      "family": "hotel-stay",
+      "sequence_id": "hotel-stay-rho1-L200-000",
+      "density": 1,
+      "primary_schedule": "U10",
+      "start": 158,
+      "end": 187,
+      "context_from": 148,
+      "questions": [
+        "U10:r08:q2",
+        "U10:r08:q3",
+        "U10:r09:q1",
+        "U10:r09:q2",
+        "U10:r09:q3"
+      ]
+    },
+    {
+      "window": "hotel-stay-rho10-L200-000:w136",
+      "part": "audit",
+      "family": "hotel-stay",
+      "sequence_id": "hotel-stay-rho10-L200-000",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 136,
+      "end": 165,
+      "context_from": 126,
+      "questions": [
+        "A20d1:r15:q1",
+        "A20d1:r16:q1",
+        "A20d1:r16:q2",
+        "A20d1:r17:q2",
+        "A20d1:r18:q1"
+      ]
+    },
+    {
+      "window": "hotel-stay-rho10-L200-001:w048",
+      "part": "audit",
+      "family": "hotel-stay",
+      "sequence_id": "hotel-stay-rho10-L200-001",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 48,
+      "end": 77,
+      "context_from": 38,
+      "questions": [
+        "A20d1:r05:q2",
+        "A20d1:r06:q3",
+        "A20d1:r07:q1",
+        "A20d1:r07:q3",
+        "A20d1:r07:q4"
+      ]
+    },
+    {
+      "window": "hotel-stay-rho3-L200-000:w045",
+      "part": "audit",
+      "family": "hotel-stay",
+      "sequence_id": "hotel-stay-rho3-L200-000",
+      "density": 3,
+      "primary_schedule": "U10",
+      "start": 45,
+      "end": 74,
+      "context_from": 35,
+      "questions": [
+        "U10:r02:q1",
+        "U10:r02:q2",
+        "U10:r03:q1",
+        "U10:r03:q2",
+        "U10:r03:q3"
+      ]
+    },
+    {
+      "window": "hotel-stay-rho30-L200-000:w156",
+      "part": "audit",
+      "family": "hotel-stay",
+      "sequence_id": "hotel-stay-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 156,
+      "end": 185,
+      "context_from": 146,
+      "questions": [
+        "U10:r08:q2",
+        "U10:r08:q3",
+        "U10:r08:q4",
+        "U10:r09:q1",
+        "U10:r09:q2"
+      ]
+    },
+    {
+      "window": "train-travel-rho1-L200-000:w145",
+      "part": "audit",
+      "family": "train-travel",
+      "sequence_id": "train-travel-rho1-L200-000",
+      "density": 1,
+      "primary_schedule": "U10",
+      "start": 145,
+      "end": 174,
+      "context_from": 135,
+      "questions": [
+        "U10:r07:q1",
+        "U10:r07:q3",
+        "U10:r08:q1",
+        "U10:r08:q2",
+        "U10:r08:q3"
+      ]
+    },
+    {
+      "window": "train-travel-rho10-L200-000:w073",
+      "part": "audit",
+      "family": "train-travel",
+      "sequence_id": "train-travel-rho10-L200-000",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 73,
+      "end": 102,
+      "context_from": 63,
+      "questions": [
+        "A20d1:r06:q1",
+        "A20d1:r06:q2",
+        "A20d1:r07:q1",
+        "A20d1:r07:q2",
+        "A20d1:r07:q3"
+      ]
+    },
+    {
+      "window": "train-travel-rho10-L200-001:w045",
+      "part": "audit",
+      "family": "train-travel",
+      "sequence_id": "train-travel-rho10-L200-001",
+      "density": 10,
+      "primary_schedule": "A20d1",
+      "start": 45,
+      "end": 74,
+      "context_from": 35,
+      "questions": [
+        "A20d1:r02:q2",
+        "A20d1:r03:q1",
+        "A20d1:r04:q1",
+        "A20d1:r05:q2",
+        "A20d1:r05:q3"
+      ]
+    },
+    {
+      "window": "train-travel-rho3-L200-000:w064",
+      "part": "audit",
+      "family": "train-travel",
+      "sequence_id": "train-travel-rho3-L200-000",
+      "density": 3,
+      "primary_schedule": "U10",
+      "start": 64,
+      "end": 93,
+      "context_from": 54,
+      "questions": [
+        "U10:r03:q2",
+        "U10:r03:q3",
+        "U10:r04:q1",
+        "U10:r04:q2",
+        "U10:r04:q3"
+      ]
+    },
+    {
+      "window": "train-travel-rho30-L200-000:w171",
+      "part": "audit",
+      "family": "train-travel",
+      "sequence_id": "train-travel-rho30-L200-000",
+      "density": 30,
+      "primary_schedule": "U10",
+      "start": 171,
+      "end": 200,
+      "context_from": 161,
+      "questions": [
+        "U10:r09:q1",
+        "U10:r09:q3",
+        "U10:r10:q1",
+        "U10:r10:q2",
+        "U10:r10:q3"
+      ]
+    }
+  ],
+  "counts": {
+    "audit_messages": 750,
+    "audit_questions": 121,
+    "context_messages": 270,
+    "pilot_messages": 60,
+    "pilot_questions": 7
+  },
+  "dataset_run": "T015-devmodel-20261125T192037Z"
+}

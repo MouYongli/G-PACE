@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: grocery-delivery
+group: dining
+title: Grocery delivery
+companions: [Moritz, Selin, Arvid, Pilar, Tove]
+multi:
+  predicate: allergicTo
+  noun: allergies
+  lexicon: [peanuts, shellfish, sesame, soy, eggs, celery, mustard seeds, lupin, sulphites, tree nuts]
+  first: "I am allergic to {o}"
+  second: "you are allergic to {o}"
+  third: "{x} is allergic to {o}"
+  first_neg: "I am no longer allergic to {o}"
+  third_neg: "{x} is no longer allergic to {o}"
+  ask_first: "What am I allergic to?"
+  ask_third: "What is {x} allergic to?"
+  count_first: "How many allergies do I have?"
+  count_third: "How many allergies does {x} have?"
+exclusive:
+  predicate: favouriteCuisine
+  noun: favourite cuisine
+  lexicon: [Thai food, Ethiopian food, Peruvian food, Lebanese food, Persian food, Georgian food,
+            Mexican food, Vietnamese food, Basque food, Sichuan food]
+  first: "my favourite cuisine is {o}"
+  second: "your favourite cuisine is {o}"
+  third: "{x}'s favourite cuisine is {o}"
+  change_first: "my favourite cuisine is now {o}"
+  change_third: "{x}'s favourite cuisine is now {o}"
+  past_first: "my favourite cuisine was {o}"
+  past_third: "{x}'s favourite cuisine was {o}"
+  ask_first: "What is my favourite cuisine?"
+  ask_third: "What is {x}'s favourite cuisine?"
+task:
+  noun: grocery delivery
+  constraints:
+    - {predicate: deliverAfter, datatype: time, request: "please deliver after {v}",
+       lexicon: ["07:00:00", "09:00:00", "11:00:00", "13:00:00", "15:00:00", "19:00:00"]}
+    - {predicate: substitutionRule, datatype: string, request: "for substitutions: {v}",
+       lexicon: [no substitutions, similar brands only, organic only, cheapest option, call me first, any substitute]}
+  catalogue: {predicate: estimatedArrival, datatype: time, noun: estimated arrival,
+              phrase: "estimates arrival at {v}",
+              lexicon: ["08:35:00", "10:05:00", "11:55:00", "13:35:00", "15:25:00", "17:05:00", "19:35:00", "21:10:00"]}
+  items:
+    - {id: shop-freshcart, label: FreshCart}
+    - {id: shop-greenbasket, label: GreenBasket}
+    - {id: shop-marktkiste, label: Marktkiste}
+    - {id: shop-hofladen, label: Hofladen Express}
+    - {id: shop-citygrocer, label: CityGrocer}
+    - {id: shop-biobote, label: Biobote}
+    - {id: shop-pantryrun, label: PantryRun}
+    - {id: shop-kornkorb, label: KornKorb}
+    - {id: shop-quickcrate, label: QuickCrate}
+    - {id: shop-feldfrisch, label: Feldfrisch}

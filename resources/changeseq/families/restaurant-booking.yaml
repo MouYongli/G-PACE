@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: restaurant-booking
+group: dining
+title: Restaurant booking
+companions: [Clemens, Ifeoma, Rasmus, Carmen, Hedda]
+multi:
+  predicate: allergicTo
+  noun: allergies
+  lexicon: [peanuts, shellfish, sesame, soy, eggs, celery, mustard seeds, lupin, sulphites, tree nuts]
+  first: "I am allergic to {o}"
+  second: "you are allergic to {o}"
+  third: "{x} is allergic to {o}"
+  first_neg: "I am no longer allergic to {o}"
+  third_neg: "{x} is no longer allergic to {o}"
+  ask_first: "What am I allergic to?"
+  ask_third: "What is {x} allergic to?"
+  count_first: "How many allergies do I have?"
+  count_third: "How many allergies does {x} have?"
+exclusive:
+  predicate: favouriteCuisine
+  noun: favourite cuisine
+  lexicon: [Thai food, Ethiopian food, Peruvian food, Lebanese food, Persian food, Georgian food,
+            Mexican food, Vietnamese food, Basque food, Sichuan food]
+  first: "my favourite cuisine is {o}"
+  second: "your favourite cuisine is {o}"
+  third: "{x}'s favourite cuisine is {o}"
+  change_first: "my favourite cuisine is now {o}"
+  change_third: "{x}'s favourite cuisine is now {o}"
+  past_first: "my favourite cuisine was {o}"
+  past_third: "{x}'s favourite cuisine was {o}"
+  ask_first: "What is my favourite cuisine?"
+  ask_third: "What is {x}'s favourite cuisine?"
+task:
+  noun: table reservation
+  constraints:
+    - {predicate: seatingArea, datatype: string, request: "please seat us in this area: {v}",
+       lexicon: [terrace, window table, bar counter, garden, private room, booth]}
+    - {predicate: partySize, datatype: string, request: "it is a {v}",
+       lexicon: [party of two, party of three, party of four, party of five, party of six, party of eight]}
+  catalogue: {predicate: tableReadyAt, datatype: time, noun: table time,
+              phrase: "has a table free at {v}",
+              lexicon: ["11:45:00", "12:20:00", "12:55:00", "18:10:00", "18:45:00", "19:25:00", "20:05:00", "20:50:00"]}
+  items:
+    - {id: rest-lume, label: Trattoria Lume}
+    - {id: rest-fenchel, label: Bistro Fenchel}
+    - {id: rest-sole, label: Osteria Sole}
+    - {id: rest-morgenrot, label: Café Morgenrot}
+    - {id: rest-lys, label: Brasserie Lys}
+    - {id: rest-kyma, label: Taverna Kyma}
+    - {id: rest-hoshi, label: Izakaya Hoshi}
+    - {id: rest-kranich, label: Restaurant Kranich}
+    - {id: rest-mesa-verde, label: Mesa Verde}
+    - {id: rest-hirsch, label: Zum Goldenen Hirsch}

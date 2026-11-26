@@ -1,0 +1,135 @@
+# Prompt registry (T004). Every prompt the code sends lives in resources/prompts/<name>/ and is
+# pinned here by its template hash (grace.llm.prompts.tree_sha256 of the directory), which every
+# call record carries as prompt_sha256. tests/contracts/test_pins.py recomputes all hashes.
+# Prompts of GRACE's own call types (writer, vocabulary, planner, verifier, renderer) are added by
+# the tasks that implement them; tuning prompts for GRACE is out of T004's scope.
+version: 1
+prompts:
+  answer:
+    call_type: answer
+    sha256: 9f35fa285533a3d502476bf622f2cbb6331a32688220e3e238e41eb956f4a58b
+    schema: llm/answer        # resources/schemas/llm/answer.json
+    schema_sha256: 1180564c05861a3cf2d39d47656287371a1ca7235ef10276cc8b5810135af36d
+    note: >-
+      Shared by every system (plan 7, "the same answer prompt"). Variables: context (the working
+      context, each fragment prefixed with its message IDs in square brackets), asked_at (the
+      read's asked_at, or the time of the last visible message), request ("Question: ..." or a
+      state request naming the slot inventory). Stable content first, the request last.
+  summary:
+    call_type: summary
+    sha256: 3781d77ba6d50207b3e3187c4aad5c4bc69e4ccbee9df6655a8ba8643506f84c
+    schema: null              # plain-text output
+    schema_sha256: null
+    note: Rolling-summary baseline of the pilot (E001); max_tokens comes from configs/common/budgets.yaml.
+  extract-slots:
+    call_type: extract
+    sha256: 6b140b4499c702a3f3aa402cf6fe9839c168cbc658533fdba06c82a60d3f1ded
+    schema: null              # {"entries": [...]}; checked against the configured slot inventory
+    schema_sha256: null       # and function list by the engine (eval/engines/baselines/slots.py)
+    note: >-
+      Fixed-schema slot-table baseline of the pilot (T003, plan 7.2), one call per message. Added by
+      T003. Variables: slots and functions (from configs/engines/slot-table.yaml, stable, first),
+      earlier (preceding messages for reference resolution), message (the new message, last).
+  judge:
+    call_type: judge
+    sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2
+    schema: null              # one word, CORRECT or INCORRECT
+    schema_sha256: null
+    note: Blind judge (configs/judges/blind.yaml).
+  judge-longmemeval-default:
+    call_type: judge
+    sha256: f225aa30921d3c778de1581712f4dbc99aa8c600f566a691f4e86e8b923ee267
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, single-session-user, single-session-assistant, multi-session.
+  judge-longmemeval-temporal-reasoning:
+    call_type: judge
+    sha256: e138fb098b15ed51fbf268b6000bbb848a2f97053165301ec0ba101453787ff8
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, temporal-reasoning.
+  judge-longmemeval-knowledge-update:
+    call_type: judge
+    sha256: 85a7addabfe5fd7bf4b09fcbabdc6ae8bdd52e9447f10d1679e180780f1c2e92
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, knowledge-update.
+  judge-longmemeval-single-session-preference:
+    call_type: judge
+    sha256: 81d481dee43ef97c304befbbd3387bf85f3ac5c7f38c9c320ccc6d9f57e3e862
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, single-session-preference (the reference is a rubric).
+  judge-longmemeval-abstention:
+    call_type: judge
+    sha256: 3802acec6c18e3095a6223b6855e25aa2a3c2761b9f79a65e75783e9175bf0c2
+    schema: null
+    schema_sha256: null
+    note: LongMemEval official judge, abstention questions (question ID ending in _abs).
+  render-view:
+    call_type: render
+    sha256: 0f7b5a73a563452025593a6d7490d51baedabe0e7e22b2fa447114ec1da05a19
+    schema: llm/render-view   # resources/schemas/llm/render-view.json
+    schema_sha256: a6891608c8077ed97c5005b3b4dea56398857cbbea73d941a1578ed6419e68dc
+    note: >-
+      View rendering (plan 5.4), added by T018. Variables: title (the view's title) and rows (one
+      line per rendering unit, "[row ID] name = value; ...", members of a count indented). Output:
+      sentences, each labelled with the row IDs it states; checked by
+      src/grace/context/views/render.py, failed sentences fall back to the template.
+  plan-query:
+    call_type: plan
+    sha256: 02d112490e5fd01feb6fe3ccee7cef13eb8ef6fcea373522b0019c06c8407c07
+    schema: llm/plan-query    # resources/schemas/llm/plan-query.json
+    schema_sha256: e0eb10bff9dd1c9e303deef835385895f113432cb0571c4d85fae1cc1e11eb3c
+    note: >-
+      Query planner of the read path (T023, plan 5.3 and 5.6), called only when no rule template
+      covers the task. Variables: predicates, entities and speakers (the vocabulary fragment of
+      the history, stable, first), reference_date (asked_at, else the date of the last visible
+      message), request (the question, last). Output: IR text, variables to fill, fallback
+      channels, optional time window and anchor (configs/common/planner.yaml).
+  plan-query-repair:
+    call_type: repair
+    sha256: 996e842d27085600e8ea56053e90d8caac433030575a3fe317e025d2f5e0c797
+    schema: llm/plan-query
+    schema_sha256: e0eb10bff9dd1c9e303deef835385895f113432cb0571c4d85fae1cc1e11eb3c
+    note: >-
+      The one compile repair of a read (T023, plan 5.6). Sent as a follow-up user message after
+      the plan-query conversation and the rejected reply; no system message of its own.
+      Variable: error (the parse, type or time error of the rejected reply).
+  render-changeseq:
+    call_type: render
+    sha256: 84ed03f3023ecdcbf4702c82f167cdd6590e062dc529ef87132ace25690e7ce7
+    schema: null              # plain text: the message only
+    schema_sha256: null
+    note: >-
+      Surface renderer of the controlled change sequences (T015; docs/research/change-sequences.md
+      section 7), sent to the renderer model of D006 (configs/models/mistral-small-3.2-24b.yaml),
+      never to an evaluated model. One call per attempt and message. Variables: speaker, persona,
+      register, date, previous (the six preceding rendered messages), meaning (the template
+      sentence), facts (the message's events with IDs resolved), discourse, required, allowed,
+      forbidden. Checked by src/grace/eval/datasets/changeseq/render.py (check_output); a message
+      that fails three attempts falls back to its template sentence.
+  extract-claims-rough:
+    call_type: extract
+    sha256: cfa18b00f31ecfe435d021c09b6b2d61daede10adcafb9fd7ead2a75fafa0c45
+    schema: null              # {"claims": [...], "stances": [...], "ended": [...]}; checked by
+    schema_sha256: null       # src/grace/eval/runner/probes/natural_extract.py (parse_output)
+    note: >-
+      One-off claim extraction of the rough natural staleness distribution (E002, plan 6.5:
+      "a one-off extraction prompt and hand-written queries"); not GRACE's writer (T022). One call
+      per message. Variables: participants, date (segment time), predicates (most used predicates
+      of the history), claims (known current claims with IDs), earlier (two preceding messages),
+      speaker, message (the new message, last).
+  extract-claims:
+    call_type: extract
+    sha256: e3aca074d4565305a8d420e79c0acbad988816073579f247ae4e1e785a7d0e2b
+    schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
+    schema_sha256: 65da49a5bbf8b82dbf0c652255e03014744605d759691c68301b1bea0ad01bf0
+    note: >-
+      GRACE's writer (T022, plan 5.1 and 5.6), one call per extraction unit (configs/common/
+      writer.yaml: message, segment of n messages inside a session, or session). Variables:
+      predicates (the vocabulary in force, stable, first), participants, entities, claims (known
+      current claims under handles k1, k2, ...), earlier (preceding messages, context only),
+      messages (the unit, numbered, last). Output: claims, stances and same_as entries anchored to
+      message numbers and quotes; checked by src/grace/context/pipeline/update/patch.py
+      (parse_patch), resolved by validate.py and guarded by guard.py.

@@ -1,0 +1,83 @@
+# Event grammar constants and the generic sentence skeletons of the change-sequence generator
+# (task T015; design docs/research/change-sequences.md, sections 3, 5 and 7). Loaded by
+# src/grace/eval/datasets/changeseq/template_families.py. Numbers marked [assumption] in the design
+# are kept here so that a change is one reviewed edit.
+version: changeseq-grammar-v1
+
+# Shared across the split (design section 11): the choice predicate of every task type.
+core_predicates: [selectedService]
+choice_predicate: selectedService
+
+# Macros (design section 3.3): name -> intended change type with respect to its focus binding.
+macros:
+  m-change: C1
+  m-remove: C1
+  m-constraint-revise: C1
+  m-catalogue-change: C1
+  m-add: C2
+  m-first: C2
+  m-offer: C2
+  m-constraint: C2
+  m-accept-first: C2
+  m-accept: C3
+  m-reject: C3
+  m-add-count: C4
+  m-accept-switch: C4
+  m-correct: C5
+  m-mention: C6
+  m-past: C7
+  m-blocked: C7
+
+# Assumptions of the design.
+offers_per_task: [1, 2, 3]        # K, uniform (section 3.3)
+p_no_accept: 0.3                  # share of tasks whose offers are never accepted (section 3.3)
+questions_per_read: 3             # q (section 5)
+special_slot_rotation: [presupposition, pair, abstention]
+setup_length: {min: 10, share: 0.1}   # L_0 = max(10, 0.1 L) (section 5)
+episode_length: {min: 8, max: 24}     # messages per episode after the setup episode
+episode_gap_days: {min: 2, max: 9}    # days between consecutive episode dates
+n_tasks: 3
+fallback_rate_limit: 0.10         # a family above it is revised before the audit (section 7)
+
+# Output checks of the renderer (section 7).
+meta_language: ["event", "claim", "supersed", "version", "correction:"]
+length: {min_chars: 2, max_chars: 400}
+max_render_attempts: 3
+
+# Generic skeletons of the deterministic template renderer (development and test renderer only;
+# not the paper's renderer). Placeholders: {stmt} a state sentence of the family, {task} the task
+# label, {item} an item label, {cat} the catalogue phrase, {request} a constraint sentence,
+# {date}/{old_date} rendered dates, {old} an earlier value, {poss} "my" or "<name>'s",
+# {noun} a predicate noun, {anchor} an anchor phrase.
+skeletons:
+  first: "{stmt}."
+  add: "By the way, {stmt}."
+  change: "{stmt}."
+  change_dated: "{stmt}. That was on {date}."
+  remove: "{stmt}."
+  past: "{stmt} from {start} until {end}."
+  correct_value: "Sorry, I got that wrong earlier: {stmt}, not {old}."
+  correct_date: "Sorry, I got the date wrong: {stmt} on {date}, not on {old_date}."
+  correct_remove: "Sorry, I misspoke earlier, it is not true that {stmt}."
+  mention_inform: "As I mentioned, {stmt}."
+  mention_confirm: "Yes, that is right: {stmt}."
+  mention_derived: "Noted: {stmt}."
+  mention_choice: "To recap, {item} is booked for {task}."
+  blocked_quote: "A friend of mine says that {stmt}."
+  blocked_hypothetical: "Just hypothetically, what if {stmt}?"
+  constraint: "For {task}: {request}."
+  constraint_revise: "Change of plan for {task}: {request}."
+  offer: "For {task}, I found {item}; it {cat}. Shall I book it?"
+  catalogue_change: "Update on {item}: it now {cat}."
+  accept: "Yes, please book {item} for {task}."
+  reject: "No, {item} does not work for me."
+questions:
+  V4: "What did I ask for in {task}?"
+  V5: "Which options for {task} have you offered that I have neither accepted nor rejected?"
+  V6: "Which option did I settle on for {task}, and what is its {cat_noun}?"
+  presupposition: "Remind me, {poss} {noun} is still {old}, isn't it?"
+  known_then: "When you {anchor}, what did you have as {poss} {noun}?"
+  seen_from_now: "Given what you know now, what was {poss} {noun} when you {anchor}?"
+  anchor_accept: "booked {item} for {task}"
+  anchor_offer: "offered me {item} for {task}"
+task_letters: [A, B, C]           # task label: "the <task noun> <letter>"

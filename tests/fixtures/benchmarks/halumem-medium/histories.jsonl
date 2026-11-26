@@ -1,0 +1,1 @@
+{"benchmark": "halumem-medium", "split": "fixture", "history_id": "user-001", "subset": null, "n_messages": 4, "segments": [{"segment_id": "s1", "first_version": 1, "last_version": 2, "timestamp": "2025-03-01", "timestamp_raw": "2025-03-01"}, {"segment_id": "s2", "first_version": 3, "last_version": 4, "timestamp": "2025-04-11", "timestamp_raw": "2025-04-11"}]}

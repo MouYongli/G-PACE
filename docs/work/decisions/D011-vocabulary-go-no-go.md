@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Context
 
-Phase 5 is conditional: a vocabulary-maintenance role is added only if the frozen vocabulary shows real naming conflicts in the extracted graphs (plan section 9, phase 5).
+Phase 5 is conditional: a vocabulary-maintenance call is added only if the frozen vocabulary shows real naming conflicts in the extracted graphs (plan section 9, phase 5).
 
 ## Options
 

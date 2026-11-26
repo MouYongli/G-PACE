@@ -1,0 +1,84 @@
+/* MultiWOZ annotation page: offer-turn list, turn timeline with acts, offer card, state table. */
+
+/* Three columns: offer turns | messages | verdict. */
+.workspace.three { --lw: clamp(330px, 29vw, 470px); grid-template-columns: var(--qw) minmax(0, 1fr) var(--lw); }
+.rule { border-radius: 4px; padding: 0 6px; font-size: 12px; font-family: var(--mono); border: 1px solid var(--line); white-space: nowrap; }
+.rule.accept { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.rule.reject { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.data-table .rules { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Offer-turn sidebar: one group per dialogue. */
+#tasks, #tasks ol { list-style: none; margin: 0; padding: 0; }
+#tasks { padding: 4px; flex: 1; }
+#tasks .group > .name { font-family: var(--mono); font-size: 11px; color: var(--muted); padding: 6px 8px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tasks .group.current > .name { color: var(--ink); font-weight: 600; }
+#tasks .task { display: grid; grid-template-columns: 16px 28px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; padding: 4px 8px; border-radius: 6px; cursor: pointer; border-left: 3px solid transparent; }
+#tasks .task:hover { background: var(--accent-soft); }
+#tasks .task.selected { background: var(--accent-soft); border-left-color: var(--accent); }
+#tasks .task .tid { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+#tasks .task .reply { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tasks .task .sub { grid-column: 3 / 5; font-size: 11px; color: var(--muted); }
+#tasks .empty { color: var(--muted); padding: 5px 8px; }
+
+/* Turn timeline */
+.dialogue-meta { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dialogue { flex: 1; padding: 8px clamp(10px, 2vw, 28px) 30vh; }
+#turns { list-style: none; margin: 0 auto; padding: 0; max-width: 860px; }
+.turn { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; margin: 8px 0; }
+.turn .index { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; padding-top: 8px; }
+.turn .body { border: 1px solid var(--line); border-left: 3px solid var(--b); background: var(--panel); border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+.turn.user .body { border-left-color: var(--a); cursor: pointer; }
+.turn.user .body:hover { border-color: var(--accent); border-left-color: var(--a); }
+.turn.system { margin-left: clamp(12px, 4%, 40px); }
+.turn .who { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.turn .who .name { font-weight: 600; color: var(--b); text-transform: uppercase; letter-spacing: .04em; }
+.turn.user .who .name { color: var(--a); }
+.turn .who .mark { margin-left: auto; font-weight: 600; color: var(--warn); white-space: nowrap; }
+.turn .text { font-size: 15px; margin: 2px 0 6px; }
+.turn.focus .body { box-shadow: 0 0 0 2px var(--accent); }
+.turn.checked .body { background: var(--warn-soft); border-color: var(--warn); box-shadow: 0 0 0 2px var(--warn); }
+.turn.checked.user .body { border-left-color: var(--a); }
+.turn.checked.system .body { border-left-color: var(--b); }
+
+.acts { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 6px; font-size: 12px; align-items: baseline; }
+.acts .version { font-family: var(--mono); color: var(--muted); }
+.acts .list { display: flex; flex-wrap: wrap; gap: 4px; }
+.act { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; background: var(--bg); }
+.act .name { color: var(--accent); }
+.act.empty { color: var(--muted); border-style: dashed; }
+
+/* Offer card and verdict form */
+#task-card .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+#task-card dl { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 6px 8px; margin: 0; }
+#task-card dt { font-size: 12px; color: var(--muted); font-weight: 600; padding-top: 1px; }
+#task-card dd { margin: 0; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; min-width: 0; }
+#task-card dd.quote { display: block; }
+#task-card dd.quote .n { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-right: 6px; }
+#task-card .judged { font-size: 14px; padding: 1px 10px; font-weight: 600; }
+#label-form .labels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* State table */
+#state-section { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+#state-section summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.legend-line { font-size: 12px; margin: 6px 0; }
+.state-wrap { overflow-x: auto; }
+#state-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#state-table th, #state-table td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+#state-table th { font-size: 12px; color: var(--muted); font-weight: 600; }
+#state-table td.slot { font-family: var(--mono); font-size: 12px; white-space: nowrap; padding-left: 6px; }
+#state-table td.unset { color: var(--muted); }
+#state-table td.new { background: var(--ok-soft); font-weight: 600; }
+#state-table tr.differ td.slot { box-shadow: inset 3px 0 0 var(--bad); }
+#state-table tr.differ td.value { outline: 1px dashed var(--bad); outline-offset: -3px; }
+.legend { border-radius: 4px; padding: 0 5px; }
+.legend.new { background: var(--ok-soft); color: var(--ok); }
+.legend.differ { outline: 1px dashed var(--bad); color: var(--bad); }
+
+/* Narrow: messages on top, verdict below; the opened sidebar lies over the content. */
+@media (max-width: 900px) {
+  .workspace.three { grid-template-columns: var(--rail) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(200px, 50%); }
+  .workspace.three .side.closed { grid-column: 1; }
+  .workspace.three .messages { grid-column: 2; }
+  .workspace.three .label-area { grid-column: 2; }
+  .turn.system { margin-left: 12px; }
+}

@@ -1,0 +1,54 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: apartment-search
+group: lodging
+title: Apartment search
+companions: [Johanna, Tariq, Sigrid, Lorenzo, Anouk]
+multi:
+  predicate: enjoysHobby
+  noun: hobbies
+  lexicon: [painting, gardening, chess, knitting, pottery, photography, baking, birdwatching,
+            origami, calligraphy]
+  first: "I enjoy {o}"
+  second: "you enjoy {o}"
+  third: "{x} enjoys {o}"
+  first_neg: "I no longer enjoy {o}"
+  third_neg: "{x} no longer enjoys {o}"
+  ask_first: "Which hobbies do I enjoy?"
+  ask_third: "Which hobbies does {x} enjoy?"
+  count_first: "How many hobbies do I enjoy?"
+  count_third: "How many hobbies does {x} enjoy?"
+exclusive:
+  predicate: worksIn
+  noun: field of work
+  lexicon: [education, nursing, architecture, pharmacy, journalism, accounting, logistics, insurance,
+            publishing, catering]
+  first: "I work in {o}"
+  second: "you work in {o}"
+  third: "{x} works in {o}"
+  change_first: "I switched to working in {o}"
+  change_third: "{x} switched to working in {o}"
+  past_first: "I worked in {o}"
+  past_third: "{x} worked in {o}"
+  ask_first: "What field do I work in?"
+  ask_third: "What field does {x} work in?"
+task:
+  noun: apartment viewing
+  constraints:
+    - {predicate: district, datatype: string, request: "I want an apartment in {v}",
+       lexicon: [Altstadt, Neustadt, Südstadt, Westend, Lindenau, Gohlis]}
+    - {predicate: apartmentSize, datatype: string, request: "I need a {v} apartment",
+       lexicon: [one-room, two-room, three-room, four-room, five-room, loft-style]}
+  catalogue: {predicate: viewingTime, datatype: time, noun: viewing time,
+              phrase: "can be viewed at {v}",
+              lexicon: ["09:20:00", "10:40:00", "11:50:00", "13:10:00", "14:30:00", "16:20:00", "17:40:00", "19:05:00"]}
+  items:
+    - {id: apt-lindenstrasse-12, label: Lindenstrasse 12}
+    - {id: apt-bergweg-4, label: Bergweg 4}
+    - {id: apt-hafenallee-27, label: Hafenallee 27}
+    - {id: apt-schulgasse-9, label: Schulgasse 9}
+    - {id: apt-rosenweg-15, label: Rosenweg 15}
+    - {id: apt-am-anger-3, label: Am Anger 3}
+    - {id: apt-muehlenstrasse-41, label: Mühlenstrasse 41}
+    - {id: apt-kirchplatz-6, label: Kirchplatz 6}
+    - {id: apt-gartenweg-18, label: Gartenweg 18}
+    - {id: apt-bahnhofstrasse-30, label: Bahnhofstrasse 30}

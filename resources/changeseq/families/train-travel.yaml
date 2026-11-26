@@ -1,0 +1,51 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: train-travel
+group: travel
+title: Train travel
+companions: [Melanie, Jonas, Priya, Tomasz, Elena]
+multi:
+  predicate: speaksLanguage
+  noun: languages
+  lexicon: [Danish, Dutch, Polish, Czech, Italian, Spanish, Portuguese, Greek, Finnish, Swedish]
+  first: "I speak {o}"
+  second: "you speak {o}"
+  third: "{x} speaks {o}"
+  first_neg: "I no longer speak {o}"
+  third_neg: "{x} no longer speaks {o}"
+  ask_first: "Which languages do I speak?"
+  ask_third: "Which languages does {x} speak?"
+  count_first: "How many languages do I speak?"
+  count_third: "How many languages does {x} speak?"
+exclusive:
+  predicate: livesIn
+  noun: home city
+  lexicon: [Munich, Cologne, Hamburg, Leipzig, Dresden, Bremen, Hanover, Nuremberg, Stuttgart, Freiburg]
+  first: "I live in {o}"
+  second: "you live in {o}"
+  third: "{x} lives in {o}"
+  change_first: "I moved to {o}"
+  change_third: "{x} moved to {o}"
+  past_first: "I lived in {o}"
+  past_third: "{x} lived in {o}"
+  ask_first: "Where do I live?"
+  ask_third: "Where does {x} live?"
+task:
+  noun: train booking
+  constraints:
+    - {predicate: arriveBy, datatype: time, request: "I need to arrive by {v}",
+       lexicon: ["08:00:00", "10:00:00", "12:00:00", "14:00:00", "16:00:00", "18:00:00"]}
+    - {predicate: destination, datatype: string, request: "I am travelling to {v}",
+       lexicon: [Berlin, Vienna, Prague, Zurich, Basel, Salzburg]}
+  catalogue: {predicate: scheduledArrival, datatype: time, noun: arrival time, phrase: "arrives at {v}",
+              lexicon: ["07:25:00", "09:41:00", "11:17:00", "13:52:00", "15:08:00", "16:33:00", "17:25:00", "19:46:00"]}
+  items:
+    - {id: ICE947, label: ICE 947}
+    - {id: ICE581, label: ICE 581}
+    - {id: IC2013, label: IC 2013}
+    - {id: IC2290, label: IC 2290}
+    - {id: EC175, label: EC 175}
+    - {id: EC81, label: EC 81}
+    - {id: RJX63, label: Railjet 63}
+    - {id: NJ421, label: Nightjet 421}
+    - {id: ICE1007, label: ICE 1007}
+    - {id: IC118, label: IC 118}

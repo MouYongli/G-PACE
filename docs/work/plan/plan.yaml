@@ -3,7 +3,7 @@
 # Nodes are the work items; an edge A -> B (B.depends_on contains A) means A must be resolved before
 # B starts. Nodes with no unresolved dependency can run in parallel. Milestones only group nodes.
 project: GRACE
-updated: 2026-11-23
+updated: 2026-11-25
 repo: https://github.com/MouYongli/GRACE   # used to link Issues
 
 end: T036                      # the end node: every milestone node leads to a deliverable
@@ -25,9 +25,9 @@ milestones:           # research plan section 9; one milestone per implementatio
     due: null
     gate_node: D007   # the decision node that applies this gate
     gate: >-
-      Few MultiWOZ offer turns: the role claim's primary evidence moves to the controlled
-      sequences. Narrow spread of LoCoMo read points: streaming moves to the supplementary
-      material. Fragment coverage below one half: lower expectations for RQ1 on LoCoMo. The
+      Few MultiWOZ offer turns: the primary evidence for the attribution-guard claim moves to
+      the controlled sequences. Narrow spread of LoCoMo read points: streaming moves to the
+      supplementary material. Fragment coverage below one half: lower expectations for RQ1 on LoCoMo. The
       write budget cannot pay back on paper: claim no token savings on LoCoMo. The changes
       missed by citation-based dependencies are rare in natural dialogue: view maintenance
       targets high-revision workloads, with RQ2 resting on the controlled sequences.
@@ -36,10 +36,13 @@ milestones:           # research plan section 9; one milestone per implementatio
     due: null
     gate_node: D008   # the decision node that applies this gate
     gate: >-
-      If template serialisation ties with LLM rendering on reader accuracy, the paper becomes
+      If template serialisation ties with LLM rendering on answer accuracy, the paper becomes
       "a staleness criterion plus computing at query time" and view maintenance is no longer a
       cost claim. If re-querying at read time is not more expensive anywhere in the range of
-      the scale experiment, narrow RQ2 to "freshness checks are cheap".
+      the scale experiment, narrow RQ2 to "exact staleness checks are cheap". If claim-pattern-level
+      decisions over-mark as much as predicate-level decisions on the controlled sequences, the
+      RQ2 hypothesis on dependency granularity is overturned and no benefit is claimed for the
+      finer dependency.
   - id: M3
     title: End-to-end extraction and planning
     due: null
@@ -53,9 +56,9 @@ milestones:           # research plan section 9; one milestone per implementatio
     due: null
     gate_node: D010   # the decision node that applies this gate
     gate: >-
-      If tagged hybrid retrieval obtains most of the role gain, narrow the conclusion to "role
-      information helps". If the fixed slot table ties on open-domain slices, claim no gain
-      from open predicates.
+      If tagged hybrid retrieval obtains most of the gain attributed to the guard, narrow the
+      conclusion to "speaker and dialogue-act information helps". If the fixed slot table ties
+      on open-domain slices, claim no gain from open predicates.
   - id: M5
     title: Vocabulary evolution
     due: null
@@ -120,6 +123,17 @@ nodes:
     start: 2026-11-22
     finish: 2026-11-22
     file: ../decisions/D004-python-and-inference-environment.md
+  - id: D013
+    type: decision
+    title: Code structure and dependency rules
+    milestone: null
+    status: accepted
+    depends_on: []
+    issue: null
+    owner: user
+    start: 2026-11-24
+    finish: 2026-11-24
+    file: ../decisions/D013-code-structure.md
   # ---- M0 · Novelty check
   - id: T011
     type: task
@@ -148,166 +162,166 @@ nodes:
     type: task
     title: Record contracts
     milestone: M1
-    status: planned
+    status: done
     depends_on: []
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 25
+    owner: m01-T001
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T001-record-contracts.md
   - id: T002
     type: task
     title: Benchmark adapters
     milestone: M1
-    status: planned
-    depends_on: [T001]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    status: done
+    depends_on: [T001, D013]
+    issue: 34
+    owner: m01-T002
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T002-benchmark-adapters.md
   - id: T003
     type: task
     title: Baseline runners
     milestone: M1
-    status: planned
-    depends_on: [T001]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    status: done
+    depends_on: [T001, D013]
+    issue: 31
+    owner: m01-T003
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T003-baseline-runners.md
   - id: T004
     type: task
     title: Prompts, counters, judges
     milestone: M1
-    status: planned
-    depends_on: [T001]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    status: done
+    depends_on: [T001, D013]
+    issue: 32
+    owner: m01-T004
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T004-prompts-counters-judges.md
   - id: E001
     type: experiment
     title: Pilot measurements
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T002, T003, T004, D002, D006]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 69
+    owner: m01-E001
+    start: 2026-11-25
+    finish: 2026-11-26
     file: ../experiments/E001-pilot-measurements.md
   - id: D002
     type: decision
     title: Evaluation aggregation
     milestone: M1
-    status: proposed
+    status: accepted
     depends_on: []
     issue: null
-    owner: null
+    owner: user
     start: 2026-11-21
-    finish: null
+    finish: 2026-11-25
     file: ../decisions/D002-evaluation-aggregation.md
   - id: T006
     type: task
     title: MultiWOZ offer-turn census
     milestone: M1
-    status: planned
+    status: active
     depends_on: [T002, T010]
-    issue: null
-    owner: null
-    start: null
+    issue: 46
+    owner: m01-T006
+    start: 2026-11-25
     finish: null
     file: ../tasks/T006-multiwoz-offer-turns.md
   - id: T007
     type: task
     title: LoCoMo evidence-anchored read points
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T002, T010]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 48
+    owner: m01-T007
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T007-locomo-read-points.md
   - id: T008
     type: task
     title: Controlled change-sequence generator design
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T005]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 24
+    owner: m01-T008
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T008-change-sequence-design.md
   - id: T009
     type: task
     title: Python and inference environment
     milestone: M1
-    status: active
+    status: done
     depends_on: [D004]
     issue: null
     owner: user
     start: 2026-11-22
-    finish: null
+    finish: 2026-11-25
     file: ../tasks/T009-env-setup.md
   - id: T010
     type: task
     title: Benchmark download scripts
     milestone: M1
-    status: active
+    status: done
     depends_on: [T009]
     issue: null
     owner: user
     start: 2026-11-22
-    finish: null
+    finish: 2026-11-23
     file: ../tasks/T010-data-download.md
   - id: T012
     type: task
     title: Fragment coverage annotation
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T002, T010]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 47
+    owner: m01-T012
+    start: 2026-11-25
+    finish: 2026-11-26
     file: ../tasks/T012-fragment-coverage.md
   - id: T013
     type: task
     title: Write-budget estimate and break-even curves
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T010, E001]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 109
+    owner: m01-T013
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T013-write-budget.md
   - id: E002
     type: experiment
     title: Rough natural staleness distribution
     milestone: M1
-    status: planned
+    status: done
     depends_on: [T002, T009]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 110
+    owner: m01-E002
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../experiments/E002-rough-staleness-distribution.md
   - id: D006
     type: decision
     title: Model line-up and judge snapshot
     milestone: M1
-    status: proposed
+    status: accepted
     depends_on: [T009]
     issue: null
-    owner: null
+    owner: user
     start: 2026-11-23
-    finish: null
+    finish: 2026-11-25
     file: ../decisions/D006-model-lineup.md
   - id: D007
     type: decision
@@ -325,78 +339,78 @@ nodes:
     type: task
     title: Claim model and bitemporal store
     milestone: M2
-    status: planned
-    depends_on: [T001]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    status: done
+    depends_on: [T001, D013]
+    issue: 33
+    owner: m01-T014
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T014-claim-model.md
   - id: T015
     type: task
     title: Controlled change-sequence generator
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T008, T014]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 59
+    owner: m01-T015
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T015-change-sequence-generator.md
   - id: T016
     type: task
     title: Sequence audit
     milestone: M2
-    status: planned
+    status: active
     depends_on: [T015]
-    issue: null
-    owner: null
-    start: null
+    issue: 93
+    owner: m01-T016
+    start: 2026-11-25
     finish: null
     file: ../tasks/T016-sequence-audit.md
   - id: T017
     type: task
     title: Query IR and compiler
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T014]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 58
+    owner: m01-T017
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T017-query-compiler.md
   - id: T018
     type: task
     title: Views and rendering
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T017, T004, T009]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 65
+    owner: m01-T018
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T018-views-rendering.md
   - id: T019
     type: task
     title: Staleness strategies
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T018]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 78
+    owner: m01-T019
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T019-staleness-strategies.md
   - id: T020
     type: task
     title: Final formalisation and proof
     milestone: M2
-    status: planned
+    status: done
     depends_on: [D005, T017]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 108
+    owner: m01-T020
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T020-formalisation.md
   - id: T021
     type: task
@@ -424,23 +438,23 @@ nodes:
     type: experiment
     title: "Scale experiment: push, pull, hybrid"
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T015, T019]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 94
+    owner: m01-E004
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../experiments/E004-scale-experiment.md
   - id: E005
     type: experiment
     title: Ablation C on gold graphs
     milestone: M2
-    status: planned
+    status: done
     depends_on: [T015, T018]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 95
+    owner: m01-E005
+    start: 2026-11-25
+    finish: 2026-11-26
     file: ../experiments/E005-ablation-c-gold.md
   - id: D008
     type: decision
@@ -458,23 +472,23 @@ nodes:
     type: task
     title: "Writer: extraction and graph update"
     milestone: M3
-    status: planned
+    status: done
     depends_on: [T014, T004, T009, T013]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 121
+    owner: m01-T022
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T022-writer.md
   - id: T023
     type: task
     title: Query planner
     milestone: M3
-    status: planned
+    status: done
     depends_on: [T017, T004]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 67
+    owner: m01-T023
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T023-query-planner.md
   - id: T024
     type: task
@@ -558,12 +572,12 @@ nodes:
     type: task
     title: Retrieval channels, routing and fusion
     milestone: M4
-    status: planned
+    status: done
     depends_on: [T003, T023]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 122
+    owner: m01-T025
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T025-retrieval-fusion.md
   - id: T026
     type: task
@@ -602,23 +616,23 @@ nodes:
     type: task
     title: Mem0 adapter
     milestone: M4
-    status: planned
+    status: done
     depends_on: [T003, T009]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 71
+    owner: m01-T029
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T029-mem0-adapter.md
   - id: T030
     type: task
     title: Cost ledgers and amortisation tooling
     milestone: M4
-    status: planned
+    status: done
     depends_on: [T004]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 66
+    owner: m01-T030
+    start: 2026-11-25
+    finish: 2026-11-25
     file: ../tasks/T030-cost-ledgers.md
   - id: T031
     type: task
@@ -633,7 +647,7 @@ nodes:
     file: ../tasks/T031-locomo-streaming.md
   - id: E011
     type: experiment
-    title: "Ablation B: roles, representation, time"
+    title: "Ablation B: attribution guard, representation, time"
     milestone: M4
     status: planned
     depends_on: [T026, T027, T028, T015]
@@ -641,7 +655,7 @@ nodes:
     owner: null
     start: null
     finish: null
-    file: ../experiments/E011-ablation-b-roles.md
+    file: ../experiments/E011-ablation-b-attribution-guard.md
   - id: E012
     type: experiment
     title: "Ablation D: retrieval channels"
@@ -677,7 +691,7 @@ nodes:
     file: ../experiments/E014-dev-quality-cost.md
   - id: D010
     type: decision
-    title: "Phase 4 gate: role and open-predicate claims"
+    title: "Phase 4 gate: attribution-guard and open-predicate claims"
     milestone: M4
     status: proposed
     depends_on: [E011, E012, E014]
@@ -685,11 +699,11 @@ nodes:
     owner: null
     start: 2026-11-23
     finish: null
-    file: ../decisions/D010-gate-role-claims.md
+    file: ../decisions/D010-gate-attribution-guard-claims.md
   # ---- M5 · Vocabulary evolution
   - id: T032
     type: task
-    title: Vocabulary maintenance role
+    title: Vocabulary maintenance call
     milestone: M5
     status: planned
     depends_on: [D011, T022]
@@ -697,10 +711,10 @@ nodes:
     owner: null
     start: null
     finish: null
-    file: ../tasks/T032-vocabulary-role.md
+    file: ../tasks/T032-vocabulary-maintenance.md
   - id: E015
     type: experiment
-    title: Ablations F and H; role invocation arm of G
+    title: Ablations F and H; call-type invocation arm of G
     milestone: M5
     status: planned
     depends_on: [T032, T025]
@@ -736,12 +750,12 @@ nodes:
     type: task
     title: Optional benchmark and system adapters
     milestone: M6
-    status: planned
+    status: done
     depends_on: [T002, T003]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 68
+    owner: m01-T034
+    start: 2026-11-25
+    finish: 2026-11-26
     file: ../tasks/T034-optional-adapters.md
   - id: T035
     type: task

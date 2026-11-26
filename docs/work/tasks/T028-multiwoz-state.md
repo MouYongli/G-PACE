@@ -8,7 +8,7 @@ created: 2026-11-23
 
 ## Goal
 
-Everything specific to MultiWOZ (plan section 6.5): the projection from the claim graph to official slots, scoring of original-constraint retention and of paired correctness with the derived gold of T006, and the baselines: ReacTOD reproduced on Qwen3-8B, deterministic overwrite on official slots, the 'system values are not written' rule, and direct state output by the reader.
+Everything specific to MultiWOZ (plan section 6.5): the projection from the claim graph to official slots, scoring of original-constraint retention and of paired correctness with the derived gold of T006, and the baselines: ReacTOD reproduced on Qwen3-8B, deterministic overwrite on official slots, the 'system values are not written' rule, and direct state output by the answering LLM.
 
 ## Scope
 

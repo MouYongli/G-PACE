@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: flight-travel
+group: travel
+title: Flight travel
+companions: [Sabine, Kofi, Ingrid, Mateo, Yuki]
+multi:
+  predicate: speaksLanguage
+  noun: languages
+  lexicon: [Danish, Dutch, Polish, Czech, Italian, Spanish, Portuguese, Greek, Finnish, Swedish]
+  first: "I speak {o}"
+  second: "you speak {o}"
+  third: "{x} speaks {o}"
+  first_neg: "I no longer speak {o}"
+  third_neg: "{x} no longer speaks {o}"
+  ask_first: "Which languages do I speak?"
+  ask_third: "Which languages does {x} speak?"
+  count_first: "How many languages do I speak?"
+  count_third: "How many languages does {x} speak?"
+exclusive:
+  predicate: homeAirport
+  noun: home airport
+  lexicon: [Frankfurt Airport, Munich Airport, Hamburg Airport, Berlin Airport, Cologne Bonn Airport,
+            Stuttgart Airport, Leipzig Airport, Bremen Airport, Dresden Airport, Hanover Airport]
+  first: "I usually fly out of {o}"
+  second: "you usually fly out of {o}"
+  third: "{x} usually flies out of {o}"
+  change_first: "I now fly out of {o}"
+  change_third: "{x} now flies out of {o}"
+  past_first: "I flew out of {o}"
+  past_third: "{x} flew out of {o}"
+  ask_first: "Which airport do I usually fly out of?"
+  ask_third: "Which airport does {x} usually fly out of?"
+task:
+  noun: flight booking
+  constraints:
+    - {predicate: seatPreference, datatype: string, request: "I would like a {v}",
+       lexicon: [window seat, aisle seat, exit row seat, front row seat, bulkhead seat, rear seat]}
+    - {predicate: departAfter, datatype: time, request: "I want to depart after {v}",
+       lexicon: ["06:00:00", "09:00:00", "11:00:00", "13:00:00", "15:00:00", "17:00:00"]}
+  catalogue: {predicate: scheduledDeparture, datatype: time, noun: departure time,
+              phrase: "departs at {v}",
+              lexicon: ["06:35:00", "08:10:00", "09:55:00", "11:40:00", "13:25:00", "15:50:00", "18:05:00", "20:15:00"]}
+  items:
+    - {id: LH2042, label: LH 2042}
+    - {id: LH1830, label: LH 1830}
+    - {id: EW9462, label: EW 9462}
+    - {id: TP555, label: TP 555}
+    - {id: IB3117, label: IB 3117}
+    - {id: A3841, label: A3 841}
+    - {id: SK674, label: SK 674}
+    - {id: EI351, label: EI 351}
+    - {id: AZ405, label: AZ 405}
+    - {id: LX1071, label: LX 1071}

@@ -1,0 +1,26 @@
+% Unnumbered introduction of the supplement.
+\noindent This supplement gives the formal model behind the formalisation section of the main
+text, the full proofs of time-travel stability, of the soundness proposition and of the
+exactness proposition, the refinements for counting and latest-state selection, the list of
+fragment assumptions, and the full grammar of the intermediate representation (IR).
+Section~S1 fixes the model, S2 proves time-travel stability, S3 soundness, S4 exactness and the
+over-approximation examples, S5 lists every assumption the proofs use, and S6 gives the IR
+grammar and type rules.
+
+\paragraph{Status of the statements.}
+Lemmas~\ref{lem:collapse}--\ref{lem:evidence}, Propositions~\ref{prop:s-soundness}
+and~\ref{prop:s-exactness}, Corollaries~\ref{cor:stepwise}--\ref{cor:filters} and
+Remarks~\ref{rem:count} and~\ref{rem:latest} are proved here for the model of S1. That the
+implementation realises the model (the compiled SPARQL computes the rows of S1, and the change
+matcher decides the triggers of S3) is not proved: it is assumption~A3 and~A9 of S5, checked by
+the test suite of the released code and, on gold graphs, by counting the misses of every sound
+strategy against read-time re-query (ablation A). No statement here is a conjecture; where a
+claim is only illustrated by an example, it is labelled as an example.
+
+\paragraph{Credit.}
+The compositional argument is that of Proposition~1 of Martin, Unbehauen and
+Auer~\cite{martin2010caching}; the proposition is an instance of query--update
+independence~\cite{blakeley1986updating,levy1993independent}. What is added is the treatment of
+negation, distinct counting, latest-state selection, cut-off reads on an append-only bitemporal
+graph, claim patterns with attribution constraints as the matching unit, and the witnesses and
+evidence of a view, together with the exactness conditions. Each step is routine.

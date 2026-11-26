@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: music-lessons
+group: learning
+title: Music lessons
+companions: [Benedikt, Sana, Ulrich, Paola, Dagny]
+multi:
+  predicate: playsInstrument
+  noun: instruments
+  lexicon: [violin, viola, cello, flute, clarinet, piano, guitar, trumpet, harp, oboe]
+  first: "I play the {o}"
+  second: "you play the {o}"
+  third: "{x} plays the {o}"
+  first_neg: "I no longer play the {o}"
+  third_neg: "{x} no longer plays the {o}"
+  ask_first: "Which instruments do I play?"
+  ask_third: "Which instruments does {x} play?"
+  count_first: "How many instruments do I play?"
+  count_third: "How many instruments does {x} play?"
+exclusive:
+  predicate: rehearsesAt
+  noun: rehearsal place
+  lexicon: [the community hall, St. Mark's church, the old school gym, the youth centre,
+            the town library annex, the music academy, the riverside studio, the parish hall,
+            the culture centre, the warehouse loft]
+  first: "I rehearse at {o}"
+  second: "you rehearse at {o}"
+  third: "{x} rehearses at {o}"
+  change_first: "I now rehearse at {o}"
+  change_third: "{x} now rehearses at {o}"
+  past_first: "I rehearsed at {o}"
+  past_third: "{x} rehearsed at {o}"
+  ask_first: "Where do I rehearse?"
+  ask_third: "Where does {x} rehearse?"
+task:
+  noun: lesson booking
+  constraints:
+    - {predicate: lessonLength, datatype: string, request: "each lesson should last {v}",
+       lexicon: [30 minutes, 45 minutes, 60 minutes, 75 minutes, 90 minutes, 120 minutes]}
+    - {predicate: lessonFormat, datatype: string, request: "I would prefer this format: {v}",
+       lexicon: [one-to-one, small group, online, duet, masterclass, trial lesson]}
+  catalogue: {predicate: lessonStart, datatype: time, noun: start time, phrase: "starts at {v}",
+              lexicon: ["08:20:00", "09:35:00", "10:50:00", "14:05:00", "15:25:00", "16:35:00", "17:50:00", "19:15:00"]}
+  items:
+    - {id: teacher-berg, label: Anna Berg}
+    - {id: teacher-hahn, label: Lukas Hahn}
+    - {id: teacher-sommer, label: Mira Sommer}
+    - {id: teacher-wendt, label: Jakob Wendt}
+    - {id: teacher-vogt, label: Clara Vogt}
+    - {id: teacher-brandt, label: Felix Brandt}
+    - {id: teacher-keller, label: Nora Keller}
+    - {id: teacher-winter, label: Paul Winter}
+    - {id: teacher-fuchs, label: Lea Fuchs}
+    - {id: teacher-roth, label: Tim Roth}

@@ -1,0 +1,105 @@
+\section{Intermediate Representation}\label{sec:s-grammar}
+
+Query planning produces only queries of this grammar; a deterministic compiler turns them into
+SPARQL over the claim graph. Keywords are case-insensitive and \texttt{\#} starts a comment.
+Literals are in the canonical lexical form of their datatype.
+
+\subsection{Grammar}
+
+{\scriptsize
+\begin{verbatim}
+Query      ::= "SELECT" Select "WHERE" Group Latest? At? Provenance? "TEMPORARY"?
+Select     ::= Var+ | Var* "COUNT" "(" "DISTINCT" Var ")"
+Group      ::= "{" Pattern ( "." Pattern ){0,2} "."? Item* "}"
+                 (* items and patterns may interleave *)
+Item       ::= Filter | Negation
+Negation   ::= "NOT" "EXISTS" "{" Pattern "."? Filter* "}"
+Pattern    ::= "(" Subject "," Predicate "," Object ( "," Scope )? ")"
+               Constraint? ( "AS" Var )?
+Constraint ::= "[" ( Entity | Var | "_" ) "," ( Function | "_" ) ( "," Relax )* "]"
+Relax      ::= ( "mode" | "polarity" | "derived" ) "=" "_"      (* each at most once *)
+Subject    ::= Entity | Var
+Predicate  ::= Name | Var
+Object     ::= Entity | Var | Literal
+Scope      ::= "_" | "default" | String | Var
+Filter     ::= "FILTER" "(" Left Op Right ")"
+Left       ::= Var | "start" "(" Var ")" | "end" "(" Var ")"
+Op         ::= "=" | "!=" | "<" | "<=" | ">" | ">="
+Right      ::= Literal | Entity | "now" "(" Integer? ")"    (* now: before resolution only *)
+Latest     ::= "LATEST" "BY" ( "version" | "valid" ) "OF" Var
+At         ::= "AT" "(" AtArg ( "," AtArg )* ")"
+AtArg      ::= "known" "=" ( Integer | "r" ) | "valid" "=" Literal
+             | "state" "=" ( "current" | "historical" )
+Provenance ::= "WITH" "PROVENANCE" | "WITHOUT" "PROVENANCE"
+Var        ::= "?" [A-Za-z][A-Za-z0-9_]*          (* "?_..." is reserved *)
+Entity     ::= [A-Za-z0-9_][A-Za-z0-9_-]* | "<" percent-encoded ID ">"
+Name       ::= [A-Za-z][A-Za-z0-9_]*               (* a vocabulary predicate *)
+Function   ::= "request" | "offer" | "accept" | "reject" | "confirm"
+             | "inform" | "commit" | "question"
+Literal    ::= String ( "^^" Datatype )? | Integer | "true" | "false"
+Datatype   ::= "string" | "integer" | "boolean" | "date" | "dateTime" | "time"
+\end{verbatim}
+}
+
+\subsection{Correspondence with the model}
+
+\begin{itemize}
+\item A \texttt{Pattern} is a claim pattern of S1.2; \texttt{AS ?c} names its label $\lambda_P$,
+  which filters on $\mathrm{start}$ and $\mathrm{end}$ and the latest-state selection refer to; a
+  label is never an answer variable. In \texttt{Constraint}, \texttt{\_} leaves the speaker or the
+  function open (at least one must be given), and \texttt{mode=\_}, \texttt{polarity=\_},
+  \texttt{derived=\_} relax the defaults $\rho_P=\own$, $\pi_P=$ positive, $\delta_P=$ false.
+  A constraint can only keep or relax a default, never require a quote, a hypothetical, a denial or
+  a derived attribution. Certainty is not constrained.
+\item The scope \texttt{\_} accepts any scope, \texttt{default} only the default scope; an omitted
+  scope means \texttt{\_}.
+\item \texttt{AT(known=r)} (the default) is a moving cut-off, the version read; an integer fixes the
+  cut-off (a time-travel read, never stale). \texttt{AT(valid=}$d$\texttt{)} is the world time of
+  (m4). \texttt{state=current} (the default) and \texttt{state=historical} are the two forms of
+  (m3).
+\item \texttt{LATEST BY version} uses the key $\max(\vs(c),\vs(a))$ of S1.4; \texttt{LATEST BY
+  valid} uses $\tau^-(c)$.
+\item \texttt{WITHOUT PROVENANCE} skips the evidence query; witnesses are still computed.
+\item \texttt{now(}$k$\texttt{)} is the time of reading shifted by $k$ days. It is resolved to an
+  absolute date when the read is planned, and the query becomes \texttt{TEMPORARY}: it is answered
+  once and never stored as a view (A7).
+\item An entity constant matches every member of its equivalence class at the cut-off; how the
+  compiler binds the class members (a list of values, or the single IRI when the class has one
+  member) does not change the semantics.
+\end{itemize}
+
+\subsection{Type rules}
+
+The parser rejects syntax outside the fragment, and the type checker rejects every representation
+that the types can build but the fragment forbids, reporting all problems at once:
+
+\begin{itemize}
+\item more than three positive patterns, or none; property paths; triple patterns outside a claim
+  pattern;
+\item aggregates other than \texttt{COUNT(DISTINCT ?x)}; \texttt{COUNT} together with
+  \texttt{LATEST}; a counted variable that is also a grouping variable;
+\item comparisons with the time of reading in a stored query; comparisons between two variables;
+  more than one comparison in one \texttt{FILTER};
+\item \textsc{optional}, \textsc{union}, \textsc{minus}, \textsc{bind}, \textsc{values},
+  \textsc{graph}, \textsc{service}, \textsc{order}, \textsc{limit}, \textsc{group},
+  \textsc{having} and nested groups;
+\item nested negation, a negation over more than one pattern, a second negation, a negated pattern
+  sharing no variable with the positive part, and a variable bound only inside the negation used in
+  the answer;
+\item a selected, counted or filtered variable not bound by a positive pattern; a variable used as
+  a predicate or a scope and also in another position; a label used as a variable;
+\item an entity compared with $<,\le,>,\ge$; an entity variable compared with a literal; a
+  predicate variable in a filter; $\mathrm{start}$ or $\mathrm{end}$ compared with anything but a
+  date or date-time; \texttt{LATEST} naming no positive label; a constraint with neither speaker
+  nor function.
+\end{itemize}
+
+\subsection{What the fragment cannot express}
+
+Optional parts, unions and disjunctive filters; property paths and transitive closure; more than
+three joined patterns; arithmetic, date arithmetic and comparisons between variables (such as
+``the train arrives before the requested time'', where both sides are variables); aggregates other
+than distinct counting; maxima by anything other than version or valid-time start, and latest
+state per group; negation over several patterns or nested negation; attribution constraints that
+require a non-default report mode or polarity, or only derived attributions, or a certainty; and
+comparisons with the time of reading in stored views.

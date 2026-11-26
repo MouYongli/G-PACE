@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: concert-tickets
+group: events
+title: Concert tickets
+companions: [Valentina, Oskar, Nadia, Bruno, Hanna]
+multi:
+  predicate: likesGenre
+  noun: music genres
+  lexicon: [jazz, blues, techno, opera, reggae, folk music, hip hop, salsa, bluegrass, swing]
+  first: "I like {o}"
+  second: "you like {o}"
+  third: "{x} likes {o}"
+  first_neg: "I no longer like {o}"
+  third_neg: "{x} no longer likes {o}"
+  ask_first: "Which music genres do I like?"
+  ask_third: "Which music genres does {x} like?"
+  count_first: "How many music genres do I like?"
+  count_third: "How many music genres does {x} like?"
+exclusive:
+  predicate: favouriteBand
+  noun: favourite band
+  lexicon: [The Lanterns, Night Owls, Paper Kites Club, Velvet Harbour, The Copper Foxes,
+            Silver Static, Blue Meridian, The Quiet Rivers, Echo Garden, Neon Orchard]
+  first: "my favourite band is {o}"
+  second: "your favourite band is {o}"
+  third: "{x}'s favourite band is {o}"
+  change_first: "my new favourite band is {o}"
+  change_third: "{x}'s new favourite band is {o}"
+  past_first: "my favourite band was {o}"
+  past_third: "{x}'s favourite band was {o}"
+  ask_first: "What is my favourite band?"
+  ask_third: "What is {x}'s favourite band?"
+task:
+  noun: concert ticket order
+  constraints:
+    - {predicate: seatCategory, datatype: string, request: "I want seats in the {v}",
+       lexicon: [stalls, balcony, box seats, gallery, standing area, front stalls]}
+    - {predicate: ticketPriceLimit, datatype: string, request: "I can pay at most {v} per ticket",
+       lexicon: [30 euros, 45 euros, 60 euros, 75 euros, 90 euros, 120 euros]}
+  catalogue: {predicate: doorsOpen, datatype: time, noun: door opening time,
+              phrase: "opens its doors at {v}",
+              lexicon: ["17:45:00", "18:15:00", "18:40:00", "19:05:00", "19:20:00", "19:50:00", "20:10:00", "20:35:00"]}
+  items:
+    - {id: concert-harbour-nights, label: Harbour Nights concert}
+    - {id: concert-spring-strings, label: Spring Strings concert}
+    - {id: concert-midnight-brass, label: Midnight Brass concert}
+    - {id: concert-lakeside-voices, label: Lakeside Voices concert}
+    - {id: concert-autumn-groove, label: Autumn Groove concert}
+    - {id: concert-winter-keys, label: Winter Keys concert}
+    - {id: concert-old-mill, label: Old Mill Sessions concert}
+    - {id: concert-rooftop, label: Rooftop Rhythms concert}
+    - {id: concert-garden-lights, label: Garden Lights concert}
+    - {id: concert-late-bloom, label: Late Bloom concert}

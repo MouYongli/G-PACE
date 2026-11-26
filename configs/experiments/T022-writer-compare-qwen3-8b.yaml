@@ -1,0 +1,23 @@
+# T022 follow-up (session m01-T022c) · Writer comparison on development data, Qwen3-8B writer.
+# After the user decisions of 2026-11-26 (schema array bounds, max_tokens 4096, grammar-safe entity
+# IDs, ending stances need evidence) and the revised prompt `extract-claims`. Same writer config,
+# prompt, schema and settings as T022-writer-compare-qwen3-32b.yaml; only the model differs.
+# Driver:
+#   uv run python -m grace.cli.writer_smoke --config configs/experiments/T022-writer-compare-qwen3-8b.yaml \
+#       --writer-url http://127.0.0.1:<port>/v1
+# Compared with the first smoke run T022-20261126T184442Z-2a64 (Qwen3-8B, before the fixes).
+# A smoke comparison, not E006 (graph quality) and not E007 (writer scale and granularity).
+# Development splits only; the driver refuses any other split kind.
+experiment: T022
+seed: 0
+writer_config: configs/common/writer.yaml   # segment-8, temperature 0, seed 0, json_schema
+model_config: configs/models/qwen3-8b.yaml   # D006 primary model; thinking off (chat template)
+samples: 30                                  # units in samples.json (seeded)
+serving:
+  model: Qwen/Qwen3-8B@b968826d9c46dd6066d109eabc6255188de91218
+  server: vLLM (envs/serve, scripts/serve-model.sh)
+
+benchmarks:
+  # LoCoMo development histories conv-26 and conv-49 (plan 6.5).
+  - slug: locomo
+    split: dev

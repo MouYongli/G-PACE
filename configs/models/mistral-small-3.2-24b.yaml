@@ -1,0 +1,41 @@
+# Model pin of the change-sequence renderer chosen in decision D006 (2026-11-25): surface text of
+# the controlled sequences (T015; docs/research/change-sequences.md section 7). Not an evaluated
+# model: no system, judge or answering configuration may use it.
+# Checksums are SHA-256 of the files in the Hugging Face snapshot of `revision`.
+model: mistral-small-3.2-24b
+status: selected                  # D006 accepted
+role: renderer
+hf_repo: mistralai/Mistral-Small-3.2-24B-Instruct-2506
+revision: 95a6d26c4bfb886c58daf9d3f7332c857cb27b43
+served_name: mistralai/Mistral-Small-3.2-24B-Instruct-2506
+licence: apache-2.0               # model card; not gated
+thinking: false                   # not a reasoning model; no template arguments
+config_max_position_embeddings: 131072   # from params.json
+tokenizer:
+  # Mistral-format snapshot: the tokenizer is tekken.json (Tekken v11), and the chat format is the
+  # one mistral-common's InstructTokenizerV11 encodes ("<s>[SYSTEM_PROMPT]...[/SYSTEM_PROMPT]
+  # [INST]...[/INST]"); the snapshot has no Jinja template. The server encodes with mistral-common
+  # (--tokenizer-mode mistral); grace.eval.datasets.changeseq.model_renderer.TekkenCounter counts
+  # the same format locally without mistral-common and is checked against the server's
+  # prompt_tokens on every call.
+  backend: mistral-common
+  chat_template: tekken.json
+  files:
+    tekken.json: 6e2501687ccd0e1f30f36319eaf2b46958b897811e246cd8eb5d385b9e3de7d1
+    params.json: 23febf6d98a78f896149ab08733356d5b99e71b2e7e4c3caddfa4f48cda87885
+    generation_config.json: c50a5d04193268ef15515bc359dee0d2fccface4b70b1f11b1431d6587ee1386
+# Weights: consolidated.safetensors (Mistral format, bf16, 48,022,792,280 bytes); the HF-format
+# shards of the same snapshot are not downloaded.
+serve:
+  # vLLM 0.34.0 through scripts/serve-model.sh (model card: tokenizer, config and load format
+  # mistral). Images are disabled; the context is short. On a shared GPU the KV cache is set
+  # explicitly (as in T029's serve logs).
+  args: [--revision, 95a6d26c4bfb886c58daf9d3f7332c857cb27b43, --tokenizer-mode, mistral,
+         --config-format, mistral, --load-format, mistral, --limit-mm-per-prompt, '{"image":0}',
+         --max-model-len, "16384", --gpu-memory-utilization, "0.45",
+         --kv-cache-memory-bytes, "17179869184", --enable-prompt-tokens-details]
+decoding:
+  temperature: 0.15               # model card recommendation ("relatively low temperature")
+  top_p: 1.0
+  max_tokens: 160                 # one chat message; the output check bounds it to 400 characters
+  # seed: set per attempt by the renderer (request seed + attempt; design section 7)

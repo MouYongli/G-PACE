@@ -1,0 +1,53 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11). The plan's
+# Atlas / Boreal running example belongs to this family.
+id: service-operations
+group: operations
+title: Service operations
+companions: [Lina, Dmitri, Gesa, Kwame, Ylva]
+multi:
+  predicate: maintains
+  noun: services
+  lexicon: [Atlas, Boreal, Cygnus, Delphi, Ember, Fjord, Gemini, Helios, Iris, Juno]
+  first: "I maintain {o}"
+  second: "you maintain {o}"
+  third: "{x} maintains {o}"
+  first_neg: "I no longer maintain {o}"
+  third_neg: "{x} no longer maintains {o}"
+  ask_first: "Which services do I maintain?"
+  ask_third: "Which services does {x} maintain?"
+  count_first: "How many services do I maintain?"
+  count_third: "How many services does {x} maintain?"
+exclusive:
+  predicate: memberOfTeam
+  noun: team
+  lexicon: [Team Platform, Team Storage, Team Billing, Team Search, Team Identity, Team Payments,
+            Team Edge, Team Data, Team Mobile, Team Security]
+  first: "I am on {o}"
+  second: "you are on {o}"
+  third: "{x} is on {o}"
+  change_first: "I moved to {o}"
+  change_third: "{x} moved to {o}"
+  past_first: "I was on {o}"
+  past_third: "{x} was on {o}"
+  ask_first: "Which team am I on?"
+  ask_third: "Which team is {x} on?"
+task:
+  noun: maintenance window
+  constraints:
+    - {predicate: maxDowntime, datatype: string, request: "downtime must stay under {v}",
+       lexicon: [5 minutes, 15 minutes, 30 minutes, 1 hour, 2 hours, 4 hours]}
+    - {predicate: affectedRegion, datatype: string, request: "it affects the {v} region",
+       lexicon: [eu-west, eu-central, us-east, us-west, ap-south, ap-east]}
+  catalogue: {predicate: windowStart, datatype: time, noun: window start, phrase: "starts at {v}",
+              lexicon: ["00:30:00", "01:45:00", "02:15:00", "03:30:00", "04:45:00", "05:15:00", "22:30:00", "23:45:00"]}
+  items:
+    - {id: window-a1, label: Window A1}
+    - {id: window-a2, label: Window A2}
+    - {id: window-b1, label: Window B1}
+    - {id: window-b2, label: Window B2}
+    - {id: window-c1, label: Window C1}
+    - {id: window-c2, label: Window C2}
+    - {id: window-d1, label: Window D1}
+    - {id: window-d2, label: Window D2}
+    - {id: window-e1, label: Window E1}
+    - {id: window-e2, label: Window E2}

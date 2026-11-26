@@ -1,0 +1,54 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: course-enrolment
+group: learning
+title: Course enrolment
+companions: [Viktor, Leonie, Hamid, Rosa, Mikkel]
+multi:
+  predicate: studiesSubject
+  noun: subjects
+  lexicon: [statistics, philosophy, economics, linguistics, biology, astronomy, sociology, geology,
+            art history, psychology]
+  first: "I study {o}"
+  second: "you study {o}"
+  third: "{x} studies {o}"
+  first_neg: "I no longer study {o}"
+  third_neg: "{x} no longer studies {o}"
+  ask_first: "Which subjects do I study?"
+  ask_third: "Which subjects does {x} study?"
+  count_first: "How many subjects do I study?"
+  count_third: "How many subjects does {x} study?"
+exclusive:
+  predicate: enrolledAt
+  noun: university
+  lexicon: [Lakeside University, Northfield College, Hillcrest Institute, Riverbend University,
+            Eastgate College, Summit Academy, Westbrook University, Oakridge College,
+            Maplewood Institute, Harborview University]
+  first: "I am enrolled at {o}"
+  second: "you are enrolled at {o}"
+  third: "{x} is enrolled at {o}"
+  change_first: "I transferred to {o}"
+  change_third: "{x} transferred to {o}"
+  past_first: "I was enrolled at {o}"
+  past_third: "{x} was enrolled at {o}"
+  ask_first: "Where am I enrolled?"
+  ask_third: "Where is {x} enrolled?"
+task:
+  noun: course enrolment
+  constraints:
+    - {predicate: courseFormat, datatype: string, request: "I prefer this format: {v}",
+       lexicon: [in person, fully online, hybrid, evening classes, weekend classes, intensive block]}
+    - {predicate: creditLoad, datatype: string, request: "I can take at most {v}",
+       lexicon: [3 credits, 5 credits, 6 credits, 8 credits, 10 credits, 12 credits]}
+  catalogue: {predicate: courseStart, datatype: time, noun: start time, phrase: "starts at {v}",
+              lexicon: ["08:15:00", "09:45:00", "10:30:00", "12:15:00", "13:45:00", "15:15:00", "16:45:00", "18:15:00"]}
+  items:
+    - {id: course-stat210, label: STAT 210}
+    - {id: course-phil105, label: PHIL 105}
+    - {id: course-econ330, label: ECON 330}
+    - {id: course-ling220, label: LING 220}
+    - {id: course-bio140, label: BIO 140}
+    - {id: course-astr101, label: ASTR 101}
+    - {id: course-soc250, label: SOC 250}
+    - {id: course-geo310, label: GEO 310}
+    - {id: course-arth120, label: ARTH 120}
+    - {id: course-psy200, label: PSY 200}

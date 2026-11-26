@@ -2,6 +2,7 @@
 #
 #   make            build build/main.pdf with the first available engine:
 #                   latexmk, then tectonic, then pdflatex + bibtex
+#   make supplement build build/supplement.pdf (supplementary material) the same way
 #   make tools      download tectonic into $(PROJECT_ROOT)/.tools/ (no TeX installation needed)
 #   make watch      rebuild on every change (latexmk only)
 #   make docker     build inside a TeX Live container
@@ -36,13 +37,17 @@ export BIBINPUTS := $(abspath ..):$(CURDIR):$(BIBINPUTS)
 export BSTINPUTS := $(CURDIR):$(BSTINPUTS)
 export TEXINPUTS := $(CURDIR):$(TEXINPUTS)
 
-SOURCES := $(MAIN).tex $(wildcard sections/*.tex) llncs.cls splncs04.bst ../references.bib
+SOURCES := $(MAIN).tex macros.tex $(wildcard sections/*.tex) $(wildcard supplement/*.tex) \
+           llncs.cls splncs04.bst ../references.bib
 
-.PHONY: all pdf tools watch docker clean distclean
+.PHONY: all pdf supplement tools watch docker clean distclean
 
 all: pdf
 
 pdf: $(PDF)
+
+supplement:
+	$(MAKE) MAIN=supplement pdf
 
 $(PDF): $(SOURCES) | $(BUILD_DIR)
 ifeq ($(ENGINE),latexmk)

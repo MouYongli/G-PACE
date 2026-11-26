@@ -1,0 +1,52 @@
+# Scenario family (design docs/research/change-sequences.md, sections 2 and 11).
+id: sports-club
+group: leisure
+title: Sports club
+companions: [Lennart, Zainab, Ottilie, Diego, Malin]
+multi:
+  predicate: practisesSport
+  noun: sports
+  lexicon: [tennis, squash, badminton, padel, volleyball, handball, rowing, fencing, archery, climbing]
+  first: "I practise {o}"
+  second: "you practise {o}"
+  third: "{x} practises {o}"
+  first_neg: "I no longer practise {o}"
+  third_neg: "{x} no longer practises {o}"
+  ask_first: "Which sports do I practise?"
+  ask_third: "Which sports does {x} practise?"
+  count_first: "How many sports do I practise?"
+  count_third: "How many sports does {x} practise?"
+exclusive:
+  predicate: trainsWith
+  noun: training group
+  lexicon: [Group Falcon, Group Heron, Group Lynx, Group Otter, Group Badger, Group Raven,
+            Group Stag, Group Wolf, Group Hare, Group Kestrel]
+  first: "I train with {o}"
+  second: "you train with {o}"
+  third: "{x} trains with {o}"
+  change_first: "I switched to {o}"
+  change_third: "{x} switched to {o}"
+  past_first: "I trained with {o}"
+  past_third: "{x} trained with {o}"
+  ask_first: "Which group do I train with?"
+  ask_third: "Which group does {x} train with?"
+task:
+  noun: court booking
+  constraints:
+    - {predicate: courtSurface, datatype: string, request: "I want a {v}",
+       lexicon: [clay court, grass court, hard court, carpet court, indoor court, floodlit court]}
+    - {predicate: courtDuration, datatype: string, request: "I want to book it for {v}",
+       lexicon: [one hour, ninety minutes, two hours, three hours, half an hour, four hours]}
+  catalogue: {predicate: courtStart, datatype: time, noun: start time, phrase: "is free from {v}",
+              lexicon: ["07:30:00", "08:50:00", "10:10:00", "12:30:00", "14:10:00", "16:50:00", "18:10:00", "19:30:00"]}
+  items:
+    - {id: court-ahorn, label: Court Ahorn}
+    - {id: court-birke, label: Court Birke}
+    - {id: court-eiche, label: Court Eiche}
+    - {id: court-linde, label: Court Linde}
+    - {id: court-ulme, label: Court Ulme}
+    - {id: court-esche, label: Court Esche}
+    - {id: court-buche, label: Court Buche}
+    - {id: court-kiefer, label: Court Kiefer}
+    - {id: court-erle, label: Court Erle}
+    - {id: court-pappel, label: Court Pappel}

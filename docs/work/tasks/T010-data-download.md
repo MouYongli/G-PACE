@@ -20,7 +20,7 @@ Reproducible downloads of the five downloaded benchmarks (MultiWOZ 2.4/2.2/2.1, 
 
 - [x] Offline tests cover download, registered checksums, manifest hash, unpacking without macOS metadata, rerun verification, unsafe paths and dry runs (`make test`).
 - [x] A full download into a scratch directory reproduces the registered `manifest_sha256` of all seven versions twice, and a rerun verifies all seven.
-- [ ] The data maintainer runs `scripts/data/download.sh` in the main checkout and makes `data/` read-only.
+- [x] The data maintainer runs `scripts/data/download.sh` in the main checkout and makes `data/` read-only.
 
 ## Deliverables
 
@@ -30,3 +30,4 @@ The files in scope.
 
 - 2026-11-22: created at the user's request; branch `task/T010-data-download`.
 - 2026-11-22: full download tested in a scratch directory: 7 versions, about 1.1 GB, 19 s; registered file checksums and manifest hashes match.
+- 2026-11-25: verified in the main checkout: `data/` holds the seven versions (downloaded 2026-11-23) and is read-only; the SHA-256 of every `MANIFEST.sha256` equals the registered `manifest_sha256` in `configs/data/sources.yaml`, and `sha256sum -c` passes for every file.

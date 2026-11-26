@@ -13,8 +13,9 @@ The gold-graph results decide the framing of the paper (plan section 9, phase 2 
 ## Options
 
 - Template serialisation ties with LLM rendering (E005): the paper becomes 'a staleness criterion plus computing at query time' and later cost experiments shrink.
-- Re-querying is never more expensive in the scale experiment (E004): RQ2 narrows to 'freshness checks are cheap'; push matching is reported as an implementation.
-- Neither: keep the three claims as planned.
+- Re-querying is never more expensive in the scale experiment (E004): RQ2 narrows to 'exact staleness checks are cheap'; push matching is reported as an implementation.
+- Claim-pattern-level decisions over-mark as much as predicate-level decisions on the controlled sequences (E003): the RQ2 hypothesis on dependency granularity is overturned (plan section 4.2) and no benefit is claimed for the finer dependency.
+- None of these: keep the three claims as planned.
 
 ## Decision
 
@@ -31,3 +32,4 @@ Extracted-graph results (E010) contradict the gold-graph result on rendering.
 ## Log
 
 - 2026-11-23: proposed as part of the full project DAG.
+- 2026-11-25: added the option for the RQ2 overturn condition of plan section 4.2 (over-marking of claim-pattern-level against predicate-level decisions); the phase 2 checkpoint of plan section 9 and the M2 gate now state it too.

@@ -1,0 +1,131 @@
+# E005 · Ablation C on gold graphs (plan 4.2 RQ3 premise, 5.4, 7.3 ablation C; experiment file
+# docs/work/experiments/E005-ablation-c-gold.md). Driver: `uv run python -m grace.cli.ablation_c`.
+# Written before the first formal run; later changes are logged in the experiment file.
+experiment: E005
+seed: 0                       # decoding seed of every model call (temperature 0)
+# One model for both LLM call types of the comparison (plan 5.6: every call type is served by the
+# same model by default): view rendering (call type `render`, ledger W) and answering.
+model_config: configs/models/qwen3-8b.yaml
+
+benchmark:
+  slug: change-seq
+  split: dev
+  # configs/benchmarks/change-seq.yaml is not bound yet; E005 reads the model-rendered development
+  # set of run T015-devmodel-20261125T192037Z (generator changeseq-generator-2, renderer
+  # Mistral-Small-3.2-24B, development families only) with this inline benchmark config, as E001
+  # did for the smoke set. Paths are relative to PROJECT_ROOT. The primary schedule of each
+  # sequence (A20d1 at density 10, U10 otherwise) is the native read-task file.
+  config:
+    benchmark: change-seq
+    version: dataset
+    data_root: runs/T015/artifacts/T015-devmodel-20261125T192037Z
+    manifest_sha256: 9b147185381de5982ad94560e27d8eb1b20e1d7c41347db6cc66a736355c515a
+    splits:
+      dev:
+        kind: development
+        rule: every sequence of the T015 model-rendered development set
+        counts: {histories: 25, messages: 5000, read_tasks: 1145, gold: 9422}
+        histories:
+          - train-travel-rho10-L200-000
+          - train-travel-rho10-L200-001
+          - flight-travel-rho10-L200-000
+          - flight-travel-rho10-L200-001
+          - car-rental-rho10-L200-000
+          - car-rental-rho10-L200-001
+          - hotel-stay-rho10-L200-000
+          - hotel-stay-rho10-L200-001
+          - apartment-search-rho10-L200-000
+          - apartment-search-rho10-L200-001
+          - train-travel-rho1-L200-000
+          - train-travel-rho3-L200-000
+          - train-travel-rho30-L200-000
+          - flight-travel-rho1-L200-000
+          - flight-travel-rho3-L200-000
+          - flight-travel-rho30-L200-000
+          - car-rental-rho1-L200-000
+          - car-rental-rho3-L200-000
+          - car-rental-rho30-L200-000
+          - hotel-stay-rho1-L200-000
+          - hotel-stay-rho3-L200-000
+          - hotel-stay-rho30-L200-000
+          - apartment-search-rho1-L200-000
+          - apartment-search-rho3-L200-000
+          - apartment-search-rho30-L200-000
+
+# Gold-graph oracle (structure.md: "gold graph injected"): the resident views of a sequence are
+# its gold bindings (bindings.jsonl, 15 per sequence; V1..V6 -> the six template families), built
+# on the stored gold graph with the frozen view code and template families. Overrides of
+# configs/views/default.yaml, the gold-graph convention of the T019 replay
+# (tests/integration/staleness_replay.py): the entity families read the `inform` of the authority
+# speaker `user`; the choice predicate of the generator grammar.
+views:
+  base_config: configs/views/default.yaml
+  state_speaker: user
+  choice_predicate: selectedService
+  # Entity IDs of the generator (k1, car-astra) are replaced by their surface labels (the task
+  # label without the article, "car rental A"; the item label, "Opel Astra") before the graph is
+  # handed to the views, so that view text and question name things alike. Speaker entities
+  # (user, assistant) and companions (already names) are unchanged.
+  entity_labels: surface
+  # Maintenance: at the first read of every read version each view is re-queried and repaired
+  # (read-time re-query, confirm=True: local rebuild, citation patch or cut-off advance). Rendering
+  # done at read time is booked to W (contracts.md, Cost ledger).
+  maintenance: requery-at-read
+
+arms:
+  template:                   # template serialisation of the query result (no LLM call)
+    kind: views
+    rendering: template
+  llm:                        # LLM rendering of the same rows, rendering check, template fallback
+    kind: views
+    rendering: llm
+  raw:                        # reference: raw-text window, the newest messages that fit the budget
+    kind: raw
+    engine_config: configs/engines/full-history.yaml
+
+# Equal display budget: the working context of every arm is limited to the same number of tokens
+# (answering model's tokenizer). View fragments (one per view: title, sentences with their cited
+# message IDs, scope note) are taken in an order fixed per read (sha256 of read ID and view ID),
+# identical across view arms, while they fit; a view that does not fit is skipped. Levels from
+# configs/common/budgets.yaml (memory_levels). 1024 is primary: every template context of the
+# development set fits it (CPU pre-count: 390 to 828 tokens per read point), so only verbosity
+# can cost an arm content. 512 is a secondary level at which the budget binds for both view arms.
+budgets: [1024, 512]
+primary_budget: 1024
+
+population:
+  # Questions about the state at the read version, which the six view families answer.
+  include_types: [changed, uniform, presupposition, abstention]
+  # Historical questions (Hist at a past knowledge version or world time, design 3.5): no resident
+  # view family states them. They are answered by every arm (one read schedule) and reported as a
+  # descriptive stratum only.
+  descriptive_types: [known_then, seen_from_now]
+
+scoring:
+  # Primary scorer of the change sequences (docs/research/change-sequences.md section 9: "Acc,
+  # normalised set match as primary scorer, the blind judge as secondary"). Not yet registered in
+  # configs/common/scorers.yaml (change-seq metrics are pending there; owner: T004 manager);
+  # the registration is requested in the E005 PR. No judge is run in E005.
+  metric: set-match
+  code: grace.eval.analysis.metrics.changeseq:set_match
+  direction: higher
+  annotation: generator
+  invalid_policy: count_as_wrong
+  strata: [question_type, template, change_type]
+
+comparison:
+  primary: [llm, template]    # paired difference llm - template at the primary budget
+  reference: raw
+  bootstrap:
+    resamples: 10000
+    seed: 20261125
+    cluster_unit: family      # configs/common/scorers.yaml change-seq cluster_unit (D002)
+    sensitivity_units: [sequence]
+
+serving:
+  gpus: [3]
+  port: 8106
+  model: Qwen/Qwen3-8B
+  revision: b968826d9c46dd6066d109eabc6255188de91218
+  max_model_len: 32768
+  prefix_caching: true
