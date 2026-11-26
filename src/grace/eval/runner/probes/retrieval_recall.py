@@ -5,18 +5,20 @@ For every read task of a development split the probe
 1. indexes the history's messages up to the end (BM25 and dense; chunks are messages, so every
    candidate is one unified evidence ID, a `message_id`), and searches at the read's version, so
    only messages `<= version` can be returned;
-2. on a benchmark with a claim graph (`graph: gold`, the change sequences), plans the question
-   with the T023 planner (rule templates, then the planner LLM when one is configured), runs the
-   plan on the sequence's stored gold graph at the read version and maps the evidence of the
-   answers to graph candidates (`context/pipeline/retrieval/graph.py`); without a graph the graph
-   channel is unavailable;
+2. on a benchmark with a claim graph, plans the question with the T023 planner (rule templates,
+   then the planner LLM when one is configured), runs the plan on the graph at the read version
+   and maps the evidence of the answers to graph candidates
+   (`context/pipeline/retrieval/graph.py`); without a graph the graph channel is unavailable. The
+   graph is either the stored gold graph of a change sequence (`graph: gold`, a perfect-writer
+   stand-in) or the graph GRACE's writer extracted in a completed T022 writer run
+   (`graph: extracted`, `ExtractedGraph`);
 3. keeps every channel's ranking up to `depth` and evaluates every condition of the experiment
    config (channel set, routing, fusion) at every cut-off with `total` set to that cut-off, by the
    same `Retriever` code GRACE uses, so a switched-off channel leaves the number of candidates
    unchanged.
 
-The probe sees only visible records (question, version, messages) and, for the change sequences,
-the gold claim graph that stands in for a perfect writer; it never sees gold evidence. Recall is
+The probe sees only visible records (question, version, messages) and the claim graph (gold for
+the change sequences, extracted otherwise); it never sees gold evidence. Recall is
 computed afterwards from the files of the run directory by `eval/analysis/metrics/retrieval.py`.
 
 Model calls: message and query embeddings (call type `embed`, category `embedding`) and planner
@@ -80,6 +82,11 @@ class GoldGraph:
     entities: tuple[EntityInfo, ...]
     speakers: tuple[str, ...] = SPEAKERS
 
+    def fragment(self, question: str) -> tuple[tuple[PredicateInfo, ...],
+                                               tuple[EntityInfo, ...]]:
+        """The vocabulary fragment shown to the planner: the whole (small) family fragment."""
+        return self.predicates, self.entities
+
 
 def _verb(ask: str) -> str | None:
     m = re.match(r"^(?:which|what|where)(?: [\w ]+?)? do I (.+?)\?$", ask, re.IGNORECASE)
@@ -139,6 +146,95 @@ def load_gold_graphs(source_dir: Path, history_ids: Iterable[str]) -> dict[str, 
 
 
 # ---------------------------------------------------------------------------------------------
+# Graphs extracted by GRACE's writer (T022 writer run, `graph: extracted`)
+
+_CAMEL = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
+_WORD = re.compile(r"[a-z0-9]+")
+_STOP = frozenset("the and for with that this was are you your have has had not but from they "
+                  "she her his him its our out all any can did does what when who how why "
+                  "about just like been will would there their them then than very which "
+                  "where whom".split())
+
+
+def _stem(word: str) -> str:
+    for suffix in ("ing", "ed", "es", "s"):
+        if len(word) > len(suffix) + 3 and word.endswith(suffix):
+            return word[:-len(suffix)]
+    return word
+
+
+def _words(text: str) -> set[str]:
+    split = " ".join(_CAMEL.findall(text)) or text
+    return {_stem(w) for w in _WORD.findall(split.lower()) if len(w) > 2 and w not in _STOP}
+
+
+@dataclass(frozen=True)
+class ExtractedGraph:
+    """A claim graph written by GRACE's writer for one history, with its vocabulary.
+
+    The planner sees a fragment chosen per question (this probe's selection, not a GRACE design
+    decision): the predicates used in the graph ranked by word overlap with the question (camel
+    case split, crude stemming), then by use; the entities of the graph ranked the same way, then
+    by frequency; the speakers always. At most `max_predicates` and `max_entities`.
+    """
+
+    store: ClaimStore
+    predicate_specs: Mapping[str, bool]        # predicate -> exclusive, used in the graph
+    predicate_uses: Mapping[str, int]
+    entity_counts: Mapping[str, int]
+    speakers: tuple[str, ...]
+    max_predicates: int = 30
+    max_entities: int = 30
+
+    def fragment(self, question: str) -> tuple[tuple[PredicateInfo, ...],
+                                               tuple[EntityInfo, ...]]:
+        q = _words(question)
+        preds = sorted(self.predicate_specs, key=lambda p: (-len(q & _words(p)),
+                                                            -self.predicate_uses.get(p, 0), p))
+        predicates = tuple(PredicateInfo(p, self.predicate_specs[p])
+                           for p in preds[:self.max_predicates])
+        others = [e for e in self.entity_counts if e not in self.speakers]
+        ranked = sorted(others, key=lambda e: (-len(q & _words(e)), -self.entity_counts[e], e))
+        entities = tuple([EntityInfo(s, (s,), "speaker") for s in self.speakers]
+                         + [EntityInfo(e, (e,)) for e in ranked[:self.max_entities]])
+        return predicates, entities
+
+
+def load_extracted_graphs(writer_run: Path, history_ids: Iterable[str], *,
+                          max_predicates: int = 30, max_entities: int = 30
+                          ) -> dict[str, ExtractedGraph]:
+    """The claim store and vocabulary the writer saved for every history it wrote
+    (`<writer_run>/graphs/<history_id>/store` and `writer.json`; `grace.cli.writer_smoke`)."""
+    from collections import Counter
+
+    from grace.context.memory.graph.entries import Entity
+    from grace.context.memory.graph.vocabulary import load_vocabulary
+    from grace.context.pipeline.update.validate import LocalVocabulary
+
+    out = {}
+    for hid in history_ids:
+        base = Path(writer_run) / "graphs" / hid
+        store = ClaimStore.restore(base / "store")
+        record = json.loads((base / "writer.json").read_text(encoding="utf-8"))
+        if record["head"] != store.head:
+            raise ValueError(f"{base}: writer state head differs from the store")
+        vocabulary = LocalVocabulary.from_record(load_vocabulary(), record["vocabulary"]).current
+        state = store.state(store.head)
+        uses: Counter = Counter(c.predicate for c in state.claims.values())
+        entities: Counter = Counter()
+        for c in state.claims.values():
+            entities[c.subject] += 1
+            if isinstance(c.object, Entity):
+                entities[c.object.id] += 1
+        speakers = tuple(dict.fromkeys(a.speaker for a in sorted(
+            state.attributions.values(), key=lambda a: (a.version, a.attribution_id))))
+        specs = {p: vocabulary.predicates[p].exclusive for p in uses}
+        out[hid] = ExtractedGraph(store, specs, dict(uses), dict(entities), speakers,
+                                  max_predicates, max_entities)
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
 # One history
 
 
@@ -161,7 +257,8 @@ def _embed_messages(messages, embed: Embed, batch: int, history_id: str) -> Dens
 def probe_history(history_id: str, messages: Sequence, tasks: Sequence, *,
                   base: RetrievalConfig, conditions: Sequence[Condition],
                   cutoffs: Sequence[int], depth: int, embed: Embed | None, embed_batch: int,
-                  graph: GoldGraph | None = None, planner: Planner | None = None,
+                  graph: GoldGraph | ExtractedGraph | None = None,
+                  planner: Planner | None = None,
                   benchmark: str) -> list[dict[str, Any]]:
     """One record per read task: channel rankings, plan, and the fused IDs of every condition."""
     messages = sorted(messages, key=lambda m: m.version)
@@ -195,8 +292,9 @@ def probe_history(history_id: str, messages: Sequence, tasks: Sequence, *,
         if graph is not None and planner is not None:
             last = max((m.timestamp for m in messages if m.version <= task.version
                         and m.timestamp), default=None)
-            ctx = PlanningContext.from_task(task, predicates=graph.predicates,
-                                            entities=graph.entities, speakers=graph.speakers,
+            predicates, entities = graph.fragment(query)
+            ctx = PlanningContext.from_task(task, predicates=predicates,
+                                            entities=entities, speakers=graph.speakers,
                                             last_message_date=last[:10] if last else None)
             plan = planner.plan(ctx)
             plan, result = run_plan(plan, graph.store, task.version, dates.get)

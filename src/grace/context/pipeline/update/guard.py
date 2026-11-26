@@ -12,13 +12,18 @@ accepted claim c only if
 2. some attribution on c has the same speaker and the same communicative function as a';
 3. the report mode of a' is own statement.
 
-Two further conditions make the rule well defined on stored claims; both only keep claims side by
-side, so they never make the guard less strict than plan 3.2:
+Two further conditions make the rule well defined on stored claims. Both are stricter than the
+wording of plan 3.2 and only ever keep claims side by side; neither can cause a supersession, so
+the guard is never less strict than plan 3.2:
 
 4. a' is positive: a denial of c' cannot establish c' as the new state (plan 5.2: a denial is a
    stance, never a second claim);
 5. both claims are open-ended (no stated valid end): a claim of a closed past interval ("I lived
    in Hamburg until 2015") describes another time and competes with nothing.
+
+Conditions 4 and 5 are kept by user decision of 2026-11-26 (T022 follow-up; recorded in the T022
+task log). Plan 3.2 does not state them yet; a wording is proposed to the plan owner. Decision
+D010 (gate on the attribution-guard claims) revisits them with its evidence.
 
 The supersession has kind `correction` when the writer marked c' as a correction, else `change`;
 a change carries `valid_end` = the start of c' when c' is dated (contracts.md, valid end).
@@ -31,7 +36,8 @@ attribution on c. No exclusivity rule is needed.
 is reported as a conflict (plan 3.2: "conflicting statements by different speakers are both kept and
 the conflict is marked"). The claim graph has no conflict entry; a conflict is recoverable from the
 graph (two current open-ended claims of one exclusive predicate, subject and scope) and is listed in
-the update record.
+the update record. By user decision of 2026-11-26 this stays so: no conflict entry in the Claim
+graph contract for now; the claim graph owner (T014) adds one only if a later evaluation needs it.
 """
 
 from __future__ import annotations
