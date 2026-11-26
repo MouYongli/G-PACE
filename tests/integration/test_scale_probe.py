@@ -29,6 +29,7 @@ from grace.eval.runner.probes import scale
 FAMILIES = ("hotel-stay", "apartment-search", "train-travel", "flight-travel", "car-rental")
 CONFIG = Path(__file__).resolve().parents[2] / "configs" / "experiments" / \
     "E004-scale-experiment.yaml"
+CONFIG_V3 = CONFIG.with_name("E004-scale-experiment-v3.yaml")
 B, L, P = 3, 60, 30
 
 
@@ -110,13 +111,27 @@ class GraphTest(unittest.TestCase):
         self.assertTrue(all(len(s) == 4 for s in scale.read_sets(ids, 4, 6, 1)))
 
     def test_inlined_constants_return_the_same_rows(self):
-        diagnostics = scale.query_diagnostics(self.graph, self.blocks[0].bindings,
-                                              compiled_families=scale.FAMILY.values(),
-                                              repeats=1)
-        self.assertEqual(len(diagnostics), 15)
+        items = scale.diagnostic_bindings(self.graph, self.blocks[0].bindings,
+                                          scale.FAMILY.values(), 2, 1)
+        self.assertEqual(len(items), 15 + 2 * 6)
+        self.assertEqual(items, scale.diagnostic_bindings(self.graph, self.blocks[0].bindings,
+                                                          scale.FAMILY.values(), 2, 1))
+        diagnostics = scale.query_diagnostics(self.graph, items, repeats=1,
+                                              values_families=scale.FAMILY.values())
+        self.assertEqual(len(diagnostics), 27)
+        self.assertEqual(sum(1 for d in diagnostics if "values_ms" in d), 15)
         for d in diagnostics:
             with self.subTest(view=d["view_id"]):
+                # the engine now runs the inlined text: the probe's inlining of the old VALUES
+                # form gives the same text and every form the same rows
+                self.assertTrue(d["inlined_text_equal"])
                 self.assertEqual(d["compiled_rows"], d["inlined_rows"])
+                self.assertEqual(d["compiled_rows"], d.get("values_rows", d["compiled_rows"]))
+        by_family = analysis.diagnostics_by_family(diagnostics)
+        self.assertEqual(set(by_family), set(scale.FAMILY.values()))
+        self.assertTrue(all(f["rows_agree"] and f["inlined_text_equal"]
+                            for f in by_family.values()))
+        self.assertTrue(all(f["sample"]["n"] == 2 for f in by_family.values()))
         sparql = 'SELECT ?x WHERE {\n  VALUES ?_k0 { <urn:a> }\n  ?x <urn:p> ?_k0 .\n}'
         self.assertEqual(scale.inline_constants(sparql),
                          'SELECT ?x WHERE {\n  ?x <urn:p> <urn:a> .\n}')
@@ -183,7 +198,7 @@ class DriverTest(unittest.TestCase):
             graphs=[{"mix": "six", "blocks": [2], "views": [6]}], seeds=[5], repetitions=2,
             reads=3, grid={"read_scope": [4, "all"], "writes_per_read": [1, 8, 64]},
             diagnostics={"repeats": 1, "slow_families": ["pending", "choice"],
-                         "compiled_slow_max_blocks": 16})
+                         "values_slow_max_blocks": 1, "sample_per_family": 1})
         with tempfile.TemporaryDirectory() as tmp:
             run_dir, status = cli.run_one(CONFIG, "six", 2, 5, 6, root=Path(tmp),
                                           code=CodeState("0" * 40, False), command="test",
@@ -198,6 +213,12 @@ class DriverTest(unittest.TestCase):
             resolved = yaml.safe_load((run_dir / "resolved-config.yaml").read_text())
             self.assertEqual(resolved["run"], {"mix": "six", "blocks": 2, "seed": 5,
                                                "views": 6})
+            diagnostics = graph["query_diagnostics"]
+            self.assertEqual(len(diagnostics), 15 + 6)
+            # 2 blocks > values_slow_max_blocks: no VALUES timing for pending and choice
+            self.assertFalse(any("values_ms" in d for d in diagnostics
+                                 if d["family"] in ("pending", "choice")))
+            self.assertTrue(all(d["inlined_text_equal"] for d in diagnostics))
             machine = json.loads((run_dir / "machine.json").read_text())
             self.assertIn("cpu_model", machine)
             path = analysis.write_summary([run_dir], Path(tmp) / "summary", config)
@@ -216,6 +237,13 @@ class DriverTest(unittest.TestCase):
         config = cli.load_experiment(CONFIG)
         self.assertEqual(len(lines), len(cli.runs(config)))
         self.assertEqual(len(lines), 2 * (3 * 4 - 1 + 2 * 2))  # 512 views need 57 blocks
+        v3 = cli.load_experiment(CONFIG_V3)
+        self.assertEqual(v3["version"], 3)
+        # six: 512 views need 35 blocks; four: 512 views need 57 blocks
+        self.assertEqual(len(cli.plan_lines(CONFIG_V3)), 2 * ((3 * 4 - 1) + (3 * 4 - 1)))
+        unchanged = {k: v for k, v in config.items() if k not in ("version", "graphs",
+                                                                  "diagnostics")}
+        self.assertEqual(unchanged, {k: v3[k] for k in unchanged})
 
 
 if __name__ == "__main__":
