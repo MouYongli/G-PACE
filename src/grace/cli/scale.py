@@ -12,8 +12,9 @@
   `VALUES` form where it is affordable), then measures every (read scope, writes per read) cell
   whose window is long enough, for every arm and repetition (`grace.eval.runner.probes.scale`).
   Writes `machine.json` (CPU model, cores, load average), `graph.json` (size, build time,
-  skipped cells, query diagnostics), `measurements.jsonl` (one record per arm x cell x repetition) and `periods.jsonl` (one record
-  per read period). `n_records` is the number of measurements.
+  skipped cells, query diagnostics), `measurements.jsonl` (one record per arm x cell x
+  repetition) and `periods.jsonl` (one record per read period). `n_records` is the number
+  of measurements.
 - `plan`: the `run` invocations of the grid, one per line.
 - `summary`: tables over an explicit list of completed run IDs (not a run;
   `grace.eval.analysis.metrics.scale`), written to `<out>/summary.json` with the checksum of every
