@@ -1,0 +1,25 @@
+# GRACE's writer (task T022; plan 5.1, 5.6, 8.4). Loaded by
+# grace.context.pipeline.update.updater.WriterConfig.load. Development settings; the values are
+# frozen at the configuration lock (D012), and any later change is a recorded deviation.
+version: 1
+prompt: extract-claims             # resources/prompts/extract-claims, pinned in prompts.yaml
+schema: extract-claims             # resources/schemas/llm/extract-claims.json
+granularity: {unit: segment, size: 8}  # message | segment (size n, inside a session) | session;
+                                   # segments of 8 is T013's starting point (ablation G varies it)
+context_messages: 2                # preceding messages shown for coreference, not extracted
+structured_output: json_schema     # the schema as response_format (constrained decoding); or none
+split_on_invalid: true             # an invalid output splits the unit in halves, down to messages
+max_unit_failures: 2               # failed calls (all client attempts) before a unit is given up
+unknown_predicates: local          # local: history-local predicate with the writer's exclusivity;
+                                   # drop: items with an unknown predicate are dropped
+guard: true                        # attribution guard on (plan 3.2); false = no-guard variant
+shacl: true                        # SHACL validation of every change set before commit
+max_known_claims: 40               # known claims shown under handles k1, k2, ...
+max_predicates: 80
+max_entities: 40
+recent_versions: 8                 # claims touched in the last n versions are shown first
+message_chars: 4000                # longer messages are clipped in the prompt (quotes still
+earlier_chars: 600                 # anchor in the full text)
+decoding:
+  temperature: 0.0                 # D006: temperature 0, thinking disabled (model config)
+  max_tokens: 2048
