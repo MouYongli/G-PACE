@@ -140,6 +140,18 @@ class BreakEvenTest(unittest.TestCase):
                           [record("A", 1, "h", "r1", 10, 0, 1)])
 
 
+class RegimeRatioTest(unittest.TestCase):
+    def test_by_hand(self):
+        rows = [{"kind": "measure", "target_cached": 0, "target_new": 128, "latency_s": 0.01},
+                {"kind": "measure", "target_cached": 0, "target_new": 128, "latency_s": 0.03},
+                {"kind": "measure", "target_cached": 1000, "target_new": 128, "latency_s": 0.04},
+                {"kind": "prime", "target_cached": 0, "target_new": 1000, "latency_s": 0.22}]
+        # (0.04 - 0.02) / (0.22 - 0.02)
+        self.assertAlmostEqual(wb.regime_ratio(rows, 1000, 128), 0.1)
+        with self.assertRaises(ValueError):
+            wb.regime_ratio(rows, 2000, 128)
+
+
 class FitTest(unittest.TestCase):
     def test_recovers_known_ratio(self):
         rng = random.Random(0)
@@ -197,6 +209,18 @@ class EstimateStageTest(unittest.TestCase):
         config["read"]["answer_run"] = "E001/E001-20261125T000000Z-0002"
         config["reference_writers"] = {"slot-table": ["E001/E001-20261125T000000Z-0003"]}
         config["c_grid_steps"] = 10
+        probe = runs / "T013" / "T013-20261126T000000Z-0004"
+        write_run(probe, [])
+        (probe / "compute-ratio.json").write_text(json.dumps({"c": 0.2, "c_ci95": [0.1, 0.3]}))
+        (probe / "trials.jsonl").write_text("".join(json.dumps(r) + "\n" for r in [
+            {"kind": "measure", "target_cached": 0, "target_new": 8, "latency_s": 0.01},
+            {"kind": "measure", "target_cached": 64, "target_new": 8, "latency_s": 0.02},
+            {"kind": "prime", "target_cached": 0, "target_new": 64, "latency_s": 0.11}]))
+        config["cache_ratios"] = [
+            {"label": "quoted", "value": 0.08},
+            {"label": "pooled", "run": "T013/T013-20261126T000000Z-0004"},
+            {"label": "regime", "run": "T013/T013-20261126T000000Z-0004",
+             "regime": {"cached": 64, "new": 8}}]
         self.config = self.tmp / "config.yaml"
         self.config.write_text(yaml.safe_dump(config))
         self.env = mock.patch.dict(os.environ, {"PROJECT_ROOT": str(self.tmp / "project")})
@@ -224,6 +248,8 @@ class EstimateStageTest(unittest.TestCase):
             self.assertEqual(len(row["curve"]), 11)
             self.assertEqual([m["label"] for m in row["at_marks"]],
                              [m["label"] for m in result["marks"]])
+        self.assertEqual([round(m["c"], 6) for m in result["marks"]], [0.08, 0.2, 0.1])
+        self.assertEqual(result["marks"][2]["run"]["run_id"], "T013-20261126T000000Z-0004")
         self.assertEqual(result["inputs"]["answer_run"]["run_id"], "E001-20261125T000000Z-0002")
         self.assertTrue((run_dir / "curves.csv").is_file())
         self.assertTrue((run_dir / "units.csv").is_file())

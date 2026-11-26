@@ -95,8 +95,15 @@ reference_writers:
              T034/artifacts/manager/T034/T034-20261125T192354Z-dca9]
 
 # Measured cache ratios marked on the curves. `value` is quoted; `run` reads the `c` of a
-# measure-c run's compute-ratio.json.
+# measure-c run's compute-ratio.json; `run` with `regime` computes c in one regime of that run from
+# median latencies (regime_ratio): 24,576 cached + 128 new tokens is the warm full-history read of
+# LoCoMo (about 26K cached history, about 100 new tokens).
 cache_ratios:
+  - label: T013 exclusive-GPU latency fit (pooled)
+    run: T013/artifacts/manager/T013/T013-20261126T044914Z-811f
+  - label: T013 exclusive GPU, warm-read regime
+    run: T013/artifacts/manager/T013/T013-20261126T044914Z-811f
+    regime: {cached: 24576, new: 128}
   - label: E001 pooled latency fit (unreliable, shared GPU)
     value: 0.081
   - label: T030 GPU-seconds ratio, LoCoMo (upper bound)

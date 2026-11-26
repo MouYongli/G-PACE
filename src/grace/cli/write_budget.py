@@ -284,11 +284,36 @@ def message_tokens(messages: Sequence[api.Message], history: api.HistoryInfo,
     return [counter.count_text(render_message(m, history)) for m in messages]
 
 
+def regime_ratio(rows: Sequence[Mapping[str, Any]], cached: int, new: int) -> float:
+    """c in one regime of a measure-c run, from median latencies: the extra latency of `cached`
+    cache-hit tokens in front of `new` new ones, over the extra latency of the same tokens prefilled
+    cold (the priming calls), both relative to the cold call with `new` tokens alone."""
+    import statistics
+
+    def median(kind, target_cached, target_new):
+        values = [r["latency_s"] for r in rows if r["kind"] == kind
+                  and r["target_cached"] == target_cached and r["target_new"] == target_new]
+        if not values:
+            raise ValueError(f"no {kind} trials with cached={target_cached}, new={target_new}")
+        return statistics.median(values)
+
+    base = median("measure", 0, new)
+    return (median("measure", cached, new) - base) / (median("prime", 0, cached) - base)
+
+
 def cache_ratio_marks(config: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     marks = []
     for entry in config:
         if "value" in entry:
             marks.append({"label": entry["label"], "c": float(entry["value"]), "run": None})
+        elif "regime" in entry:
+            path = runs_path(entry["run"])
+            rows = [json.loads(line) for line in
+                    (path / "trials.jsonl").read_text(encoding="utf-8").splitlines()]
+            marks.append({"label": entry["label"],
+                          "c": regime_ratio(rows, int(entry["regime"]["cached"]),
+                                            int(entry["regime"]["new"])),
+                          "regime": dict(entry["regime"]), "run": run_input(path)})
         else:
             path = runs_path(entry["run"])
             result = json.loads((path / "compute-ratio.json").read_text(encoding="utf-8"))
@@ -643,7 +668,8 @@ def check_exclusive(gpu: int, server_pid: int, when: str) -> dict[str, Any]:
 
 def run_measure_c(config_path: Path, run_root: Path, *, base_url: str, gpu: int,
                   server_pid: int, counter: TokenCounter | None = None,
-                  client_options: Mapping[str, Any] | None = None, checker=None, code: rundir.CodeState | None = None,
+                  client_options: Mapping[str, Any] | None = None, checker=None,
+                  code: rundir.CodeState | None = None,
                   command: str | None = None) -> tuple[Path, str]:
     exp = load_experiment(config_path)
     spec = exp["compute_ratio"]
