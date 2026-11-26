@@ -319,7 +319,7 @@ All numbers below are copied from `runs/E004/artifacts/manager/E004-summary/summ
 
 **The compiler change removes the `pending` and `choice` pathology.** For block 0's `pending` views the pre-change `VALUES` form took 501-948 ms at 16 blocks and 8,030-15,000 ms at 64 blocks; the engine's text now takes 3.3-5.8 ms and 14.8-28 ms, and 78-147 ms at 256 blocks (where the old form was not timed). Over the sample of 12 other `pending` views per graph the median is 0.2-77 ms and the maximum 8.5-8.6 ms (16 blocks), 31-50 ms (64 blocks) and 149-248 ms (256 blocks). `choice` views cost under 1 ms when empty and up to 11 ms (16 blocks), 44 ms (64 blocks) and 103 ms (256 blocks) in the sample; few sampled `choice` views have rows (0-2 of 12), so its cost with an accepted candidate rests on few views. For the four other families the change is small: their engine text is 0-20% faster than the old `VALUES` form, and pull over `four` costs a median 0.90 (10th-90th percentile 0.79-0.95) of its v2 value in matching cells.
 
-##### Graphs and query time per family (v3)
+#### Graphs and query time per family (v3)
 
 | Mix | Blocks | Seed | Claims | Triples | Block-0 median ms, engine text / probe-inlined / pre-change VALUES (`-`: not timed) | Sample of 12 other views per family: median / max ms (views with rows) |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -337,7 +337,7 @@ All numbers below are copied from `runs/E004/artifacts/manager/E004-summary/summ
 | six | 256 | 2 | 10829 | 336528 | choice 0.829/0.772/-; constraints 0.212/0.203/0.258; count 15.3/15.2/16.5; current 22.5/22.3/25.3; list 15.2/15/16.5; pending 139/152/- | choice 0.708/99.5 (0); constraints 0.195/25.8 (7); count 5.7/21.2 (12); current 18.4/55.2 (12); list 9.52/44 (11); pending 76.5/248 (1) |
 
 
-##### Selected cells (v3)
+#### Selected cells (v3)
 
 | Mix | Blocks | Views | Scope | w | push write ms | pull read ms | hybrid read ms | hybrid / pull [95% CI] |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -426,7 +426,7 @@ All numbers below are copied from `runs/E004/artifacts/manager/E004-summary/summ
 | six | 256 | 512 | all | 64 | 0.681 | 1.68e+04 | 1.68e+03 | 0.105 [0.0963, 0.115] |
 | six | 256 | 512 | all | 256 | 0.657 | 1.67e+04 | 2.89e+03 | 0.189 [0.179, 0.201] |
 
-##### Crossover along writes_per_read (v3; comparisons not cheaper everywhere)
+#### Crossover along writes_per_read (v3; comparisons not cheaper everywhere)
 
 | mix | blocks | views | read_scope | arm | kind | crossover | 95% CI | share cheaper/crosses/dearer | v2 crossover |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -457,7 +457,7 @@ All numbers below are copied from `runs/E004/artifacts/manager/E004-summary/summ
 
 64 of 88 comparisons along writes_per_read are cheaper than pull at every level in every bootstrap replicate.
 
-##### Crossover along views (v3; comparisons not cheaper everywhere)
+#### Crossover along views (v3; comparisons not cheaper everywhere)
 
 | mix | blocks | read_scope | writes_per_read | arm | kind | crossover | 95% CI | share cheaper/crosses/dearer | v2 crossover |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -484,7 +484,7 @@ All numbers below are copied from `runs/E004/artifacts/manager/E004-summary/summ
 
 100 of 120 comparisons along views are cheaper than pull at every level in every bootstrap replicate.
 
-##### Crossover along blocks (v3; comparisons not cheaper everywhere)
+#### Crossover along blocks (v3; comparisons not cheaper everywhere)
 
 | mix | views | read_scope | writes_per_read | arm | kind | crossover | 95% CI | share cheaper/crosses/dearer | v2 crossover |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
