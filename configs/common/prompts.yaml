@@ -111,7 +111,7 @@ prompts:
       that fails three attempts falls back to its template sentence.
   extract-claims-rough:
     call_type: extract
-    sha256: 93b96268c505530ddceef9507f82585323dcde03ec46e5117d3d2c03ae8e45d5
+    sha256: cfa18b00f31ecfe435d021c09b6b2d61daede10adcafb9fd7ead2a75fafa0c45
     schema: null              # {"claims": [...], "stances": [...], "ended": [...]}; checked by
     schema_sha256: null       # src/grace/eval/runner/probes/natural_extract.py (parse_output)
     note: >-

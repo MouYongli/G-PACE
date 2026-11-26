@@ -60,7 +60,7 @@ from grace.context.memory.graph.entries import (
 from grace.context.memory.graph.vocabulary import Vocabulary
 from grace.llm.structured import extract_json
 
-CLAIM_FUNCTIONS = ("inform", "request", "offer", "accept", "reject", "commit")
+CLAIM_FUNCTIONS = ("inform", "request", "offer", "accept", "reject", "confirm", "commit")
 STANCE_FUNCTIONS = ("accept", "reject", "confirm")
 END_KINDS = ("change", "correction")
 OBJECT_KINDS = ("entity", "value")

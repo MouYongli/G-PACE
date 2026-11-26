@@ -17,6 +17,7 @@ How to write a claim:
   - "request": the speaker asks for something or states a requirement for a task. The subject is the task (for example "user's trip to Japan"), the predicate the requirement (budget, date, cuisine), the object its value.
   - "offer": the speaker suggests, recommends or proposes an option for a task. Use the predicate selectedOption, the task as subject and the option as object (object_kind "entity").
   - "accept" or "reject": the speaker accepts or declines an option. Prefer a stance on the known claim of that option.
+  - "confirm": the speaker confirms a claim that was already made.
   - "commit": the speaker promises to do something.
 
 Known claims are listed with their IDs. Use them as follows:
@@ -25,4 +26,4 @@ Known claims are listed with their IDs. Use them as follows:
 - ended: when the new message says a known claim is no longer true (moved away, quit, sold, broke up, stopped), add {"claim": "<id>", "kind": "change"}; when it says a known claim was wrong all along (a correction or a misunderstanding), add {"claim": "<id>", "kind": "correction"}. Use only IDs from the known claims.
 
 Answer with one JSON object and nothing else:
-{"claims": [{"subject": "...", "predicate": "...", "object": "...", "object_kind": "entity" | "value", "function": "inform" | "request" | "offer" | "accept" | "reject" | "commit", "single_valued": true | false}], "stances": [], "ended": []}
+{"claims": [{"subject": "...", "predicate": "...", "object": "...", "object_kind": "entity" | "value", "function": "inform" | "request" | "offer" | "accept" | "reject" | "confirm" | "commit", "single_valued": true | false}], "stances": [], "ended": []}

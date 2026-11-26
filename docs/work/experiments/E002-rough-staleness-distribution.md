@@ -48,3 +48,5 @@ Pending.
 ## Log
 
 - 2026-11-23: created from the full project DAG.
+- 2026-11-26: manager session `m01-E002` started on `task/E002-rough-staleness` from `main` at `da699da`; Issue #110. Design and config written before the first formal run. Two Qwen3-32B servers on GPUs 0 and 2 (ports 8121, 8122), reserved in `runs/compute.yaml`.
+- 2026-11-26: smoke checks (not runs; first 60 messages of conv-26, first 80 of LongMemEval `58bf7951`): 7 of 60 LoCoMo outputs used the function `confirm` for a re-emitted claim, which the parser rejected. `confirm` was added to the claim functions of the prompt and the parser (new pin) before any formal run. LongMemEval: 3 of 80 invalid (a fence with trailing text, a stance with function `request`, one output cut at the token limit); kept as invalid. Mean prompt 1.3K (LoCoMo) and 1.9K (LongMemEval) tokens.
