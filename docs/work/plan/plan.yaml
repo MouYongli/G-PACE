@@ -472,12 +472,12 @@ nodes:
     type: task
     title: "Writer: extraction and graph update"
     milestone: M3
-    status: planned
+    status: done
     depends_on: [T014, T004, T009, T013]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 121
+    owner: m01-T022
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T022-writer.md
   - id: T023
     type: task
@@ -572,12 +572,12 @@ nodes:
     type: task
     title: Retrieval channels, routing and fusion
     milestone: M4
-    status: planned
+    status: done
     depends_on: [T003, T023]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 122
+    owner: m01-T025
+    start: 2026-11-26
+    finish: 2026-11-26
     file: ../tasks/T025-retrieval-fusion.md
   - id: T026
     type: task
