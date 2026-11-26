@@ -32,3 +32,4 @@ Analysis scripts under `src/grace/cli/`; tables under `paper/`.
 
 - 2026-11-23: created from the full project DAG.
 - 2026-11-25: acceptance item on the blind judge's agreement with human labels moved here from T004 (user decision). T004 delivered the protocol and code path (`src/grace/eval/analysis/judging/`).
+- 2026-11-26: moved here from E001 (user decision): the primary judge (DeepSeek-V4-Flash-0731, at least two B200 GPUs; token counting without a Jinja chat template and thinking mode to settle first) on the E001 pilot predictions, its agreement with the secondary judge (Azure gpt-4.1-mini verdicts of PR #105, `runs/E001/artifacts/m01-E001b/`), and the calibration against human labels (200 reads, stratified by benchmark and verdict, two annotators; `configs/judges/blind.yaml`). This part needs only the pilot runs, not the formal runs, and may start before T035's dependencies resolve if the user approves.

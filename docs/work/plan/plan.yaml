@@ -206,12 +206,12 @@ nodes:
     type: experiment
     title: Pilot measurements
     milestone: M1
-    status: active
+    status: done
     depends_on: [T002, T003, T004, D002, D006]
     issue: 69
     owner: m01-E001
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-26
     file: ../experiments/E001-pilot-measurements.md
   - id: D002
     type: decision
@@ -750,12 +750,12 @@ nodes:
     type: task
     title: Optional benchmark and system adapters
     milestone: M6
-    status: active
+    status: done
     depends_on: [T002, T003]
     issue: 68
     owner: m01-T034
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-26
     file: ../tasks/T034-optional-adapters.md
   - id: T035
     type: task
