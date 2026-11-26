@@ -449,12 +449,12 @@ nodes:
     type: experiment
     title: Ablation C on gold graphs
     milestone: M2
-    status: active
+    status: done
     depends_on: [T015, T018]
     issue: 95
     owner: m01-E005
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-26
     file: ../experiments/E005-ablation-c-gold.md
   - id: D008
     type: decision
