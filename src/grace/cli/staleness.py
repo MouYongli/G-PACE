@@ -184,12 +184,20 @@ def extract(config_path: Path, benchmark: str, base_urls: Sequence[str], *,
             log.write(f"{rundir.utc_now()} {text}\n")
             log.flush()
 
+    def validate(text: str) -> str | None:
+        """The parse error, so that the ledger records invalid output as `invalid_output`."""
+        try:
+            nx.parse_output(text)
+        except nx.ExtractionError as exc:
+            return str(exc)
+        return None
+
     def make_chat(client: ChatClient, history_id: str):
         def chat(messages, version: int):
             context = CallContext("extract", "write", history_id, None, version)
             try:
                 result = client.chat(messages, context, prompt_sha256=prompt.sha256,
-                                     decoding=decoding)
+                                     decoding=decoding, validate=validate)
             except LLMCallFailed as exc:
                 return None, "failed", str(exc), [r.call_id for r in exc.records]
             return (result.text, result.status, result.error,
