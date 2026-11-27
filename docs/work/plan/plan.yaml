@@ -3,7 +3,7 @@
 # Nodes are the work items; an edge A -> B (B.depends_on contains A) means A must be resolved before
 # B starts. Nodes with no unresolved dependency can run in parallel. Milestones only group nodes.
 project: GRACE
-updated: 2026-11-25
+updated: 2026-11-28
 repo: https://github.com/MouYongli/GRACE   # used to link Issues
 
 end: T036                      # the end node: every milestone node leads to a deliverable
@@ -228,12 +228,12 @@ nodes:
     type: task
     title: MultiWOZ offer-turn census
     milestone: M1
-    status: active
+    status: done
     depends_on: [T002, T010]
     issue: 46
     owner: m01-T006
     start: 2026-11-25
-    finish: null
+    finish: 2026-11-28
     file: ../tasks/T006-multiwoz-offer-turns.md
   - id: T007
     type: task

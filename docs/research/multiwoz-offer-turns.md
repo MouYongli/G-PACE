@@ -117,6 +117,7 @@ By domain (lenient): attraction 28.1%, hotel 24.3%, restaurant 18.3%, train 17.0
 - **Files.**
   - `docs/research/multiwoz-offer-turns-check.tsv` (tracked): turn ID, label, offer kinds, verdict and note; no utterance text.
   - `$PROJECT_ROOT/runs/T006/artifacts/manual-check/check_sample_verdicts.tsv`: the same rows with the three-turn context, offered values and act evidence, for a human to re-check.
+- **First human check (2026-11-28).** One human annotator (`anonymous_1`) checked 200 development turns (150 accept, 50 reject, labels on 2.1 acts) under the same criterion: 173/200 = **86.5%** correct (Wilson 95% 81.1-90.6%); accept 130/150 = 86.7%, reject 43/50 = 86.0%; 86.6% weighted by the test counts. The agent check above overstated the precision. The label file is not committed; the error classes are in the T006 log. Most errors are partial acceptances (the user declines the booking and asks about the entity) and system turns the rule reads as an offer although they propose nothing new (`Booking-Inform` and `Select` acts). A second human annotator and Cohen's κ are still open.
 - **Not done here.** Plan 6.5 asks for two annotators on 200 turns with Cohen's κ for the derivation rule. This check covers 60 turns by one (agent) checker and gives no κ. That part waits for the D007 annotator.
 
 ## Interval width and recommendation (plan 6.5)
@@ -127,7 +128,8 @@ By domain (lenient): attraction 28.1%, hotel 24.3%, restaurant 18.3%, train 17.0
 
   | Variant | n | Half-width (points) |
   | --- | --- | --- |
-  | Discounted by the measured precision | 1,072 | 2.74 |
+  | Discounted by the measured precision (agent check, 93.3%) | 1,072 | 2.74 |
+  | Discounted by the human precision (86.6%) | 995 | 2.85 |
   | One item per dialogue | 784 | 3.21 |
   | Accept turns only | 1,104 | 2.70 |
   | **Reject turns only** | **45** | **13.4** |
