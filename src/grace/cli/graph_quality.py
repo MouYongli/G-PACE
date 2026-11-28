@@ -386,6 +386,169 @@ def predicate_check(args: argparse.Namespace) -> int:
     return 0 if run.json.data["status"] == "completed" else 1
 
 
+# ---- controlled sequences --------------------------------------------------------------------
+
+
+def _sequence_config(config: dict):
+    from grace.eval.datasets.benchmarks.base import BenchmarkConfig
+    seq = config["sequences"]
+    bc = BenchmarkConfig.from_dict(seq["dataset"])
+    if bc.splits[seq["split"]].kind != "development":
+        raise SystemExit("controlled sequences: development splits only")
+    return seq, bc
+
+
+def extract_sequences(args: argparse.Namespace) -> int:
+    """Writer-only extraction of whole controlled sequences (stage `probe`): every message of each
+    sequence in order, `finish()` at the end (`eval/runner/probes/writer_extract`); writes
+    `updates.jsonl` and `graphs/<sequence_id>/`. `n_records`: sequences written."""
+    from grace.context.pipeline.update.updater import WriterConfig, llm_writer
+    from grace.eval.datasets.benchmarks.splits import load_split
+    from grace.eval.runner.probes.writer_extract import drive_history
+
+    config_path, config = _load_config(args.config)
+    seq, bc = _sequence_config(config)
+    writer_config_path = REPO_ROOT / config["writer_config"]
+    writer_config = WriterConfig.load(writer_config_path)
+    run_parent = (args.run_parent or shared_dir("runs_root") / args.experiment / "artifacts"
+                  / WORKER)
+    run_dir = rundir.create(run_parent, args.experiment, args.run_id)
+    log = (run_dir / "run.log").open("a", encoding="utf-8")
+
+    def say(text: str) -> None:
+        print(text, flush=True)
+        log.write(text + "\n")
+        log.flush()
+
+    model_config = REPO_ROOT / config["model_config"]
+    resolved = {"experiment": config,
+                "writer": {"config": config["writer_config"],
+                           "sha256": rundir.file_sha256(writer_config_path),
+                           "values": yaml.safe_load(writer_config_path.read_text("utf-8"))},
+                "serving": {"writer_url": args.writer_url, "compute": args.compute or "none",
+                            **config.get("serving", {})},
+                "workers": args.workers}
+    (run_dir / "resolved-config.yaml").write_text(yaml.safe_dump(resolved, sort_keys=False),
+                                                  encoding="utf-8")
+    code = rundir.code_state()
+    root = project_root()
+    run = rundir.RunJson(run_dir, {
+        "run_id": run_dir.name, "experiment": args.experiment, "stage": "probe", "upstream": [],
+        "code_sha": code.sha, "code_dirty": code.dirty,
+        "config_path": config_path.relative_to(REPO_ROOT).as_posix(),
+        "config_sha256": rundir.file_sha256(run_dir / "resolved-config.yaml"),
+        "resources_sha256": rundir.resources_sha256(),
+        "data": [{"benchmark": bc.benchmark, "version": bc.version,
+                  "manifest_sha256": bc.manifest_sha256, "split": seq["split"],
+                  "path": bc.source_dir(root).as_posix()}],
+        "project_root": root.as_posix(), "seed": int(config["seed"]),
+        "command": " ".join(shlex.quote(a) for a in sys.argv),
+        "environment": rundir.environment("cpu (writer model on the serving endpoint)"),
+        "compute": args.compute or "none", "held_out_access": "none"})
+    n_done = 0
+    try:
+        client = _client(model_config, args.writer_url, run_dir / "calls.jsonl", run_dir.name)
+        records = load_split(bc.benchmark, seq["split"], config=bc)
+        wanted = list(seq["ids"])
+        histories = {h.history_id: h for h in records.histories if h.history_id in wanted}
+        missing = sorted(set(wanted) - histories.keys())
+        if missing:
+            raise ValueError(f"sequences not in the dataset split: {missing}")
+        messages = defaultdict(list)
+        for m in records.messages:
+            if m.history_id in histories:
+                messages[m.history_id].append(m)
+        say(f"{len(wanted)} sequences, {sum(len(v) for v in messages.values())} messages, "
+            f"granularity={writer_config.granularity.name}")
+
+        def one(sid):
+            updates = drive_history(histories[sid], messages[sid],
+                                    llm_writer(writer_config, client, histories[sid]),
+                                    writer_config, run_dir)
+            say(f"  {sid}: {len(updates)} unit records")
+            return updates
+
+        with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+            results = list(pool.map(one, wanted))
+        with (run_dir / "updates.jsonl").open("w", encoding="utf-8") as f:
+            for u in (u for part in results for u in part):
+                f.write(json.dumps(u, ensure_ascii=False, sort_keys=True) + "\n")
+        n_done = len(results)
+        from grace.eval.analysis.metrics import writer as metric
+        updates = metric.read_jsonl(run_dir / "updates.jsonl")
+        calls = metric.read_jsonl(run_dir / "calls.jsonl")
+        metrics = {"units": metric.unit_stats(updates), "calls": metric.call_stats(calls),
+                   "model_calls": len(calls), "sequences": n_done}
+        (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True)
+                                              + "\n", encoding="utf-8")
+        run.data["model_calls"] = len(calls)
+        run.finish(n_done)
+        say(f"run directory: {run_dir} status={run.data['status']}"
+            + (f" failure={run.data['failure']}" if run.data["failure"] else ""))
+    except BaseException as exc:
+        say(traceback.format_exc())
+        run.finish(n_done, f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        log.close()
+    return 0 if run.data["status"] == "completed" else 1
+
+
+def score_sequences(args: argparse.Namespace) -> int:
+    """Score a writer run over controlled sequences against their gold graphs (stage `score`):
+    `metrics.json` (`grace.eval.analysis.metrics.graph_sequences`), `occurrences.jsonl` and
+    `judgements.jsonl`. `n_records`: sequences scored."""
+    from grace.eval.analysis.metrics import graph as g
+    from grace.eval.analysis.metrics import graph_sequences as gs
+
+    config_path, config = _load_config(args.config)
+    seq, bc = _sequence_config(config)
+    writer_dir = args.writer_run.resolve()
+    writer_json = json.loads((writer_dir / "run.json").read_text(encoding="utf-8"))
+    if writer_json.get("status") != "completed":
+        raise SystemExit(f"upstream run {writer_dir.name} is not completed")
+    method = args.predicate_match or config["scoring"]["predicate_match"]
+    source = bc.source_dir(project_root())
+    dirs = {sid: source / "sequences" / sid for sid in seq["ids"]}
+    resolved = {"experiment": config, "writer_run": writer_dir.as_posix(),
+                "predicate_match": method, "judge_url": args.judge_url,
+                "gold_graphs": {sid: rundir.file_sha256(d / "graph" / "changesets.jsonl")
+                                for sid, d in dirs.items()}}
+    upstream = [{"run_id": writer_json["run_id"], "stage": writer_json["stage"],
+                 "path": writer_dir.as_posix(),
+                 "run_json_sha256": rundir.file_sha256(writer_dir / "run.json")}]
+    run = _Run(args, config_path, resolved, upstream, writer_json.get("data", []),
+               int(config["seed"]))
+    n = 0
+    try:
+        pj, _ = _judges(config, args.judge_url, run, method == "judge", False)
+        matcher = g.PredicateMatcher(method, pj)
+        metrics, rows = gs.score_run(g.read_writer_run(writer_dir), dirs, matcher,
+                                     _parallel(args.workers))
+        metrics["predicate_matcher"] = {"method": method, "judged_pairs": len(matcher.log),
+                                        "verdicts": dict(sorted(Counter(
+                                            x["verdict"] for x in matcher.log).items()))}
+        metrics["writer_run"] = {"run_id": writer_json["run_id"]}
+        (run.dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True)
+                                              + "\n", encoding="utf-8")
+        _write_jsonl(run.dir / "occurrences.jsonl", rows)
+        _write_jsonl(run.dir / "judgements.jsonl", matcher.log)
+        n = len(dirs)
+        a = metrics["all"]
+        run.say(json.dumps({"anchor": a["anchor"], "loose": a["loose"],
+                            "endings": a["endings"], "ending_drops": a["ending_drops"]},
+                           sort_keys=True))
+        run.json.finish(n)
+        run.say(f"run directory: {run.dir} status={run.json.data['status']}")
+    except BaseException as exc:
+        run.say(traceback.format_exc())
+        run.json.finish(n, f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        run.close()
+    return 0 if run.json.data["status"] == "completed" else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -414,15 +577,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                        help="score only the segments of these benchmarks")
     p_sco.add_argument("--allow-incomplete", action="store_true",
                        help="score a writer run that is not completed (dry runs only)")
+    p_xs = sub.add_parser("extract-sequences",
+                          help="writer-only extraction of whole controlled sequences")
+    p_xs.add_argument("--config", type=Path, required=True)
+    p_xs.add_argument("--writer-url", required=True)
+    p_xs.add_argument("--compute", default=None, help="reservation copied into run.json")
+    p_xs.add_argument("--workers", type=int, default=4, help="sequences written in parallel")
+    p_ss = sub.add_parser("score-sequences",
+                          help="score a sequence writer run against the gold graphs")
+    p_ss.add_argument("writer_run", type=Path)
+    p_ss.add_argument("--config", type=Path, required=True)
+    p_ss.add_argument("--judge-url", default=None)
+    p_ss.add_argument("--compute", default=None)
+    p_ss.add_argument("--workers", type=int, default=8, help="parallel judge calls")
+    p_ss.add_argument("--label", default=None, help="free text stored in run.json")
+    p_ss.add_argument("--predicate-match", choices=("normalised", "lexical", "judge"),
+                      default=None)
     p_chk.add_argument("--reference", type=Path, default=Path(
         "docs/research/annotations/graph-quality/predicate-check-reference.jsonl"))
     p_chk.add_argument("--n-negative", type=int, default=80)
-    for p in (p_ext, p_sco, p_chk):
+    for p in (p_ext, p_sco, p_chk, p_xs, p_ss):
         p.add_argument("--experiment", default="E006")
         p.add_argument("--run-parent", type=Path, default=None)
         p.add_argument("--run-id", default=None)
     args = parser.parse_args(argv)
-    return {"extract": extract, "score": score, "predicate-check": predicate_check}[
+    return {"extract": extract, "score": score, "predicate-check": predicate_check,
+            "extract-sequences": extract_sequences, "score-sequences": score_sequences}[
         args.command](args)
 
 
