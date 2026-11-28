@@ -549,6 +549,59 @@ def score_sequences(args: argparse.Namespace) -> int:
     return 0 if run.json.data["status"] == "completed" else 1
 
 
+def coverage(args: argparse.Namespace) -> int:
+    """Answer-coverage upper bound of the graphs of one ingest run (stage `score`): per question
+    of the run's benchmark split, whether its evidence messages carry claims and whether the
+    reference answer's words occur in them (`graph_sequences.answer_coverage`). Writes
+    `metrics.json` and `coverage.jsonl`. `n_records`: questions."""
+    from grace.eval.analysis.metrics import graph as g
+    from grace.eval.analysis.metrics import graph_sequences as gs
+    from grace.eval.datasets.benchmarks.splits import load_split
+
+    config_path, config = _load_config(args.config)
+    ingest_dir = args.ingest_run.resolve()
+    ingest_json = json.loads((ingest_dir / "run.json").read_text(encoding="utf-8"))
+    if ingest_json.get("stage") != "ingest" or ingest_json.get("status") != "completed":
+        raise SystemExit(f"{ingest_dir.name}: a completed ingest run is required")
+    ingest_cfg = yaml.safe_load((ingest_dir / "resolved-config.yaml").read_text("utf-8"))
+    resolved = {"experiment": config, "ingest_run": ingest_dir.as_posix(),
+                "benchmark": ingest_cfg["benchmark"], "split": ingest_cfg["split"],
+                "histories": ingest_cfg["histories"]}
+    upstream = [{"run_id": ingest_json["run_id"], "stage": "ingest",
+                 "path": ingest_dir.as_posix(),
+                 "run_json_sha256": rundir.file_sha256(ingest_dir / "run.json")}]
+    run = _Run(args, config_path, resolved, upstream, ingest_json.get("data", []),
+               int(config["seed"]))
+    n = 0
+    try:
+        records = load_split(ingest_cfg["benchmark"], ingest_cfg["split"])
+        wanted = set(ingest_cfg["histories"])
+        gold = []
+        for r in records.gold:
+            if r.history_id not in wanted:
+                continue
+            labels = r.labels or {}
+            gold.append({"history_id": r.history_id, "task_id": r.task_id,
+                         "reference": r.reference, "evidence_ids": list(r.evidence_ids),
+                         "stratum": labels.get("question_type", labels.get("category"))})
+        metrics, rows = gs.answer_coverage(g.read_writer_run(ingest_dir).graphs, gold)
+        metrics["ingest_run"] = ingest_json["run_id"]
+        (run.dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True)
+                                              + "\n", encoding="utf-8")
+        _write_jsonl(run.dir / "coverage.jsonl", rows)
+        n = len(rows)
+        run.say(json.dumps(metrics["all"], sort_keys=True))
+        run.json.finish(n)
+        run.say(f"run directory: {run.dir} status={run.json.data['status']}")
+    except BaseException as exc:
+        run.say(traceback.format_exc())
+        run.json.finish(n, f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        run.close()
+    return 0 if run.json.data["status"] == "completed" else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -593,16 +646,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_ss.add_argument("--label", default=None, help="free text stored in run.json")
     p_ss.add_argument("--predicate-match", choices=("normalised", "lexical", "judge"),
                       default=None)
+    p_cov = sub.add_parser("coverage", help="answer-coverage upper bound of an ingest run")
+    p_cov.add_argument("ingest_run", type=Path)
+    p_cov.add_argument("--config", type=Path, required=True)
+    p_cov.add_argument("--compute", default=None)
+    p_cov.add_argument("--label", default=None, help="free text stored in run.json")
     p_chk.add_argument("--reference", type=Path, default=Path(
         "docs/research/annotations/graph-quality/predicate-check-reference.jsonl"))
     p_chk.add_argument("--n-negative", type=int, default=80)
-    for p in (p_ext, p_sco, p_chk, p_xs, p_ss):
+    for p in (p_ext, p_sco, p_chk, p_xs, p_ss, p_cov):
         p.add_argument("--experiment", default="E006")
         p.add_argument("--run-parent", type=Path, default=None)
         p.add_argument("--run-id", default=None)
     args = parser.parse_args(argv)
     return {"extract": extract, "score": score, "predicate-check": predicate_check,
-            "extract-sequences": extract_sequences, "score-sequences": score_sequences}[
+            "extract-sequences": extract_sequences, "score-sequences": score_sequences,
+            "coverage": coverage}[
         args.command](args)
 
 

@@ -74,5 +74,25 @@ class SequenceScoreTest(unittest.TestCase):
         self.assertEqual((counts["endings_matched"], counts["writer_endings"]), (1, 1))
 
 
+class AnswerCoverageTest(unittest.TestCase):
+    def test_evidence_and_answer_tokens(self):
+        g = SequenceScoreTest.writer(None, False)
+        gold = [{"history_id": "seq", "task_id": "q1", "reference": "Berlin",
+                 "evidence_ids": ["m3"], "stratum": "a"},
+                {"history_id": "seq", "task_id": "q2", "reference": "the violin",
+                 "evidence_ids": ["m3", "m9"], "stratum": "b"},
+                {"history_id": "seq", "task_id": "q3", "reference": "tea", "evidence_ids": [],
+                 "stratum": "b"}]
+        metrics, rows = gs.answer_coverage({"seq": g}, gold)
+        by = {r["task_id"]: r for r in rows}
+        self.assertTrue(by["q1"]["evidence_all"] and by["q1"]["answer_in_evidence_claims"])
+        self.assertEqual((by["q2"]["evidence_any"], by["q2"]["evidence_all"]), (True, False))
+        self.assertFalse(by["q2"]["answer_in_graph"])
+        self.assertIsNone(by["q3"]["evidence_any"])
+        self.assertTrue(by["q3"]["answer_in_graph"])
+        self.assertEqual(metrics["all"]["evidence_any"], {"n": 2, "rate": 1.0})
+        self.assertEqual(set(metrics["per_stratum"]), {"a", "b"})
+
+
 if __name__ == "__main__":
     unittest.main()

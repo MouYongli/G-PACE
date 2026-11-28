@@ -25,6 +25,10 @@ Units of comparison are claim occurrences: one per attribution (a claim on one m
   when a gold ending on one of the unit's messages ends a claim that matches the writer claim.
   The false-drop rate is false drops / drops; `gold_endings_lost_to_drops` counts the gold
   endings that only a dropped stance matched.
+
+`answer_coverage` (any benchmark with gold evidence IDs) gives the upper bounds of what a graph can
+answer: whether the evidence messages carry claims and whether the reference answer's words occur
+in those claims.
 """
 
 from __future__ import annotations
@@ -319,3 +323,67 @@ def score_run(run: WriterRun, sequence_dirs: Mapping[str, Path], matcher: Predic
         counts[sid] = c
         rows += r
     return summarise(counts, rows), rows
+
+
+# ---- answer coverage -------------------------------------------------------------------------
+
+STOP = frozenset("a an the of in on at to for and or with by from is was are were be been it "
+                 "that this as i my me you your he she his her they their them we our".split())
+
+
+def _content(text: Any) -> set[str]:
+    if isinstance(text, (list, tuple)):
+        text = " ".join(map(str, text))
+    return {t for t in norm_text(text).split() if t not in STOP}
+
+
+def answer_coverage(graphs: Mapping[str, WriterGraph], gold: Sequence[Mapping[str, Any]]
+                    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Upper bounds on what the graph channel can answer (plan 6.7 / memory metrics).
+
+    Per question (`gold`: `history_id`, `task_id`, `reference`, `evidence_ids`, optional
+    `stratum`): `evidence_any` / `evidence_all`: some / every gold evidence message carries at least
+    one writer claim; `answer_in_evidence_claims`: every content token of the reference occurs in
+    the claims (subject, predicate words, object) attributed to the evidence messages;
+    `answer_partial`: at least half of them do; `answer_in_graph`: every content token occurs in
+    some claim of the history's graph. Questions without evidence IDs or without content tokens in
+    the reference count in the denominators of the measures they can be computed for only."""
+    rows = []
+    for q in gold:
+        graph = graphs.get(q["history_id"])
+        claims_by_msg: dict[str, list[set[str]]] = defaultdict(list)
+        all_tokens: set[str] = set()
+        if graph is not None:
+            for a in graph.attributions:
+                c = graph.claims.get(a["claim_id"])
+                if c is None:
+                    continue
+                toks = _content(graph.label(c["subject"])) | _content(graph.object_text(c)) | \
+                    set(norm_predicate(c["predicate"]).split())
+                claims_by_msg[a["message_id"]].append(toks)
+                all_tokens |= toks
+        ev = list(q.get("evidence_ids") or [])
+        ref = _content(q.get("reference"))
+        ev_tokens = set().union(*(t for m in ev for t in claims_by_msg.get(m, []))) if ev else set()
+        row = {"history_id": q["history_id"], "task_id": q["task_id"],
+               "stratum": q.get("stratum"), "n_evidence": len(ev), "n_reference_tokens": len(ref),
+               "evidence_any": any(claims_by_msg.get(m) for m in ev) if ev else None,
+               "evidence_all": all(claims_by_msg.get(m) for m in ev) if ev else None,
+               "answer_in_evidence_claims": (ref <= ev_tokens) if ev and ref else None,
+               "answer_partial": (len(ref & ev_tokens) >= len(ref) / 2) if ev and ref else None,
+               "answer_in_graph": (ref <= all_tokens) if ref else None}
+        rows.append(row)
+
+    def block(rs) -> dict[str, Any]:
+        out: dict[str, Any] = {"questions": len(rs)}
+        for k in ("evidence_any", "evidence_all", "answer_in_evidence_claims", "answer_partial",
+                  "answer_in_graph"):
+            vals = [r[k] for r in rs if r[k] is not None]
+            out[k] = {"n": len(vals), "rate": _ratio(sum(vals), len(vals))}
+        return out
+    strata: dict[str, list] = defaultdict(list)
+    for r in rows:
+        strata[str(r["stratum"])].append(r)
+    return {"all": block(rows),
+            "per_stratum": {k: block(v) for k, v in sorted(strata.items())} if len(strata) > 1
+            else {}}, rows
