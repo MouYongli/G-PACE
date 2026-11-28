@@ -513,7 +513,11 @@ def score(run: WriterRun, segments: Mapping[str, SegmentText],
 
 
 def per_predicate(claim_rows: Sequence[Mapping[str, Any]], min_count: int = 3) -> dict[str, Any]:
-    """Writer predicates: count and loose precision bounds; catch-all predicates aggregated."""
+    """Writer predicates: count and loose precision bounds; catch-all predicates aggregated.
+
+    Both bounds come from the loose matching against all units (the lower bound counts matches
+    whose unit is core), so the lower bound can differ slightly from the claim-level lower bound,
+    which matches against core units only."""
     stats: dict[str, Counter] = defaultdict(Counter)
     for r in claim_rows:
         m = r["match"]["loose"]
