@@ -84,7 +84,9 @@ class ConfigTest(unittest.TestCase):
             ext = (config["params"].get("components") or {}).get("extension") or {}
             with self.subTest(config=path.name):
                 self.assertIn(config["params"]["writer"], ("configs/common/writer.yaml",
-                                                           "configs/common/writer-segment8.yaml"))
+                                                           "configs/common/writer-segment8.yaml",
+                                                           # E011 no-guard claim-graph arms
+                                                           "configs/common/writer-noguard.yaml"))
                 if path.stem == "grace-writer-8b":
                     continue   # the small-writer arm
                 # slot-table arms too (own extractor, same writer model: ablation B)

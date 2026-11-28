@@ -24,6 +24,7 @@ COMPONENTS: dict[str, str] = {
     "serialised-views": "grace.context.views.serialise:serialised_views",
     "query-time-resolution": "grace.context.pipeline.update.deferred:query_time_resolution",
     "slot-table": "grace.context.pipeline.update.slots:slot_table",
+    "single-time": "grace.context.pipeline.update.single_time:single_time",
 }
 
 

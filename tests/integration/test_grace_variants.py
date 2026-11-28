@@ -27,7 +27,8 @@ from tests.llm.fakes import WordCounter
 
 ENGINES = REPO_ROOT / "configs" / "engines"
 VARIANTS = ("grace-template", "grace-append-only", "grace-slots", "grace-slots-noguard",
-            "grace-slots-single", "grace-slots-noguard-single")
+            "grace-slots-single", "grace-slots-noguard-single", "grace-noguard", "grace-single",
+            "grace-noguard-single")
 LIVES_IN = "SELECT ?x WHERE { (user, livesIn, ?x) }"
 CURRENT_VIEW = ("SELECT ?value WHERE { (user, livesIn, ?value) [_, inform] AS ?c "
                 'FILTER(end(?c) > "9999-12-31"^^date) } LATEST BY version OF ?c '
@@ -103,7 +104,8 @@ class Rig:
 class ConfigTest(unittest.TestCase):
     def test_variant_configs_build_through_the_registry_with_their_components(self):
         self.assertEqual(set(registry.COMPONENTS),
-                         {"serialised-views", "query-time-resolution", "slot-table"})
+                         {"serialised-views", "query-time-resolution", "slot-table",
+                          "single-time"})
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         ledger = CallLedger(Path(tmp.name) / "calls.jsonl", "T027-20261128T000000Z-0002")
@@ -119,6 +121,11 @@ class ConfigTest(unittest.TestCase):
                     self.assertEqual(type(views).__name__, "SerialisedViews")
                 elif name == "grace-append-only":
                     self.assertIsNotNone(ext.deferred)
+                elif name in ("grace-noguard", "grace-single", "grace-noguard-single"):
+                    # E011 claim-graph arms: guard from the writer config, time from the extension
+                    self.assertEqual(engine.c.writer.guard, "noguard" not in name)
+                    self.assertEqual(type(ext).__name__,
+                                     "SingleTime" if "single" in name else "Extension")
                 else:
                     self.assertEqual((ext.table.guard, ext.table.time),
                                      ("noguard" not in name, "single" if "single" in name
