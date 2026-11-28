@@ -1,0 +1,25 @@
+# Hybrid retrieval over chunks tagged with speaker and dialogue act (plan 7.2; single arm of
+# ablation B; T027). Retrieval settings equal configs/engines/rrf.yaml, so that the tag is the only
+# difference. Dialogue acts are predicted by the writer model with the writer's function labels, one
+# `extract` call per unit of the writer's granularity (configs/common/writer.yaml: segments of 8,
+# 2 earlier messages); the calls are charged to W. Placeholders until frozen on development data,
+# like rrf.yaml.
+engine: tagged
+description: Text retrieval, channel rrf, chunks tagged with speaker and dialogue act
+prefix_caching: false
+params:
+  channel: rrf
+  top_k: 20
+  rrf_k: 60
+  bm25_k1: 1.5
+  bm25_b: 0.75
+  order: chronological
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+  unit_size: 8               # writer granularity: segment of 8 messages
+  context_messages: 2        # writer: preceding messages shown, not tagged
+  max_tokens: 512            # generated tokens of one tagging call (16 x 3 acts fit easily)
+  structured_output: json_schema
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
