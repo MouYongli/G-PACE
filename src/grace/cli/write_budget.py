@@ -370,18 +370,23 @@ def estimate(exp: Mapping[str, Any], records, counter: TokenCounter, *,
                 results.append(_result(history_id, granularity["name"], scenario, cost.calls,
                                        fn, side.reads, steps, marks,
                                        {"logical": cost.logical, "computed": cost.computed}))
+        weights = exp.get("reference_weights", {})
         for name, refs in references.items():
             mine = [r for r in refs if r.history_id == history_id and r.category == "W"]
             if not mine:
                 continue
             planner = planners["central"]
+            # E007: a writer on a larger model than the answering model, priced in answering-model
+            # token equivalents (weight = compute per token relative to the primary model).
+            k = float(weights.get(name, 1.0))
 
-            def fn(c, mine=mine, planner=planner, side=side):
-                return point(c, lambda c: price(mine, c), side,
+            def fn(c, mine=mine, planner=planner, side=side, k=k):
+                return point(c, lambda c: k * price(mine, c), side,
                              lambda c: planner.per_read(c, planner_prompt_tokens))
             results.append(_result(history_id, f"measured:{name}", "measured",
                                    len(mine), fn, side.reads, steps, marks,
-                                   {"logical": price(mine, 1.0), "computed": price(mine, 0.0),
+                                   {"logical": k * price(mine, 1.0),
+                                    "computed": k * price(mine, 0.0), "weight": k,
                                     "cached_input": sum(r.cached_input_tokens for r in mine),
                                     "failed_attempts": sum(r.status != "ok" for r in mine)}))
     return {"histories": histories, "units": units_rows, "results": results,
