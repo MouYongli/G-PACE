@@ -37,6 +37,7 @@ from typing import Any
 
 import yaml
 
+from grace.config import registry
 from grace.config.paths import REPO_ROOT, project_root, shared_dir
 from grace.context import api
 from grace.eval.datasets.benchmarks.base import BenchmarkConfig
@@ -71,9 +72,10 @@ ENGINE_LLM_KEYS = ENGINE_LLM_REQUIRED | {"auth_header", "input_tokens", "transpo
 def load_engine_config(path: Path) -> dict[str, Any]:
     config = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     unknown = set(config) - ENGINE_KEYS
-    if unknown or config.get("engine") not in ENGINES:
+    kinds = set(ENGINES) | set(registry.ENGINES)
+    if unknown or config.get("engine") not in kinds:
         raise ValueError(f"{path}: bad engine config (unknown keys {sorted(unknown)}, "
-                         f"engine {config.get('engine')!r} not in {sorted(ENGINES)})")
+                         f"engine {config.get('engine')!r} not in {sorted(kinds)})")
     if "engine_llm" in config:
         spec = config["engine_llm"]
         keys = set(spec) if isinstance(spec, dict) else set()
@@ -85,8 +87,25 @@ def load_engine_config(path: Path) -> dict[str, Any]:
     return config
 
 
-def build_engine(config: dict[str, Any], model) -> api.ContextEngine:
-    return ENGINES[config["engine"]](model, **config["params"])
+def build_engine(config: dict[str, Any], model, *, allow_no_client: bool = False
+                 ) -> api.ContextEngine:
+    """A baseline by its class, or an engine of `context/` (GRACE) through the registry.
+
+    `allow_no_client` lets a registered engine run without a chat client (the fake backend of
+    dry runs and tests); `run_system` sets it only then and records it in the resolved config."""
+    if config["engine"] in ENGINES:
+        return ENGINES[config["engine"]](model, **config["params"])
+    return registry.load_engine(config["engine"]).from_port(
+        model, **config["params"], allow_no_client=allow_no_client)
+
+
+def engine_settings(config: dict[str, Any], seed: int, allow_no_client: bool
+                    ) -> dict[str, Any] | None:
+    """The settings of a registered engine's own model calls, for the resolved config."""
+    if config["engine"] in ENGINES:
+        return None
+    return registry.load_engine(config["engine"]).resolved_settings(
+        config["params"], seed, allow_no_client=allow_no_client)
 
 
 def budgets() -> dict[str, Any]:
@@ -218,6 +237,8 @@ def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
             engine.end_read(task)
             metadata = {"dropped_citations": result.dropped_citations} \
                 if result.dropped_citations else {}
+            if result.retrieve_refused:
+                metadata["retrieve_refused"] = True
             prediction = Prediction(
                 benchmark=task.benchmark, split=task.split, history_id=task.history_id,
                 read_id=task.read_id, task_id=task.task_id, version=task.version,
@@ -279,6 +300,8 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
                                                              for h in inputs.histories],
                 "budget_tokens": budget, "seed": seed, "model": model_info,
                 "answer_max_tokens": max_tokens, "max_attempts": 2}
+    if (settings := engine_settings(config, seed, client is None)) is not None:
+        resolved["engine_settings"] = settings
     (run_dir / "resolved-config.yaml").write_text(
         yaml.safe_dump(resolved, sort_keys=True, allow_unicode=True), encoding="utf-8")
     data = [{"benchmark": inputs.benchmark, "version": inputs.data_version,
@@ -306,7 +329,7 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
             on_model(model)
         writer = RunWriter(run_dir)
         for item in inputs.histories:
-            engine = build_engine(config, engine_model)
+            engine = build_engine(config, engine_model, allow_no_client=client is None)
             if engine_wrapper:
                 engine = engine_wrapper(engine)
             answered += drive_history(engine, item, budget, model, writer, max_tokens)

@@ -340,7 +340,7 @@ Required regression tests (`tests/contracts/test_evaluation.py`): empty predicti
 
 ## Experiment run
 
-Owner: integration owner · Version: 0.2 (stages and upstream runs, intermediate artefacts and `resources_sha256` added by decision D013)
+Owner: integration owner · Version: 0.2.1 (stages and upstream runs, intermediate artefacts and `resources_sha256` added by decision D013; read-trace fields `retrieval_used`, `utilisation`, `expansions_used` added by T026, approved by the integration owner s00-super on 2026-11-28)
 
 Every formal run owns one directory, created exclusively (fail if it exists, or use `tempfile.mkdtemp`):
 
@@ -393,7 +393,7 @@ All are JSON Lines. A field that does not apply to a system (a baseline has no v
 | --- | --- | --- |
 | `contexts.jsonl` | read | `read_id`, `history_id`, `version`, `budget_tokens` (`null` for the full history), `tokens` (counted with the answering model's tokenizer), `text` (the context exactly as sent), `fragments` (list of `fragment_id`, `kind` = `message`, `view`, `claim`, `summary`, `retrieved` or `other`, `evidence_ids`, `tokens`) |
 | `traces/write.jsonl` | committed write (message or segment) | `history_id`, `version`, `message_ids`, `call_ids`, `stale_marks` (list of `view_id`, `strategy`, `level` = `answer`, `citation` or `unknown`), `timings_ms` (component → milliseconds) |
-| `traces/read.jsonl` | read | `read_id`, `history_id`, `version`, `candidates` (list of `id`, `channel`, `score`), `included_ids` (equal to `context_ids` of the prediction), `provenance` (fragment ID → `message_id`s, for lenient recall), `view_hits`, `staleness_decisions` (list of `view_id`, `strategy`, `decision` = `fresh`, `answer_stale` or `citation_stale`, `action` = `reuse`, `patch` or `rebuild`), `further_retrieval`, `call_ids`, `timings_ms` |
+| `traces/read.jsonl` | read | `read_id`, `history_id`, `version`, `candidates` (list of `id`, `channel`, `score`), `included_ids` (equal to `context_ids` of the prediction), `provenance` (fragment ID → `message_id`s, for lenient recall), `view_hits`, `staleness_decisions` (list of `view_id`, `strategy`, `decision` = `fresh`, `answer_stale` or `citation_stale`, `action` = `reuse`, `patch` or `rebuild`), `further_retrieval`, `call_ids`, `timings_ms`, `retrieval_used` (the read's one extra retrieval of plan 5.6 is spent, by the engine's own query expansion or a further retrieval; a `retrieve` output of the answering LLM is then resolved as `unknown`), `utilisation` (`tokens / budget_tokens` of the context; `null` for the full history), `expansions_used` (expansions made by the engine's assembly; 0 for engines without) |
 | `changesets.jsonl` | committed version | `history_id`, `version`, `entries` (added entries grouped as `claims`, `attributions`, `evidence_links`, `supersessions`; the entry format is owned by `context/memory/graph/changeset.py`, T014), `vocabulary_version`, `entity_merges` |
 | `judgements.jsonl` | judged prediction | `read_id`, `task_id`, `annotation`, `judge` (judge config name), `verdict` (`correct`, `incorrect` or `invalid`), `raw_output`, `call_id` |
 

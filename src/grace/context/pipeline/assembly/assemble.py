@@ -47,8 +47,9 @@ The engine's read path, step by step:
    `a.utilisation` (tokens / budget) and `a.expansions_used` go into the assembly record.
 
 A further retrieval requested by the answering LLM (only when `a.retrieval_used` is False) is
-served the same way with the new candidates, `expansions_used=config.max_expansions` and
-`retrieval_used=True`.
+served the same way with the new candidates, the `expansions_used` of the read and
+`retrieval_used=True` (no query expansion on top of it; a summary expansion is still possible if
+the read made none).
 """
 
 from __future__ import annotations
@@ -246,13 +247,14 @@ class Assembler:
                     kept, selected, show_open = trial, t_selected, t_show
                     done = True
                     expansions_used += 1
+                else:  # the summary stays; unsupported variables may still get the query
+                    expansion = propose(open_now, kept, covers)
+            if expansion is not None and expansion.kind == "query":
+                if retrieval_used:
+                    expansion = None  # the read's one extra retrieval is spent
                 else:
-                    expansion = None
-            elif expansion is not None and retrieval_used:
-                expansion = None  # the read's one extra retrieval is spent
-            elif expansion is not None:
-                expansions_used += 1
-                retrieval_used = True
+                    expansions_used += 1
+                    retrieval_used = True
         open_vars = self._open(selected, demand, covers)
         serialised = layout.serialise(selected, open_vars if show_open else ())
         frags = layout.fragments(serialised, self.count)

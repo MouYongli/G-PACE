@@ -358,7 +358,13 @@ class WriteTrace:
 
 @dataclass(frozen=True)
 class ReadTrace:
-    """What one read did. `included_ids` equals the `context_ids` of the prediction."""
+    """What one read did. `included_ids` equals the `context_ids` of the prediction.
+
+    `retrieval_used`: the read's one extra retrieval (plan 5.6) is spent, by the engine's own
+    query expansion or by a further retrieval; the harness then resolves a `retrieve` output of the
+    answering LLM as `unknown`. `utilisation`: context tokens / budget (None for the full
+    history). `expansions_used`: expansions the engine's assembly made (0 for engines without).
+    """
 
     read_id: str
     history_id: str
@@ -371,6 +377,9 @@ class ReadTrace:
     further_retrieval: bool = False
     call_ids: tuple[str, ...] = ()
     timings_ms: Mapping[str, float] = field(default_factory=dict)
+    retrieval_used: bool = False
+    utilisation: float | None = None
+    expansions_used: int = 0
 
     def to_record(self) -> dict[str, Any]:
         return {"read_id": self.read_id, "history_id": self.history_id, "version": self.version,
@@ -380,7 +389,8 @@ class ReadTrace:
                 "view_hits": list(self.view_hits),
                 "staleness_decisions": [d.to_record() for d in self.staleness_decisions],
                 "further_retrieval": self.further_retrieval, "call_ids": list(self.call_ids),
-                "timings_ms": dict(self.timings_ms)}
+                "timings_ms": dict(self.timings_ms), "retrieval_used": self.retrieval_used,
+                "utilisation": self.utilisation, "expansions_used": self.expansions_used}
 
 
 @dataclass(frozen=True)
@@ -403,15 +413,21 @@ class ReadResult:
 def read_trace(context: WorkingContext, *, candidates: Sequence[Candidate] = (),
                further_retrieval: bool = False, call_ids: Sequence[str] = (),
                timings_ms: Mapping[str, float] | None = None, view_hits: Sequence[str] = (),
-               staleness_decisions: Sequence[StalenessDecision] = ()) -> ReadTrace:
-    """Build the read trace that matches `context` (included IDs and provenance taken from it)."""
+               staleness_decisions: Sequence[StalenessDecision] = (),
+               retrieval_used: bool = False, expansions_used: int = 0) -> ReadTrace:
+    """Build the read trace that matches `context` (included IDs and provenance taken from it).
+
+    `retrieval_used` is also True after a further retrieval; `utilisation` is computed from the
+    context (tokens / budget, None for the full history)."""
+    utilisation = (context.tokens / context.budget_tokens if context.budget_tokens else None)
     return ReadTrace(
         read_id=context.read_id, history_id=context.history_id, version=context.version,
         candidates=tuple(candidates), included_ids=tuple(context.context_ids),
         provenance={k: tuple(v) for k, v in context.provenance.items()},
         view_hits=tuple(view_hits), staleness_decisions=tuple(staleness_decisions),
         further_retrieval=further_retrieval, call_ids=tuple(call_ids),
-        timings_ms=dict(timings_ms or {}))
+        timings_ms=dict(timings_ms or {}), retrieval_used=retrieval_used or further_retrieval,
+        utilisation=utilisation, expansions_used=expansions_used)
 
 
 # ---------------------------------------------------------------------------------------------

@@ -109,7 +109,9 @@ class FilterTest(unittest.TestCase):
         self.assertEqual(dict(out.dropped), {"b": "version", "a": "group"})
 
     def test_valid_time_must_be_iso(self):
-        for bad in (("May 2023", None), ("2023-13-01", None), (None, 20230501)):
+        for bad in (("May 2023", None), ("2023-13-01", None), (None, 20230501),
+                    ("20230501", None), ("2023-W19", None), ("2023-121", None),
+                    ("2023-05-01T1015", None)):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 item("x", "t", valid=bad)
             with self.subTest(bad=bad), self.assertRaises(ValueError):
@@ -330,6 +332,23 @@ class AssemblerTest(unittest.TestCase):
         self.assertEqual(result.context.context_ids, ["D1:1", "D1:2"])
         self.assertNotIn("s1", [f.fragment_id for f in result.context.fragments])
         self.assertEqual(result.open, ())
+
+    def test_rejected_summary_still_queries_unsupported_variables(self):
+        """Review follow-up: a fitting summary whose expansion is not strictly better is kept,
+        and the variables no candidate supports still get the one query."""
+        log = MessageLog("h")
+        log.append(msg(1, "short note"))
+        log.append(msg(2, "the arrival time is 10:15"))
+        summary = Item("s1", "summary", "summary: the accepted train is TR123", ("D1:1",),
+                       version=2, rank=1, covers={"train"}, expands_to=("D1:1", "D1:2"))
+        demand = demand_of("q", [("train", "accepted train"), ("arrival", "arrival time"),
+                                 ("platform", "departure platform")])
+        result = assembler(log=log).assemble(task(2), demand, [summary], 100)
+        self.assertEqual(result.covered, ("train",))
+        self.assertFalse(result.expansion_done)
+        self.assertEqual(result.pending.kind, "query")
+        self.assertEqual([v.name for v in result.pending.variables], ["arrival", "platform"])
+        self.assertTrue(result.retrieval_used)
 
     def test_summary_is_kept_when_its_raw_text_does_not_fit(self):
         """Regression (review of f5fbe64): budget 100, the summary covers ?train, ?arrival is

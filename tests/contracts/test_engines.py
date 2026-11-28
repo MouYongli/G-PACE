@@ -48,7 +48,7 @@ class EngineSuite(unittest.TestCase):
         settings = load_engine_config(config)
         if settings["engine"] == "summary":
             settings["params"].update(recent_k=1, block_size=2)
-        return build_engine(settings, model)
+        return build_engine(settings, model, allow_no_client=True)  # fake backend: dry run
 
     def test_suite(self):
         item = load(BENCHMARKS / "locomo", "streaming").histories[0]
