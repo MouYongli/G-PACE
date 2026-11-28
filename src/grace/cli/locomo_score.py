@@ -1,6 +1,7 @@
-"""Score stage of a LoCoMo system or read run with the registered scorer (scorers.yaml).
+"""Score stage of a LoCoMo system or read run with the registered scorer
+(configs/common/scorers.yaml).
 
-    uv run python -m grace.cli.locomo_score --run <system RUN_DIR> --experiment E007 \\
+    uv run python -m grace.cli.locomo_score --run <system or read RUN_DIR> --experiment E007 \\
         --run-root "$PROJECT_ROOT/runs/E007/artifacts/<worker>"
 
 Reads the run's `predictions.jsonl` and `resolved-config.yaml` (benchmark, split, schedule,
@@ -67,8 +68,7 @@ def score(aligned, gold, metric: dict) -> tuple[dict, dict, dict]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--run", type=Path, required=True,
-                        help="completed system or read RUN_DIR")
+    parser.add_argument("--run", type=Path, required=True, help="completed system or read RUN_DIR")
     parser.add_argument("--experiment", required=True)
     parser.add_argument("--run-root", type=Path, required=True)
     args = parser.parse_args(argv)
