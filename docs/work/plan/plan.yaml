@@ -583,12 +583,12 @@ nodes:
     type: task
     title: Evidence-demand assembly
     milestone: M4
-    status: active
+    status: done
     depends_on: [T025, T018]
     issue: 138
     owner: w01-T026
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../tasks/T026-context-assembly.md
   - id: T027
     type: task
@@ -605,12 +605,12 @@ nodes:
     type: task
     title: MultiWOZ state prediction and baselines
     milestone: M4
-    status: active
+    status: done
     depends_on: [T006, T022, T003]
     issue: 140
     owner: w01-T028
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../tasks/T028-multiwoz-state.md
   - id: T029
     type: task
@@ -638,11 +638,11 @@ nodes:
     type: task
     title: LoCoMo streaming harness
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T007, T026]
-    issue: null
-    owner: null
-    start: null
+    issue: 152
+    owner: w01-T031
+    start: 2026-11-28
     finish: null
     file: ../tasks/T031-locomo-streaming.md
   - id: E011
