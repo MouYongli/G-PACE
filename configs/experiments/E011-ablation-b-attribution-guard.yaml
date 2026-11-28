@@ -1,0 +1,176 @@
+# E011 · Ablation B: attribution guard x representation x time (plan 4.1 RQ1, 6.5, 7.3 B, 9.1;
+# experiment file docs/work/experiments/E011-ablation-b-attribution-guard.md).
+# Written before the first formal run; later changes are logged in the experiment file.
+# Development data only (no held-out split before the T033 preregistration tag).
+#
+# Driver: `uv run python -m grace.cli.ablation_b`
+#   system  --config <this> --arm <arm> --benchmark multiwoz|change-seq --shard i/n \
+#           --base-url <answer/planner> --embed-url <embed> --writer-url <writer>
+#   score   --config <this> --benchmark <b> --system <run dir> [<run dir> ...]   (shards of one arm,
+#           or an external run whose predictions cover the population)
+#   compare --config <this> --benchmark <b> --arm <name>=<score run dir> ... --out <dir>
+experiment: E011
+seed: 0                     # decoding seed of every model call (temperature 0, D006)
+
+# Main configuration of E007/E013 (user decision 2026-11-28): writer Qwen3-32B (session units) at
+# --writer-url; planner, view rendering, dialogue-act tagging and answering Qwen3-8B at --base-url;
+# Qwen3-Embedding-0.6B at --embed-url. Shared servers reserved by s00-super (runs/compute.yaml).
+models:
+  answer: configs/models/qwen3-8b.yaml
+  writer: configs/models/qwen3-32b.yaml
+servers:                    # recorded for the reader; the CLI takes them as flags
+  answer: http://localhost:8252/v1
+  writer: http://localhost:8253/v1
+  embed: http://localhost:8251/v1
+
+# 2 x 2 x 2 arms, each a GRACE engine config (variants are configs, never engine branches), and the
+# single arms. The slot-table arms keep GRACE's planner over an empty claim graph (T027 Log): its
+# calls (ledger U) do not serve them; the per-read cost is reported with and without them. The
+# claim-graph arms use the main configuration's resident views; the slot arms have none (T027).
+arms:
+  graph-guard-bi:     {engine: configs/engines/grace.yaml,                  representation: graph, guard: true,  time: bitemporal}
+  graph-noguard-bi:   {engine: configs/engines/grace-noguard.yaml,          representation: graph, guard: false, time: bitemporal}
+  graph-guard-single: {engine: configs/engines/grace-single.yaml,           representation: graph, guard: true,  time: single}
+  graph-noguard-single: {engine: configs/engines/grace-noguard-single.yaml, representation: graph, guard: false, time: single}
+  slots-guard-bi:     {engine: configs/engines/grace-slots.yaml,            representation: slots, guard: true,  time: bitemporal}
+  slots-noguard-bi:   {engine: configs/engines/grace-slots-noguard.yaml,    representation: slots, guard: false, time: bitemporal}
+  slots-guard-single: {engine: configs/engines/grace-slots-single.yaml,     representation: slots, guard: true,  time: single}
+  slots-noguard-single: {engine: configs/engines/grace-slots-noguard-single.yaml, representation: slots, guard: false, time: single}
+  # Single arms (plan 7.2): hybrid retrieval over chunks tagged with speaker and dialogue act, and
+  # the same hybrid retrieval untagged (the reference for the tag's own gain).
+  tagged:             {engine: configs/engines/rrf-tagged.yaml}
+  rrf:                {engine: configs/engines/rrf.yaml}
+# Writer variance: outputs of the 32B writer differ between parallel runs at temperature 0 (server
+# batching, T027 Log), and guard on/off cannot share one ingest (the guard decides at commit and the
+# writer prompt shows the state it resolved). The main arm is therefore run twice on MultiWOZ with
+# identical settings (arm name graph-guard-bi, second run labelled `rerun`); the difference between
+# the two runs is reported next to every guard contrast.
+variance_rerun: graph-guard-bi
+
+# Reference rows that need no new model call: earlier runs rescored on the same population.
+external:
+  multiwoz:
+    # The never-write-system-values rule and the attribution guard as projections over the same
+    # slot rows (T028; one Qwen3-8B extraction call per message, ingest T028-20261128T002231Z-5bf7).
+    never-write: T028/artifacts/w01-T028/T028/T028-20261128T002744Z-bbe9
+    guard-projection: T028/artifacts/w01-T028/T028/T028-20261128T002756Z-7ff4
+    overwrite-projection: T028/artifacts/w01-T028/T028/T028-20261128T002731Z-f427
+
+benchmarks:
+  multiwoz:
+    split: dev
+    budget: 256             # smallest registered memory level (configs/common/budgets.yaml): at
+                            # 1024 the whole dialogue fits at every offer turn (E011 pilot), so the
+                            # memory selects nothing and the arms could not differ
+    # Per-turn reading (plan 6.5): each read sees only its prefix; no gold is fed back. Only the
+    # user turns that carry derived offer-turn gold (2.4-current-choice) are read: the other turns
+    # are not scored by any E011 metric. A read inside an open writer unit flushes it, so the writer
+    # sees these dialogues in fewer, larger units than under reading at every turn.
+    population:
+      pool: dialogues with at least one paired item of the derived gold (426 of 1,000 dev dialogues)
+      sample: 270           # seeded subset: about 310 paired items (n >= 300, brief), cost bound
+      sample_seed: 28       # random.Random(28).sample over the sorted pool
+      reads: offer turns    # read tasks with a 2.4-current-choice gold record
+    cluster: dialogue
+    metrics:
+      primary: paired_correct           # T006 values_match (registered, configs/common/scorers.yaml)
+      secondary: [retained, choice_correct, paired_correct_conflict, jga]
+      # Not registered; descriptive diagnostic defined here: on retention items whose original
+      # value conflicts with the offer, the predicted slot holds an offered value (values_match)
+      # instead of the original: the stale (overwritten) constraint of plan 6.5.
+      descriptive: [offer_overwrite]
+      # The answer step outputs the 30 official slots only, so a train ID (the current choice of
+      # the train domain) can be stated only in metadata.current_choice, which only the projection
+      # rows (external) fill. Paired items of the train domain are therefore also reported
+      # separately: `paired_correct|domain!=train`.
+  change-seq:
+    split: dev
+    budget: 1024            # main memory level of E013
+    schedule: null          # native read tasks: A20d1 at density 10, U10 otherwise (1,145 reads)
+    # configs/benchmarks/change-seq.yaml is not bound yet; as E001 and E005, read the model-rendered
+    # development set of run T015-devmodel-20261125T192037Z (generator changeseq-generator-2,
+    # development families only) with this inline benchmark config (paths relative to PROJECT_ROOT).
+    config:
+      benchmark: change-seq
+      version: dataset
+      data_root: runs/T015/artifacts/T015-devmodel-20261125T192037Z
+      manifest_sha256: 9b147185381de5982ad94560e27d8eb1b20e1d7c41347db6cc66a736355c515a
+      splits:
+        dev:
+          kind: development
+          rule: every sequence of the T015 model-rendered development set
+          counts: {histories: 25, messages: 5000, read_tasks: 1145, gold: 9422}
+          histories:
+            - train-travel-rho10-L200-000
+            - train-travel-rho10-L200-001
+            - flight-travel-rho10-L200-000
+            - flight-travel-rho10-L200-001
+            - car-rental-rho10-L200-000
+            - car-rental-rho10-L200-001
+            - hotel-stay-rho10-L200-000
+            - hotel-stay-rho10-L200-001
+            - apartment-search-rho10-L200-000
+            - apartment-search-rho10-L200-001
+            - train-travel-rho1-L200-000
+            - train-travel-rho3-L200-000
+            - train-travel-rho30-L200-000
+            - flight-travel-rho1-L200-000
+            - flight-travel-rho3-L200-000
+            - flight-travel-rho30-L200-000
+            - car-rental-rho1-L200-000
+            - car-rental-rho3-L200-000
+            - car-rental-rho30-L200-000
+            - hotel-stay-rho1-L200-000
+            - hotel-stay-rho3-L200-000
+            - hotel-stay-rho30-L200-000
+            - apartment-search-rho1-L200-000
+            - apartment-search-rho3-L200-000
+            - apartment-search-rho30-L200-000
+    cluster: family         # scenario family (D002, as E005); 5 clusters, so sequence-level
+                            # intervals (25 clusters) are reported as a sensitivity analysis
+    scoring:                # registered change-seq scorer (configs/common/scorers.yaml)
+      metric: set-match
+      annotation: generator
+      invalid_policy: count_as_wrong
+      population: [changed, uniform, presupposition, abstention]
+      # Strata named by the brief: late corrections (change type C5) and as-known pairs
+      # (question types known_then / seen_from_now, pair kinds control / differing).
+      strata: [question_type, change_type, pair_kind]
+      # Not registered; descriptive: an answer that mentions an outdated value of the read
+      # (gold metadata outdated_text), on reads that have one and whose premise is not outdated.
+      descriptive: [stale_value_use]
+
+  # Added 2026-11-28 after the MultiWOZ and change-seq system runs, before any LoCoMo run ("if time
+  # allows" in the brief): the representation contrast on open-domain dialogue (plan 9.1: "if the
+  # fixed slot table matches the claim graph on open-domain slices, no gain from open predicates is
+  # claimed"). Two arms only, through the common harness (drive.py, --experiment E011), scored with
+  # grace.cli.locomo_score (registered f1, categories 1-4). LongMemEval-S is not run (cost).
+  locomo:
+    split: dev              # conv-26, conv-49; 308 end-of-history reads
+    budget: 1024            # main memory level (E013)
+    arms: [graph-guard-bi, slots-guard-bi]
+    cluster: question       # two histories only: a question-level paired bootstrap, descriptive
+
+# Contrasts reported with paired 95% cluster-bootstrap intervals (10,000 resamples, seed 0; D002).
+# Gains are differences of micro means over the same items: a - b.
+contrasts:
+  guard_graph:   [graph-guard-bi, graph-noguard-bi]       # guard effect, claim graph
+  guard_slots:   [slots-guard-bi, slots-noguard-bi]       # guard effect, slot table
+  representation: [graph-guard-bi, slots-guard-bi]        # open predicates vs fixed slots
+  time_graph:    [graph-guard-bi, graph-guard-single]     # bitemporal vs single, claim graph
+  time_slots:    [slots-guard-bi, slots-guard-single]
+  tag_gain:      [tagged, rrf]                            # the tag's own gain
+  guard_vs_tagged: [graph-guard-bi, tagged]
+  guard_vs_never_write: [graph-guard-bi, never-write]     # MultiWOZ only (external)
+  projection_guard_vs_never_write: [guard-projection, never-write]   # MultiWOZ, same slot rows
+  writer_variance: [graph-guard-bi, graph-guard-bi-rerun] # MultiWOZ only
+
+# Interpretation rules (plan 9.1), fixed before any E011 result:
+# - "Tagged hybrid retrieval obtains most of the gain attributed to the guard": share =
+#   tag_gain / guard_graph >= 0.5, with the guard gain positive (its 95% interval above 0); the
+#   share's interval comes from the same cluster bootstrap. Also reported: guard_vs_tagged.
+# - "The never-write rule ties on paired correctness": the 95% interval of guard_vs_never_write on
+#   paired_correct contains 0. Then no effect of the attribution guard is claimed.
+# - "Ties" elsewhere: the 95% interval of the paired difference contains 0. With n about 300 a tie
+#   is weak evidence of equality; the interval is always reported.
+# - A guard gain whose size is within the writer_variance difference is not interpreted.

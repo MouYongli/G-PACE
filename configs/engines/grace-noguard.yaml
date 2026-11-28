@@ -1,0 +1,19 @@
+# Ablation B, representation arm "open-predicate claim graph" (plan 7.3, B; E011): guard false, time
+# bitemporal. A copy of configs/engines/grace.yaml with components replaced (no engine branch):
+# - the writer config configs/common/writer-noguard.yaml (guard: false; otherwise writer.yaml).
+engine: grace
+description: GRACE over the open-predicate claim graph (guard false, time bitemporal)
+prefix_caching: false
+writer_model: configs/models/qwen3-32b.yaml
+params:
+  writer: configs/common/writer-noguard.yaml
+  planner: configs/common/planner.yaml
+  retrieval: configs/retrieval/default.yaml
+  assembly: configs/assembly/default.yaml
+  views: configs/views/default.yaml
+  staleness: {strategy: push_confirm, local_filters: true}
+  fragment: {max_predicates: 30, max_entities: 30}
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
