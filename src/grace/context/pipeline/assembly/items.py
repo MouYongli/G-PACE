@@ -103,26 +103,40 @@ class Item:
         return "state" if self.kind in STATE_KINDS else "evidence"
 
 
+def message_time(message: api.Message, history: api.HistoryInfo | None = None) -> str | None:
+    """The message's own time, else the time of its segment (contracts.md, "Message"); the same
+    rule as the baselines' rendering, so every system shows the same dates."""
+    if message.timestamp or history is None:
+        return message.timestamp
+    segment = history.segment(message.segment_id)
+    return segment.timestamp if segment else None
+
+
 def message_item(message: api.Message, *, rank: int | None = None, section: str | None = None,
-                 covers=frozenset(), kind: str = "message") -> Item:
-    """The raw text of one message as an item; its `message_id` is the citation and the source."""
+                 covers=frozenset(), kind: str = "message",
+                 history: api.HistoryInfo | None = None) -> Item:
+    """The raw text of one message as an item; its `message_id` is the citation and the source.
+    With `history`, a message without its own time shows the time of its segment."""
     speaker = message.speaker or message.role
     return Item(message.message_id, kind, f"{speaker}: {message.text}", (message.message_id,),
                 (message.message_id,), version=message.version, rank=rank, section=section,
                 covers=frozenset(covers), attribution=(speaker,),
-                timestamp=message.timestamp)
+                timestamp=message_time(message, history))
 
 
-def history_items(log: MessageLog, version: int) -> list[Item]:
+def history_items(log: MessageLog, version: int,
+                  history: api.HistoryInfo | None = None) -> list[Item]:
     """Every message visible at `version`, in version order (the full-history read)."""
-    return [message_item(m) for m in log.messages(version)]
+    return [message_item(m, history=history) for m in log.messages(version)]
 
 
-def recent_items(log: MessageLog, version: int, k: int) -> list[Item]:
+def recent_items(log: MessageLog, version: int, k: int,
+                 history: api.HistoryInfo | None = None) -> list[Item]:
     """The last `k` messages visible at `version`, for the "recent raw text" section."""
     if k <= 0:
         return []
-    return [message_item(m, section="recent") for m in log.messages(version)[-k:]]
+    return [message_item(m, section="recent", history=history)
+            for m in log.messages(version)[-k:]]
 
 
 def _display(value) -> str:

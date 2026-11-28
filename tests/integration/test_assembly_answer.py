@@ -46,6 +46,7 @@ class AssemblyTextEngine(api.ContextEngine):
         self.assemblies: list = []
 
     def open(self, history: api.HistoryInfo) -> None:
+        self.history = history
         self.log = MessageLog(history.history_id)
 
     @property
@@ -62,17 +63,18 @@ class AssemblyTextEngine(api.ContextEngine):
     def _items(self, query: str, version: int, rank_start: int = 1):
         retriever = Retriever(self.retrieval, bm25=BM25Channel(self.index))
         result = retriever.retrieve(query, version)
-        items = [message_item(self.log.by_id(c.evidence_id, version), rank=rank_start + i)
+        items = [message_item(self.log.by_id(c.evidence_id, version), rank=rank_start + i,
+                              history=self.history)
                  for i, c in enumerate(result.fused)]
         return items, result.trace_candidates()
 
     def _read(self, task: api.ReadTask, budget, request: str | None) -> api.ReadResult:
         api.check_read(self, task)
-        assembler = Assembler(self.config, self.count, log=self.log,
+        assembler = Assembler(self.config, self.count, log=self.log, history=self.history,
                               counter_name=self.counter_name)
         demand = demand_of(request_text(task))
         if budget is None:
-            items, candidates = history_items(self.log, task.version), []
+            items, candidates = history_items(self.log, task.version, self.history), []
         else:
             items, candidates = self._items(task.question or "", task.version)
         used = 0

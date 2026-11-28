@@ -137,11 +137,16 @@ class Assembly:
 
 
 class Assembler:
-    """Builds working contexts; `count` is the answering model's token counter for plain text."""
+    """Builds working contexts; `count` is the answering model's token counter for plain text.
+
+    `log` (the history's message log) enables the recent-messages section and summary expansion;
+    `history` supplies segment times for messages without their own timestamp."""
 
     def __init__(self, config: AssemblyConfig, count: Callable[[str], int], *,
-                 log: MessageLog | None = None, counter_name: str = "unnamed"):
+                 log: MessageLog | None = None, history: api.HistoryInfo | None = None,
+                 counter_name: str = "unnamed"):
         self.config = config
+        self.history = history
         self.count = count
         self.log = log
         self.counter_name = counter_name
@@ -157,7 +162,8 @@ class Assembler:
                              f"to {task.version}")
         if budget is not None and budget < self.config.min_budget:
             raise ValueError(f"budget {budget} < min_budget {self.config.min_budget}")
-        recent = (recent_items(self.log, task.version, self.config.recent_messages)
+        recent = (recent_items(self.log, task.version, self.config.recent_messages,
+                               self.history)
                   if self.log is not None else [])
         recent_ids = {i.item_id for i in recent}
         pool = recent + [i for i in items if i.item_id not in recent_ids]
@@ -183,7 +189,8 @@ class Assembler:
             have = {i.item_id for i in kept}
 
             def raw_of(summary: Item) -> list[Item]:
-                return [i for i in filter_items(expand_summary(summary, self.log, task.version),
+                return [i for i in filter_items(expand_summary(summary, self.log, task.version,
+                                                               self.history),
                                                 c).kept if i.item_id not in have]
 
             def summary_covers(summary: Item) -> frozenset[str]:

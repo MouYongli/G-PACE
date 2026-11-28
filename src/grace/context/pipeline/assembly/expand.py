@@ -22,6 +22,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+from grace.context import api
 from grace.context.memory.history.log import MessageLog
 from grace.context.pipeline.assembly.demand import Variable
 from grace.context.pipeline.assembly.items import Item, message_item
@@ -75,7 +76,8 @@ def propose(open_variables: Sequence[Variable], candidates: Sequence[Item],
     return Expansion("query", tuple(open_variables), query=text)
 
 
-def expand_summary(summary: Item, log: MessageLog, version: int) -> list[Item]:
+def expand_summary(summary: Item, log: MessageLog, version: int,
+                   history: api.HistoryInfo | None = None) -> list[Item]:
     """The raw messages of `summary` visible at `version`, ranked like the summary.
 
     The messages inherit the summary's program coverage (they are the text it was made from);
@@ -87,5 +89,6 @@ def expand_summary(summary: Item, log: MessageLog, version: int) -> list[Item]:
             message = log.by_id(message_id, version)
         except KeyError:
             continue
-        out.append(message_item(message, rank=summary.rank, covers=summary.covers))
+        out.append(message_item(message, rank=summary.rank, covers=summary.covers,
+                                history=history))
     return out

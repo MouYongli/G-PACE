@@ -285,6 +285,14 @@ class AssemblerTest(unittest.TestCase):
         self.assertEqual(result.context.context_ids.count("D1:4"), 1)
         self.assertEqual(result.context.context_ids[:2], ["D1:3", "D1:4"])
 
+    def test_messages_without_a_time_show_their_segment_time(self):
+        history = api.HistoryInfo("locomo", "dev", "h", None, 1,
+                                  (api.Segment("S1", 1, 1, "2023-05-08", None),))
+        bare = api.Message("locomo", "dev", "h", 1, "D1:1", "S1", "A", "peer", "hi", None, None)
+        self.assertEqual(layout.line(message_item(bare, history=history)),
+                         "[D1:1] (2023-05-08) A: hi")
+        self.assertEqual(layout.line(message_item(bare)), "[D1:1] A: hi")
+
     def test_tiny_budget_keeps_the_empty_marker(self):
         pool = [item("big", "word " * 100, rank=1)]
         result = assembler().assemble(task(9), DEMAND, pool, 16)
