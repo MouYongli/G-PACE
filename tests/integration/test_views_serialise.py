@@ -37,3 +37,31 @@ class SerialiseTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThresholdTest(unittest.TestCase):
+    """`SerialisedViews.hit` admits exactly the views `ViewStore.materialise` would hold."""
+
+    def test_hits_follow_the_instantiation_threshold(self):
+        from grace.context.pipeline.query.compile import compile_query
+        from grace.context.pipeline.query.planner import Plan
+        from grace.context.views.serialise import SerialisedViews
+
+        graph = build_store()
+        for threshold in (1, 2, 3):
+            with self.subTest(threshold=threshold):
+                config = ViewConfig(instantiation_threshold=threshold)
+                resident = ViewStore(HISTORY, config=config, vocabulary=VOCABULARY)
+                held = set(resident.materialise(graph, 15))
+                reference = ViewStore(HISTORY, config=ViewConfig(), vocabulary=VOCABULARY)
+                reference.materialise(graph, 15)
+                if threshold > 1:
+                    self.assertLess(len(held), len(reference.views()))
+                views = SerialisedViews(HISTORY, config, VOCABULARY)
+                for view in reference.views():
+                    views.on_read(graph, 15, "r")
+                    plan = Plan("r", "llm", query=view.query,
+                                compiled=compile_query(view.query, "rdf11"))
+                    hit = views.hit(plan)
+                    self.assertEqual(hit is not None, view.view_id in held, view.view_id)
+                    self.assertEqual(bool(views.events), hit is not None)

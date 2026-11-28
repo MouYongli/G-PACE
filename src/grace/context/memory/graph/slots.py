@@ -288,8 +288,14 @@ class SlotTable:
         return [path]
 
     @classmethod
-    def restore(cls, directory: Path, inventory: SlotInventory) -> SlotTable:
+    def restore(cls, directory: Path, inventory: SlotInventory, *, guard: bool | None = None,
+                time: str | None = None) -> SlotTable:
+        """Replay a snapshot; `guard` and `time`, when given, must equal the snapshot's arm."""
         data = json.loads((Path(directory) / "slots.json").read_text(encoding="utf-8"))
+        for name, expected in (("guard", guard), ("time", time)):
+            if expected is not None and data[name] != expected:
+                raise ValueError(f"{directory}: snapshot has {name}={data[name]!r}, the config "
+                                 f"{expected!r}")
         table = cls(data["history_id"], inventory, guard=data["guard"], time=data["time"])
         by_version: dict[int, list[SlotRow]] = {}
         for record in data["rows"]:

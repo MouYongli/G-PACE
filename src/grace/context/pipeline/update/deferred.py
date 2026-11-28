@@ -55,15 +55,17 @@ class ResolutionLog:
     endings: dict[str, EndingHint] = field(default_factory=dict)
 
     def note_claim(self, claim_id: str, *, exclusive: bool, correction: bool = False) -> None:
-        if claim_id in self.claims:
-            raise ValueError(f"claim {claim_id} already noted")
-        self.claims[claim_id] = ClaimHint(exclusive, correction)
+        hint = ClaimHint(exclusive, correction)
+        if self.claims.get(claim_id, hint) != hint:
+            raise ValueError(f"claim {claim_id} already noted with other inputs")
+        self.claims[claim_id] = hint
 
     def note_ending(self, attribution_id: str, kind: SupersessionKind,
                     valid_end: str | None = None) -> None:
-        if attribution_id in self.endings:
-            raise ValueError(f"ending {attribution_id} already noted")
-        self.endings[attribution_id] = EndingHint(SupersessionKind(kind), valid_end)
+        hint = EndingHint(SupersessionKind(kind), valid_end)
+        if self.endings.get(attribution_id, hint) != hint:
+            raise ValueError(f"ending {attribution_id} already noted with other inputs")
+        self.endings[attribution_id] = hint
 
     def to_record(self) -> dict[str, Any]:
         return {"claims": {k: [v.exclusive, v.correction] for k, v in self.claims.items()},

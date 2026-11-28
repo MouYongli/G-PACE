@@ -85,9 +85,13 @@ class SerialisedViews:
             if to_text(query) != target:
                 continue
             view = store.build(binding, self._graph, self._version, read_id=self._read_id)
-            self.events += store.events
+            # The instantiation rule of `ViewStore.materialise`: distinct claims in the
+            # witnesses of the query's rows, against the family's threshold.
             claims = {c for r in view.rows for w in r.witnesses for c in w.claims}
-            return view if len(claims) >= self.config.threshold(binding.family) else None
+            if len(claims) < self.config.threshold(binding.family):
+                return None  # a resident store would not hold this view either
+            self.events += store.events
+            return view
         return None
 
     def save(self, directory: Path) -> list[Path]:
