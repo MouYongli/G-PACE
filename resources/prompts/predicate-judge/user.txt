@@ -1,0 +1,7 @@
+Sentence: {{quote}}
+
+Subject: {{subject}}
+Object: {{object}}
+
+Predicate 1: {{predicate_a}}
+Predicate 2: {{predicate_b}}

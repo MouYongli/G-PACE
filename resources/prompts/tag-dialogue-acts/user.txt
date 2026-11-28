@@ -1,0 +1,5 @@
+Earlier messages (context only, do not tag):
+{{earlier}}
+
+New messages:
+{{messages}}

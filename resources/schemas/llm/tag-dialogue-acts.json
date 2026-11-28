@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grace/llm/tag-dialogue-acts.json",
+  "title": "Output of the dialogue-act tagging call of the tagged-retrieval baseline (plan 7.2; T027)",
+  "description": "One entry per message of the unit. The function labels are those of the writer schema (extract-claims.json, claims.items.properties.function). Array bounds: at most 16 messages per unit (the engine refuses larger units) and at most 3 acts per message. No uniqueItems: the vLLM grammar backend rejects it (HTTP 400); the engine drops repeated acts.",
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": {"type": "integer", "minimum": 1, "maximum": 16},
+          "acts": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {"enum": ["request", "offer", "accept", "reject", "confirm", "inform", "commit", "question"]}
+          }
+        },
+        "required": ["message", "acts"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["tags"],
+  "additionalProperties": false
+}

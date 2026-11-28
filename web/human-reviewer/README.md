@@ -10,6 +10,7 @@ Open a page's `index.html` straight from disk, or serve the repository root (or 
 uv run python -m http.server 8000 --bind 127.0.0.1
 # http://localhost:8000/web/human-reviewer/locomo/
 # http://localhost:8000/web/human-reviewer/multiwoz/
+# http://localhost:8000/web/human-reviewer/graph-quality/
 ```
 
 Both ways show the same page. Opened from disk, keep the folders of `web/human-reviewer/` together, and export often: browsers keep the drafts of a `file://` page less dependably than those of an HTTP page, and may lose them when the folder moves.
@@ -26,13 +27,14 @@ Both ways show the same page. Opened from disk, keep the folders of `web/human-r
 | `js/<benchmark>.js` | Behaviour of one benchmark page |
 | `<benchmark>/index.html` | The page |
 | `<benchmark>/data/example.js` | Synthetic example data: plain JSON assigned to `window.HR_EXAMPLE`, loaded as a script so that the page needs no HTTP server |
-| `<benchmark>/data/example.json` | The same data as a JSON file, for trying `Import data` |
+| `<benchmark>/data/example.json` | The same data as a JSON file, for trying `Import data` (`graph-quality/` has `example-segments.jsonl` and `example-merged.jsonl`) |
 
 ## Pages
 
 | Page | Task | Example data |
 | --- | --- | --- |
 | `locomo/` | T012 fragment coverage | Two invented conversations (`example-1`: 3 sessions, 16 turns, 16 questions; `example-2`: 2 sessions, 6 turns, 4 questions) |
+| `graph-quality/` | T024 review of the merged agent annotation (outside the plan; user decision 2026-11-28) | Two invented segments (`example:ex-1`, `example:ex-2`) with ten merged rows |
 | `multiwoz/` | T006 offer-turn check | Three invented dialogues (`EXAMPLE-A.json`, `-B`, `-C`; 24 turns, 6 offer turns) |
 
 ### `locomo/`
@@ -45,6 +47,16 @@ Two views, switched through the URL (`#/`, `#/example-1`, `#/example-1/q2`):
 Data. Without imported data the page shows `locomo/data/example.js`. `Import data` reads a local file, either the original `locomo10.json` or a file in the shape of the example, and keeps it in the browser (IndexedDB). The original file carries no overlap marks and lists every conversation, including those outside the development split; build a file in the example's shape to show only the questions of the annotation sheet.
 
 Labels. Every change is kept at once as a draft in the browser (`localStorage`), per annotator ID. A question is `todo`, `draft` or `done`; it becomes `done` through `Confirm` when a label, the rationale and (for `other`) a reason are present, and returns to `draft` when it is changed. A flag marks a question for a second look and does not change its status. `Export CSV` downloads the `done` questions as `labels-<annotator>.csv` with the columns of `docs/research/annotations/fragment-coverage/labels-*.csv`; `Import labels` reads such a file back, to continue in another browser.
+
+### `graph-quality/`
+
+A human reviews the merged agent annotation of the 40 T024 segments (`docs/research/annotations/graph-quality/merged-agent-A-agent-B.jsonl`, guideline `docs/research/graph-quality-annotation.md`, sections 6 and 7). Two views: the segment list with progress (`#/`) and one segment (`#/seg/<segment key>`).
+
+- **One segment**: the context messages (grey, not annotated), then each message with its claim rows. A pair shows A and B side by side with the differing fields highlighted; an `A only` or `B only` row shows the one version. Per row: `Accept A`, `Accept B` (a pair identical in both versions has one `Accept`, already counted as accepted), `Reject` or `Edit` (closed values for `object_type`, `function`, `report_mode`, `polarity`, `certainty`; the quote must occur verbatim in the message), and an optional note. `+ Add claim` under a message adds a claim both agents missed. `Need review` hides the identical pairs. `Mark segment done` needs every row decided and every edited or added claim valid; changing a decision reopens the segment.
+
+Data. The segment texts are development data and are not in the repository, as with the other pages. `Import data` reads two files, picked together or one after the other: `segments.jsonl` (`$PROJECT_ROOT/runs/T024/artifacts/sample/`) and the merged JSONL; they are kept in the browser (IndexedDB). Without imported data the page shows `graph-quality/data/example.js`.
+
+Labels. Every decision is kept at once in the browser (`localStorage`). `Save draft` downloads decisions, notes, added claims and done marks as a JSON backup; `Load draft` reads it back, to continue in another browser. `Export JSONL` (annotator ID required) writes the done segments as `labels-<annotator>.jsonl` in the guideline's label format: accepted, edited and added claims in message order with fresh IDs `c1`..`cN`, and one `segment_done` per segment (`minutes` from the field in the footer, else `null`). The merged file holds no stances or entity alignments, so none are exported. The file is complete, and `scripts/annotation/graph-quality.sh validate` accepts it without problems, once all 40 segments are done; notes are not part of the label file and stay in the draft.
 
 ### `multiwoz/`
 
@@ -67,4 +79,5 @@ The example data is synthetic: the conversations, questions, dialogues, acts, st
 | Page | Keys |
 | --- | --- |
 | `locomo/` | `j` / `k`: next / previous question. `1`–`5`: choose the label. `e`: next evidence turn. `Enter`: confirm and go on. `f`: flag. `v`: all messages / evidence only. `[` / `]`: question list / message tree. `?`: help |
+| `graph-quality/` | None; every action is a button |
 | `multiwoz/` | `j` / `k`: next / previous offer turn. `c` / `x`: rule label correct / incorrect. `n`: write the note. `Enter`: confirm and go on. `f`: flag. `[`: list of offer turns. `?`: help |
