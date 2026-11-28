@@ -594,12 +594,12 @@ nodes:
     type: task
     title: Structured and tagged baselines
     milestone: M4
-    status: active
+    status: done
     depends_on: [T003, T022]
     issue: 139
     owner: w01-T027
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../tasks/T027-structured-baselines.md
   - id: T028
     type: task
@@ -638,12 +638,12 @@ nodes:
     type: task
     title: LoCoMo streaming harness
     milestone: M4
-    status: active
+    status: done
     depends_on: [T007, T026]
     issue: 152
     owner: w01-T031
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../tasks/T031-locomo-streaming.md
   - id: E011
     type: experiment
