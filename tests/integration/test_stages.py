@@ -223,9 +223,10 @@ class StagesTest(unittest.TestCase):
         manifest = json.loads((ingest.run_dir / "snapshot" / "manifest.json").read_text())
         victim = ingest.run_dir / "snapshot" / manifest["histories"][0]["files"][0]["path"]
         victim.write_bytes(victim.read_bytes() + b" ")
+        before = set((self.root / "E000").iterdir())
         with self.assertRaisesRegex(ValueError, "does not match the manifest"):
             self.read(ingest, 256)
-        failed = sorted((self.root / "E000").iterdir())[-1]
+        (failed,) = set((self.root / "E000").iterdir()) - before
         self.assertEqual(json.loads((failed / "run.json").read_text())["status"], "failed")
         run = json.loads((ingest.run_dir / "run.json").read_text())
         run["status"] = "failed"
