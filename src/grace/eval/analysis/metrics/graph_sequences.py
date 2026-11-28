@@ -19,7 +19,8 @@ Units of comparison are claim occurrences: one per attribution (a claim on one m
 - Endings. A gold ending is a supersession (its attribution names the ending message). A
   committed writer ending is a writer supersession. They match when on the same message and the
   ended claims' objects (and, for non-task subjects, subjects) match. Recall and precision of
-  endings.
+  endings; `negated_only` counts the unmatched gold endings whose message carries a negative
+  writer attribution on the ended claim (the denial is recorded, the claim is not ended).
 - Ending-stance false drops: an ending stance the program dropped (`dropped` item with reason in
   `graph.ENDING_DROPS`, `detail` = the writer claim it would have ended) on a unit is a false drop
   when a gold ending on one of the unit's messages ends a claim that matches the writer claim.
@@ -221,6 +222,14 @@ def score_sequence(sequence_id: str, sequence_dir: Path, graph: WriterGraph | No
                 end_pairs.append((gi, wi))
                 used.add(wi)
                 break
+    # unmatched gold endings whose message carries a negative writer attribution on the ended
+    # claim: the writer denied the proposition, but no supersession was committed
+    matched_g = {gi for gi, _ in end_pairs}
+    for gi, ge in enumerate(gold_end):
+        if gi not in matched_g and any(
+                w["message_id"] == ge["message_id"] and w.get("polarity") == "negative"
+                and names_match(ge, w) for w in writer):
+            c["endings_negated_only"] += 1
     c["gold_endings"] = len(gold_end)
     c["writer_endings"] = len(writer_end)
     c["endings_matched"] = len(end_pairs)
@@ -271,6 +280,7 @@ def summarise(counts: Mapping[str, Mapping[str, int]], rows: Sequence[Mapping[st
                                 for f in ("function", "polarity")},
             "endings": {"gold": t["gold_endings"], "writer": t["writer_endings"],
                         "matched": t["endings_matched"],
+                        "negated_only": t["endings_negated_only"],
                         "recall": _ratio(t["endings_matched"], t["gold_endings"]),
                         "precision": _ratio(t["endings_matched"], t["writer_endings"]),
                         "gold_by_kind": {k.split(":", 1)[1]: v for k, v in sorted(t.items())

@@ -65,6 +65,7 @@ class SequenceScoreTest(unittest.TestCase):
         self.assertEqual(counts["loose"], 2)         # residesIn vs livesIn is not lexical
         self.assertEqual(counts["function:equal"], 1)  # request vs inform on m2
         self.assertEqual((counts["gold_endings"], counts["endings_matched"]), (1, 0))
+        self.assertEqual(counts.get("endings_negated_only", 0), 0)
         self.assertEqual((counts["drops"], counts["false_drops"]), (1, 1))
         self.assertEqual(counts["gold_endings_lost_to_drops"], 1)
         summary = gs.summarise({"seq": counts}, rows)
