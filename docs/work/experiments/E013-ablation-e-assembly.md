@@ -43,6 +43,8 @@ At the same token budget, does assembly by evidence demand raise full evidence h
 | E013-20261128T074547Z-cd90 (score of 2b78) | 2026-11-28 | completed | 18c4c20 | same directory scheme |
 | E013-20261128T074547Z-15b2 (score of ed8f) | 2026-11-28 | completed | 18c4c20 | same directory scheme |
 | E013-20261128T074548Z-79fc (score of dc16) | 2026-11-28 | completed | 18c4c20 | same directory scheme |
+| E013-20261128T075426Z-89f2 (system: new main-configuration reference after the decisions) | 2026-11-28 | completed | 4e4aa94 | same directory scheme |
+| E013-20261128T080905Z-053e (score of 89f2) | 2026-11-28 | completed | 4e4aa94 | same directory scheme |
 
 All rows are development diagnosis runs (LoCoMo dev, conv-26 and conv-49, 308 end-of-history reads, budget 1,024, Qwen3-8B answering and planning, Qwen3-32B writer with session units), not formal E013 runs. Per-read plan and assembly records and the analysis scripts are in `runs/E013/artifacts/w01-E013/diagnosis/`.
 
@@ -68,6 +70,8 @@ Decisions of s00-super on these findings (2026-11-28, development configuration 
 
 **E007's answer-accuracy table is stale.** Its GRACE rows (LoCoMo dev F1 per writer arm) were produced before the fill fix and with rule routing, the open-items listing of the fallback variable and the fallback query expansion. They no longer describe the main configuration; the reference for later experiments is the rerun below.
 
+**New reference of the main configuration** (code 4e4aa94: fill fix, `routing: all`, no open item for the fallback variable, no query expansion for a fallback plan; system E013-20261128T075426Z-89f2, score E013-20261128T080905Z-053e): F1 0.330 (308 scored, 0 invalid, 47 unknown); by category 0.311 (1, n 69), 0.081 (2, n 70), 0.114 (3, n 26), 0.501 (4, n 143); raw full evidence hit 193 of 308 reads (rrf 191). rrf: 0.347, 44 unknown. The variant without any open items (0.338, -79fc) also removed the 18 contexts that still list open planner variables; the difference to the reference is within about three times the rerun noise. 71 plans fell back; the assembler's query expansion ran in 25 reads (compiled plans only).
+
 **Temporal scoring.** Token F1 on category 2 stays near 0.08 for every system because answers are written as ISO dates (item 5 above); no answer-path or scorer change was made. No judge accuracy exists for these runs: the LoCoMo judge is the remote comparison judge of the pilot (E001 reports it for `rrf` only), and it was not run here. s00-super raises the date format for D012.
 
 ## Conclusion
@@ -80,3 +84,4 @@ Pending.
 - 2026-11-25: confirmed as optional (user, 2026-11-25); plan sections 7.3, 9 and 9.3 now say so.
 - 2026-11-28: development diagnosis of the E007 gap to rrf on LoCoMo dev (session w01-E013, branch `task/E013-ablation-e-assembly`): 7 system runs and their scores in `runs/E013/artifacts/w01-E013/`; fixed the rank-order fill so that claim citations no longer hide raw evidence (`assembly/select.py`, test in `tests/unit/test_assembly.py`); development variants in `configs/experiments/E013-dev/`; draft `configs/experiments/E013-ablation-e-assembly.yaml` (not reviewed). Findings in Results, "Development diagnosis".
 - 2026-11-28: decisions of s00-super on the diagnosis (development configuration, before D012). (1) Fill fix accepted (evidence: raw full evidence hit 163 -> 187, F1 0.296 -> 0.314). (2) The main configuration uses `routing: all`: `configs/retrieval/default.yaml` changed, rule routing kept as the E012 arm `configs/retrieval/rules.yaml`, T025 code unchanged (evidence: 110 to 121 reads were dense-only, F1 +0.007 to +0.009 with routing all). (3) The fallback `answer` variable is never listed as an open item; the section stays for planner variables (`Demand.fallback`; evidence: 24 of 33 open-item reads, 20 unknown answers against 9 for rrf, F1 +0.015 without the section). (4) No assembler query expansion for a fallback plan; kept for compiled plans (`Assembler.assemble(query_expansion=...)`; evidence: 37 expansions closed 4 variables, the fallback query repeats the request and spends the read's retrieval). (5) No answer-path or scorer change for temporal scoring; judge accuracy next to F1 where available; the date-format effect is noted in Results. Tests: `tests/unit/test_assembly.py`, `tests/integration/test_grace_engine.py`.
+- 2026-11-28: reference rerun of the main configuration after the decisions (LoCoMo dev, 308 reads, budget 1,024): system E013-20261128T075426Z-89f2, score E013-20261128T080905Z-053e, F1 0.330, 47 unknown (Results).
