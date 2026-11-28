@@ -214,6 +214,17 @@ def view_stats(run_dir: Path) -> dict[str, Any]:
             "no_hit_with_near_binding": sum(bool(e.get("near")) for e in no_hit),
             "no_hit_eligible_with_near_binding": sum(bool(e.get("near")) and e["view_eligible"]
                                                      for e in no_hit),
+            # Why a near binding missed: its bound query differs from the plan's query only in
+            # variable names, also in attribution constraints, or in more (readtime.near_class).
+            "no_hit_near_class": dict(Counter(e.get("near_class") for e in no_hit)),
+            "no_hit_near_class_eligible": dict(Counter(e.get("near_class") for e in no_hit
+                                                       if e["view_eligible"])),
+            "reads_hit_if_variable_names_ignored": len({e["read_id"] for e in no_hit
+                                                        if e["view_eligible"] and
+                                                        e.get("near_class") == "variable_names"}),
+            "reads_hit_if_variables_and_attribution_ignored": len(
+                {e["read_id"] for e in no_hit if e["view_eligible"]
+                 and e.get("near_class") in ("variable_names", "attribution")}),
             "candidate_bindings_mean": (mean(e.get("candidates", 0) for e in presented)
                                         if presented else None),
             "rows_mean": mean(e["rows"] for e in presented) if presented else None,
