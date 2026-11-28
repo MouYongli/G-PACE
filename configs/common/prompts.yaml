@@ -181,7 +181,7 @@ prompts:
       speaker, message (the new message, last).
   extract-claims:
     call_type: extract
-    sha256: d24611419e20717423ed3dcb3bb3b1845bdf0e4b8660ab7d0cc6daa5c798d9f1
+    sha256: 44bf11d6c58ee32841d72231a8833e97fa55f9e21dad0124461763e12ffc58c9
     schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
     schema_sha256: 462ace0dca5d13c10724f432c0d8859fc466773ad4a0ef8829b2cf965de522f0
     note: >-
@@ -200,4 +200,9 @@ prompts:
       negative stance with `ends` (never also as a negative claim, which the program would keep
       instead; a negative claim only for what is not a known claim), with the function of the claim's earlier stance (request for a requirement), a
       quote naming the old value, and also on a change that names the old value; one invented
-      example.
+      example. Final writer round (E007, user decision of 2026-11-28, the last one): the change
+      example of another domain (choir voice part instead of an occupation, which pulled the
+      writer to jobTitle); task requirements one per claim on the task entity, exclusive; an
+      assistant offer of a value for something the user required is also written on the subject
+      and predicate of the requirement with function offer (D010 option B), so that the guard
+      compares them.
