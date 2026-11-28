@@ -2,7 +2,7 @@
 # Same as configs/engines/grace.yaml except: retrieval -> configs/retrieval/no-graph.yaml.
 # Read-side only, so a read run restores the shared main-configuration ingest snapshot.
 engine: grace
-description: GRACE, ablation D arm no-graph-channel (graph channel removed from retrieval and fusion; query answers still shown as state)
+description: "GRACE, ablation D arm no-graph-channel (graph channel removed from retrieval and fusion; query answers still shown as state)"
 prefix_caching: false
 # GRACE's writer model (user decision 2026-11-28, D006 amendment): Qwen3-32B, reached at the run's
 # --writer-url; the planner, view rendering and answering stay on the run's model (Qwen3-8B).
