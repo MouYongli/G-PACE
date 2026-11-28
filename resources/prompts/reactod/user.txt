@@ -1,0 +1,13 @@
+Intents:
+{{intents}}
+
+Previous intent: {{previous_intent}}
+Current dialogue state: {{state}}
+
+Previous system utterance: {{system}}
+User utterance: {{user}}
+
+Trace of this turn:
+{{trace}}
+
+Your next tool call (one JSON object):
