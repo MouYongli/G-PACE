@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "grace/llm/extract-claims.json",
   "title": "Output of the writer call (plan 5.1, 5.6): a claim patch anchored to the messages of one extraction unit",
-  "description": "Array bounds (user decision of 2026-11-26) end repetition loops under constrained decoding; they are sized for units of at most 8 messages (configs/common/writer.yaml, segment-8): claims 32 (4 per message; the prompt asks for 0 to 3; the largest valid output of the Qwen3-8B smoke run T022-20261126T184442Z-2a64 had 30, the 99th percentile 27), stances 16 (2 per message; legitimate outputs there had at most 4 per message, two messages with 13 and 17 were spurious endings), same_as 8 (none observed). A larger unit (session granularity, E007) needs larger bounds and a re-pinned schema.",
+  "description": "Array bounds (user decision of 2026-11-26) end repetition loops under constrained decoding. First sized for units of at most 8 messages (claims 32, stances 16, same_as 8); widened in E007 (ablation G) so that one schema serves every granularity up to a whole session: claims 96, stances 48, same_as 16. The largest LoCoMo development session has 39 messages, so 96 claims allow about 2.5 per message there, far above the largest valid outputs seen (Qwen3-8B segment-8 run T022-20261126T184442Z-2a64: at most 30 claims in 8 messages, 99th percentile 27); a repetition loop at smaller units now ends at the writer's max_tokens instead and is split as invalid output.",
   "type": "object",
   "properties": {
     "claims": {
       "type": "array",
-      "maxItems": 32,
+      "maxItems": 96,
       "items": {
         "type": "object",
         "properties": {
@@ -36,7 +36,7 @@
     },
     "stances": {
       "type": "array",
-      "maxItems": 16,
+      "maxItems": 48,
       "items": {
         "type": "object",
         "properties": {
@@ -57,7 +57,7 @@
     },
     "same_as": {
       "type": "array",
-      "maxItems": 8,
+      "maxItems": 16,
       "items": {
         "type": "object",
         "properties": {

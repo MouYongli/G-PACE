@@ -170,9 +170,9 @@ prompts:
       speaker, message (the new message, last).
   extract-claims:
     call_type: extract
-    sha256: e3aca074d4565305a8d420e79c0acbad988816073579f247ae4e1e785a7d0e2b
+    sha256: 0ca40b38db348b2e8353b213ba632fd1be9e804390c345553bd794d1ec213432
     schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
-    schema_sha256: 65da49a5bbf8b82dbf0c652255e03014744605d759691c68301b1bea0ad01bf0
+    schema_sha256: 462ace0dca5d13c10724f432c0d8859fc466773ad4a0ef8829b2cf965de522f0
     note: >-
       GRACE's writer (T022, plan 5.1 and 5.6), one call per extraction unit (configs/common/
       writer.yaml: message, segment of n messages inside a session, or session). Variables:
@@ -180,4 +180,8 @@ prompts:
       current claims under handles k1, k2, ...), earlier (preceding messages, context only),
       messages (the unit, numbered, last). Output: claims, stances and same_as entries anchored to
       message numbers and quotes; checked by src/grace/context/pipeline/update/patch.py
-      (parse_patch), resolved by validate.py and guarded by guard.py.
+      (parse_patch), resolved by validate.py and guarded by guard.py. Revised once in E007
+      (ablation G; the user's one prompt round on development data before D012): facts wrapped
+      in chit-chat, easily missed kinds of facts, a per-message check, feelings only through what
+      they are about; schema array bounds widened to 96 claims, 48 stances, 16 same_as for
+      session granularity.
