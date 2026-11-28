@@ -11,6 +11,7 @@ uv run python -m http.server 8000 --bind 127.0.0.1
 # http://localhost:8000/web/human-reviewer/locomo/
 # http://localhost:8000/web/human-reviewer/multiwoz/
 # http://localhost:8000/web/human-reviewer/graph-quality/
+# http://localhost:8000/web/human-reviewer/locomo/correction/
 ```
 
 Both ways show the same page. Opened from disk, keep the folders of `web/human-reviewer/` together, and export often: browsers keep the drafts of a `file://` page less dependably than those of an HTTP page, and may lose them when the folder moves.
@@ -27,6 +28,7 @@ Both ways show the same page. Opened from disk, keep the folders of `web/human-r
 | `js/<benchmark>.js` | Behaviour of one benchmark page |
 | `<benchmark>/index.html` | The page |
 | `<benchmark>/data/example.js` | Synthetic example data: plain JSON assigned to `window.HR_EXAMPLE`, loaded as a script so that the page needs no HTTP server |
+| `locomo/correction/` | The extraction correction page (E009 preparation), with its own `data/example.js` and `data/example.json` |
 | `<benchmark>/data/example.json` | The same data as a JSON file, for trying `Import data` (`graph-quality/` has `example-segments.jsonl` and `example-merged.jsonl`) |
 
 ## Pages
@@ -34,6 +36,7 @@ Both ways show the same page. Opened from disk, keep the folders of `web/human-r
 | Page | Task | Example data |
 | --- | --- | --- |
 | `locomo/` | T012 fragment coverage | Two invented conversations (`example-1`: 3 sessions, 16 turns, 16 questions; `example-2`: 2 sessions, 6 turns, 4 questions) |
+| `locomo/correction/` | E009 preparation: manual correction of the writer's LoCoMo dev extraction | One invented history (`h1`, 4 messages, 9 items, 7 agent proposals) |
 | `graph-quality/` | T024 review of the merged agent annotation (outside the plan; user decision 2026-11-28) | Two invented segments (`example:ex-1`, `example:ex-2`) with ten merged rows |
 | `multiwoz/` | T006 offer-turn check | Three invented dialogues (`EXAMPLE-A.json`, `-B`, `-C`; 24 turns, 6 offer turns) |
 
@@ -58,6 +61,17 @@ Data. The segment texts are development data and are not in the repository, as w
 
 Labels. Every decision is kept at once in the browser (`localStorage`). `Save draft` downloads decisions, notes, added claims and done marks as a JSON backup; `Load draft` reads it back, to continue in another browser. `Export JSONL` (annotator ID required) writes the done segments as `labels-<annotator>.jsonl` in the guideline's label format: accepted, edited and added claims in message order with fresh IDs `c1`..`cN`, and one `segment_done` per segment (`minutes` from the field in the footer, else `null`). The merged file holds no stances or entity alignments, so none are exported. The file is complete, and `scripts/annotation/graph-quality.sh validate` accepts it without problems, once all 40 segments are done; notes are not part of the label file and stay in the draft.
 
+### `locomo/correction/`
+
+E009 needs "LoCoMo development histories with manually corrected extraction". The page shows the writer's extraction of the shared LoCoMo dev ingest message by message and lets a human correct it. Two views: the conversation list with progress (`#/`) and one conversation (`#/conv-26`).
+
+- **One conversation**: the messages grouped by session, the extracted evidence underlined, and under each message its items: `claim` (a new claim with the stance that wrote it), `mention of cX` (a later stance on an earlier claim) and `supersession` (an ending, a change or a correction). Per item: `Accept`, `Reject` (spurious) or `Edit` (claims: subject, predicate, object, valid time; supersessions: kind, valid end, replacing claim; a mention is only accepted or rejected), and a note. `+ Missed claim`, `+ Missed ending` and `+ Missed supersession` add what the writer missed at that message; endings and supersessions name claim IDs (suggested while typing). `Change events` shows only endings, supersessions, corrections, replacing claims, negative stances, items the agent marked as change events and the proposed missed events, which is what E009 counts; `With items` hides messages without items; `Next undecided` jumps to the next open message.
+- **Agent proposals**: an agent pre-review (`docs/research/annotations/locomo-correction/proposals-agent-w01.jsonl`) proposes a decision with a one-line reason for every item (blue box) and a few missed events (dashed cards). `Confirm` takes a proposal over (`Confirm the N item proposals` does so for one message); `Dismiss` turns down a proposed missed event. Only decisions the human made or confirmed are exported.
+
+Data. The dialogue text is development data and is not in the repository. `uv run python -m grace.cli.annotate.locomo_correction bundle` writes the bundle (dialogue, items and the agent proposals) to `$PROJECT_ROOT/runs/E009/artifacts/correction/bundle-<ingest run ID>.json`; `Import data` reads it and keeps it in the browser (IndexedDB). Without imported data the page shows `locomo/correction/data/example.js`, built from the synthetic test fixture `tests/fixtures/locomo-correction/`.
+
+Labels. Every decision is kept at once in the browser (`localStorage`). `Export JSONL` (annotator ID required) writes `locomo-corrections-<annotator>.jsonl`, one record per decision: `history_id`, `item_id` (the entry ID of the ingest: `c205.1`, `a205.3`, `s205.1`) or `add_id` (`h<version>.<n>` for an addition by the human, `p<version>.<n>` for an agent proposal), `message_id`, `decision` (`accept`, `reject`, `edit`, `add_claim`, `add_ending`, `add_supersession`, `dismiss`), `fields`, `reason`, `annotator` and `basis` (`human`, `agent-confirmed`, `agent-overridden`). `Import labels` reads such a file back and replaces the decisions of the conversations it names. `uv run python -m grace.cli.annotate.locomo_correction apply --corrections <file>` replays the ingest with the decisions and writes the corrected `changesets.jsonl` and `snapshot/` (the ingest's format, every change set committed through `ClaimStore` with SHACL validation) to a run directory under `$PROJECT_ROOT/runs/E009/artifacts/correction/`; undecided items keep the writer's extraction unless `--fallback-proposals` fills them with the agent proposals, and `--require-complete` refuses an incomplete file.
+
 ### `multiwoz/`
 
 The unit of work is an offer turn: the user turn right after a system offer, which the T006 rule labelled accept, reject or none. The annotator says whether that label is right. The page has the same header, the same two views (`#/`, `#/EXAMPLE-A.json`, `#/EXAMPLE-A.json/2`) and the same draft, status and flag behaviour as `locomo/`.
@@ -80,4 +94,5 @@ The example data is synthetic: the conversations, questions, dialogues, acts, st
 | --- | --- |
 | `locomo/` | `j` / `k`: next / previous question. `1`–`5`: choose the label. `e`: next evidence turn. `Enter`: confirm and go on. `f`: flag. `v`: all messages / evidence only. `[` / `]`: question list / message tree. `?`: help |
 | `graph-quality/` | None; every action is a button |
+| `locomo/correction/` | None; every action is a button |
 | `multiwoz/` | `j` / `k`: next / previous offer turn. `c` / `x`: rule label correct / incorrect. `n`: write the note. `Enter`: confirm and go on. `f`: flag. `[`: list of offer turns. `?`: help |

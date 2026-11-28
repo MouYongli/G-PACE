@@ -1,0 +1,576 @@
+{
+ "kind": "locomo-correction-bundle",
+ "version": 1,
+ "source": {
+  "run_id": "example",
+  "name": "synthetic example (tests/fixtures/locomo-correction)"
+ },
+ "histories": [
+  {
+   "history_id": "h1",
+   "segments": [
+    {
+     "segment_id": "session_1",
+     "first_version": 1,
+     "last_version": 4,
+     "timestamp": "2023-05-01T10:00",
+     "timestamp_raw": "10:00 am on 1 May, 2023"
+    }
+   ],
+   "messages": [
+    {
+     "message_id": "D1:1",
+     "version": 1,
+     "speaker": "Ann",
+     "segment_id": "session_1",
+     "text": "I live in Paris and I play the violin."
+    },
+    {
+     "message_id": "D1:2",
+     "version": 2,
+     "speaker": "Bob",
+     "segment_id": "session_1",
+     "text": "Cool. Do you still have the cat?"
+    },
+    {
+     "message_id": "D1:3",
+     "version": 3,
+     "speaker": "Ann",
+     "segment_id": "session_1",
+     "text": "I moved to Berlin last month. I quit the violin."
+    },
+    {
+     "message_id": "D1:4",
+     "version": 4,
+     "speaker": "Bob",
+     "segment_id": "session_1",
+     "text": "Berlin is great, I live there too. You live in Berlin now, right?"
+    }
+   ],
+   "entity_labels": {},
+   "items": [
+    {
+     "item_id": "c1.1",
+     "kind": "claim",
+     "version": 1,
+     "message_id": "D1:1",
+     "claim": {
+      "claim_id": "c1.1",
+      "object": {
+       "entity": "Paris"
+      },
+      "predicate": "livesIn",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 1
+     },
+     "attributions": [
+      {
+       "attribution_id": "a1.1",
+       "certainty": "certain",
+       "claim_id": "c1.1",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:1",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Ann",
+       "version": 1
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c1.1",
+       "evidence_id": "e1.1",
+       "message_id": "D1:1",
+       "span": {
+        "end": 15,
+        "start": 0
+       },
+       "version": 1
+      }
+     ],
+     "change": []
+    },
+    {
+     "item_id": "c1.2",
+     "kind": "claim",
+     "version": 1,
+     "message_id": "D1:1",
+     "claim": {
+      "claim_id": "c1.2",
+      "object": {
+       "entity": "violin"
+      },
+      "predicate": "plays",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 1
+     },
+     "attributions": [
+      {
+       "attribution_id": "a1.2",
+       "certainty": "certain",
+       "claim_id": "c1.2",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:1",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Ann",
+       "version": 1
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c1.2",
+       "evidence_id": "e1.2",
+       "message_id": "D1:1",
+       "span": {
+        "end": 37,
+        "start": 20
+       },
+       "version": 1
+      }
+     ],
+     "change": []
+    },
+    {
+     "item_id": "c1.3",
+     "kind": "claim",
+     "version": 1,
+     "message_id": "D1:1",
+     "claim": {
+      "claim_id": "c1.3",
+      "object": {
+       "entity": "rain"
+      },
+      "predicate": "likes",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 1
+     },
+     "attributions": [
+      {
+       "attribution_id": "a1.3",
+       "certainty": "certain",
+       "claim_id": "c1.3",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:1",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Ann",
+       "version": 1
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c1.3",
+       "evidence_id": "e1.3",
+       "message_id": "D1:1",
+       "span": null,
+       "version": 1
+      }
+     ],
+     "change": []
+    },
+    {
+     "item_id": "c2.1",
+     "kind": "claim",
+     "version": 2,
+     "message_id": "D1:2",
+     "claim": {
+      "claim_id": "c2.1",
+      "object": {
+       "entity": "cat"
+      },
+      "predicate": "owns",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 2
+     },
+     "attributions": [
+      {
+       "attribution_id": "a2.1",
+       "certainty": "certain",
+       "claim_id": "c2.1",
+       "derived": false,
+       "function": "question",
+       "message_id": "D1:2",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Bob",
+       "version": 2
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c2.1",
+       "evidence_id": "e2.1",
+       "message_id": "D1:2",
+       "span": {
+        "end": 32,
+        "start": 6
+       },
+       "version": 2
+      }
+     ],
+     "change": []
+    },
+    {
+     "item_id": "c3.1",
+     "kind": "claim",
+     "version": 3,
+     "message_id": "D1:3",
+     "claim": {
+      "claim_id": "c3.1",
+      "object": {
+       "entity": "Berlin"
+      },
+      "predicate": "livesIn",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": "last month",
+       "start": null
+      },
+      "version": 3
+     },
+     "attributions": [
+      {
+       "attribution_id": "a3.1",
+       "certainty": "certain",
+       "claim_id": "c3.1",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:3",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Ann",
+       "version": 3
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c3.1",
+       "evidence_id": "e3.1",
+       "message_id": "D1:3",
+       "span": {
+        "end": 28,
+        "start": 0
+       },
+       "version": 3
+      }
+     ],
+     "change": []
+    },
+    {
+     "item_id": "a3.2",
+     "kind": "attribution",
+     "version": 3,
+     "message_id": "D1:3",
+     "claim_id": "c1.2",
+     "claim": {
+      "claim_id": "c1.2",
+      "object": {
+       "entity": "violin"
+      },
+      "predicate": "plays",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 1
+     },
+     "attributions": [
+      {
+       "attribution_id": "a3.2",
+       "certainty": "certain",
+       "claim_id": "c1.2",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:3",
+       "polarity": "negative",
+       "report_mode": "own",
+       "speaker": "Ann",
+       "version": 3
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c1.2",
+       "evidence_id": "e3.2",
+       "message_id": "D1:3",
+       "span": {
+        "end": 48,
+        "start": 30
+       },
+       "version": 3
+      }
+     ],
+     "change": [
+      "negative"
+     ]
+    },
+    {
+     "item_id": "a3.3",
+     "kind": "attribution",
+     "version": 3,
+     "message_id": "D1:3",
+     "claim_id": "c1.1",
+     "claim": {
+      "claim_id": "c1.1",
+      "object": {
+       "entity": "Paris"
+      },
+      "predicate": "livesIn",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 1
+     },
+     "attributions": [
+      {
+       "attribution_id": "a3.3",
+       "certainty": "certain",
+       "claim_id": "c1.1",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:3",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Ann",
+       "version": 3
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c1.1",
+       "evidence_id": "e3.3",
+       "message_id": "D1:3",
+       "span": null,
+       "version": 3
+      }
+     ],
+     "change": []
+    },
+    {
+     "item_id": "s3.1",
+     "kind": "supersession",
+     "version": 3,
+     "message_id": "D1:3",
+     "supersession": {
+      "attribution_id": "a3.2",
+      "claim_id": "c1.2",
+      "kind": "change",
+      "replacing_claim_id": null,
+      "supersession_id": "s3.1",
+      "valid_end": null,
+      "version": 3
+     },
+     "claim": {
+      "claim_id": "c1.2",
+      "object": {
+       "entity": "violin"
+      },
+      "predicate": "plays",
+      "scope": null,
+      "subject": "Ann",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 1
+     },
+     "replacing": null,
+     "change": [
+      "ending"
+     ]
+    },
+    {
+     "item_id": "c4.1",
+     "kind": "claim",
+     "version": 4,
+     "message_id": "D1:4",
+     "claim": {
+      "claim_id": "c4.1",
+      "object": {
+       "entity": "Berlin"
+      },
+      "predicate": "livesIn",
+      "scope": null,
+      "subject": "Bob",
+      "valid_time": {
+       "end": null,
+       "expression": null,
+       "start": null
+      },
+      "version": 4
+     },
+     "attributions": [
+      {
+       "attribution_id": "a4.1",
+       "certainty": "certain",
+       "claim_id": "c4.1",
+       "derived": false,
+       "function": "inform",
+       "message_id": "D1:4",
+       "polarity": "positive",
+       "report_mode": "own",
+       "speaker": "Bob",
+       "version": 4
+      }
+     ],
+     "evidence": [
+      {
+       "claim_id": "c4.1",
+       "evidence_id": "e4.1",
+       "message_id": "D1:4",
+       "span": {
+        "end": 33,
+        "start": 17
+       },
+       "version": 4
+      }
+     ],
+     "change": []
+    }
+   ]
+  }
+ ],
+ "proposals": [
+  {
+   "history_id": "h1",
+   "item_id": "c1.3",
+   "add_id": null,
+   "message_id": "D1:1",
+   "decision": "reject",
+   "fields": null,
+   "reason": "Not stated.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": false
+  },
+  {
+   "history_id": "h1",
+   "item_id": "c1.2",
+   "add_id": null,
+   "message_id": "D1:1",
+   "decision": "edit",
+   "fields": {
+    "predicate": "playsInstrument"
+   },
+   "reason": "Vocabulary.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": false
+  },
+  {
+   "history_id": "h1",
+   "item_id": "c2.1",
+   "add_id": null,
+   "message_id": "D1:2",
+   "decision": "reject",
+   "fields": null,
+   "reason": "A question.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": false
+  },
+  {
+   "history_id": "h1",
+   "item_id": "a3.3",
+   "add_id": null,
+   "message_id": "D1:3",
+   "decision": "reject",
+   "fields": null,
+   "reason": "Paris is no longer stated.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": false
+  },
+  {
+   "history_id": "h1",
+   "item_id": "s3.1",
+   "add_id": null,
+   "message_id": "D1:3",
+   "decision": "accept",
+   "fields": null,
+   "reason": "She quit.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": false
+  },
+  {
+   "history_id": "h1",
+   "item_id": null,
+   "add_id": "p3.1",
+   "message_id": "D1:3",
+   "decision": "add_supersession",
+   "fields": {
+    "claim_id": "c1.1",
+    "replacing_claim_id": "c3.1",
+    "kind": "change",
+    "valid_end": null
+   },
+   "reason": "Moved from Paris to Berlin.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": true
+  },
+  {
+   "history_id": "h1",
+   "item_id": null,
+   "add_id": "p4.1",
+   "message_id": "D1:4",
+   "decision": "add_claim",
+   "fields": {
+    "subject": "Ann",
+    "predicate": "livesIn",
+    "object": {
+     "entity": "Berlin"
+    },
+    "valid_time": {
+     "start": null,
+     "end": null,
+     "expression": "last month"
+    },
+    "quote": "You live in Berlin now"
+   },
+   "reason": "Restated by Bob.",
+   "annotator": "agent-example",
+   "basis": "agent-proposal",
+   "change_event": false
+  }
+ ]
+}
