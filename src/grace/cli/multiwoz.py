@@ -376,15 +376,15 @@ def score_values(aligned, gold_by_ann, derived) -> dict[str, dict[str, Any]]:
     for rid, a in aligned.items():
         pred, output = a.prediction["prediction"], a.prediction["output"]
         state = pred if output == "state" else None
-        hid = a.task["history_id"]
+        hid = a.read_task["history_id"]
         for ann in ANNOTATIONS:
-            gold = gold_by_ann[ann][a.task["task_id"]]
+            gold = gold_by_ann[ann][a.read_task["task_id"]]
             ref = gold["reference"]
             alts = (gold.get("metadata") or {}).get("alternatives")
             put(f"jga|{ann}", rid, dst.joint_goal(state, ref), hid, output)
             put(f"slot-f1|{ann}", rid, dst.slot_f1(state, ref), hid, output)
             put(f"jga-lenient|{ann}", rid, lenient_jga(state, ref, alts), hid, output)
-        item = derived.get(a.task["task_id"])
+        item = derived.get(a.read_task["task_id"])
         if item is None:
             continue
         choices = (a.prediction.get("metadata") or {}).get("current_choice")

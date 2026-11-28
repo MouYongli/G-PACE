@@ -19,7 +19,7 @@ produce rows:
 **Projection policies** (`project`), each a pure function of the rows with `version <= r`:
 
 - `overwrite` (deterministic overwrite on official slots): every new value of a slot replaces the
-  old one, whoever said it; only rejected values are not written.
+  old one, whoever said it; only rejected values and the agent's requests are not written.
 - `user-only` (the rule that never writes system values): the same, restricted to rows of the
   user. It agrees with the 2.4 convention on offered values by construction and cannot answer
   the "current choice" (plan 6.5).
@@ -123,6 +123,8 @@ def project(rows: Iterable[SlotRow], version: int, policy: str,
     for row in rows:
         if row.function == "reject" or (policy == "user-only" and row.role != "user"):
             continue
+        if row.role != "user" and row.function == "request":
+            continue   # an agent request asks for a value; it states none
         if row.slot in slots:
             state[row.slot] = norm_value(row.value)
     choice = {d: state.get(f"{d}-{s}") for d, s in ENTITY.items() if f"{d}-{s}" in slots}
