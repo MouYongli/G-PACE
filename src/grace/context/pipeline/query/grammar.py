@@ -54,7 +54,7 @@ _TOKEN = re.compile(r"""
   | (?P<var>\?[A-Za-z_][A-Za-z0-9_]*)
   | (?P<iri><[^<>\s()"{}\[\],]+>)
   | (?P<string>"(?:[^"\\]|\\.)*"(?:\^\^[A-Za-z]+)?)
-  | (?P<number>-?\d+(?![A-Za-z_]))
+  | (?P<number>-?\d+(?![A-Za-z0-9_\-]))   # not the start of a name such as "50mm" (E013)
   | (?P<name>[A-Za-z0-9_][A-Za-z0-9_\-]*)
   | (?P<op>!=|<=|>=|&&|\|\||[=<>(){}\[\],./|+*^!])
 """, re.VERBOSE)
