@@ -42,11 +42,14 @@ def model_name(record: CallRecord) -> str:
     return record.model.split("@", 1)[0]
 
 
-def unreported_runs(records: Iterable[CallRecord]) -> set[tuple[str, str]]:
-    """(run_id, model) pairs of chat records none of which reports a cached token."""
+def unreported_runs(records: Iterable[CallRecord],
+                    exempt: Iterable[str] = ()) -> set[tuple[str, str]]:
+    """(run_id, model) pairs of chat records none of which reports a cached token. `exempt` run
+    IDs ran without prefix caching, so their zero is a measurement, not a missing report."""
     seen: dict[tuple[str, str], bool] = {}
+    exempt = set(exempt)
     for r in records:
-        if r.category not in SYSTEM:
+        if r.category not in SYSTEM or r.run_id in exempt:
             continue
         key = (r.run_id, model_name(r))
         seen[key] = seen.get(key, False) or r.cached_input_tokens > 0
@@ -260,8 +263,9 @@ def crossing(system: Sequence[float], baseline: Sequence[float]) -> int | None:
 
 
 def f1_summary(scores: Sequence[Mapping], threshold: float) -> dict:
-    """Mean F1 over scored reads and the number of successes (F1 >= threshold)."""
-    values = [float(s["f1"]) for s in scores]
+    """Mean F1 over the reads and the number of successes (F1 >= threshold). An invalid output
+    has F1 null and counts as wrong (0), the registered invalid policy of LoCoMo F1."""
+    values = [0.0 if s["f1"] is None else float(s["f1"]) for s in scores]
     return {"n": len(values), "f1": sum(values) / len(values) if values else None,
             "n_success": sum(1 for v in values if v >= threshold),
             "n_unknown": sum(1 for s in scores if s.get("output") == "unknown"),

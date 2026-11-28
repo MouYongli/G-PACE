@@ -2,7 +2,12 @@
 
     uv run python -m grace.cli.quality_cost \\
         --config configs/experiments/E014-dev-quality-cost.yaml \\
-        --manifest <runs manifest .yaml> --out <new directory under the runs root> [--probe RUN_DIR]
+        --manifest <runs manifest .yaml> --out <new directory under the runs root> \\
+        [--probe CALL_TYPES=RUN_DIR ...]
+
+`--probe plan,repair,answer=<run>` takes the mean cached tokens per call of those call types from a
+run on a server that reports cached tokens (the `probe` accounting); several probes may be given,
+each for its own call types.
 
 The manifest (a file under the runs root, not tracked) lists, for one target, every system and
 budget with its run directories (system or read runs; a read run carries its ingest upstream) and
@@ -105,8 +110,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--probe", type=Path, default=None,
-                        help="probe read run on a server that reports cached tokens")
+    parser.add_argument("--probe", action="append", default=[],
+                        help="CALL_TYPES=RUN_DIR: a run on a server that reports cached tokens")
     parser.add_argument("--counter", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     config = yaml.safe_load(args.config.read_text())
@@ -164,17 +169,28 @@ def main(argv: list[str] | None = None) -> int:
         counter = HFTokenCounter.from_model_config(REPO_ROOT / config["models"]["answer"])
         prefixes = static_prefixes(counter, block)
     all_records = [r for s in systems.values() for r in s.records]
-    unreported = qc.unreported_runs(all_records)
-    probe = {}
-    if args.probe is not None:
-        probe_run = load_run(args.probe, include_ingest=False)
+    unreported = qc.unreported_runs(all_records,
+                                    cost["cache_imputation"].get("exempt_runs") or [])
+    probe: dict[str, dict] = {}
+    for spec in args.probe:
+        types, sep, path = spec.partition("=")
+        if not sep:
+            raise SystemExit(f"--probe {spec!r}: expected CALL_TYPES=RUN_DIR")
+        probe_run = load_run(Path(path), include_ingest=False)
         if probe_run.run.get("status") != "completed":
             raise SystemExit(f"probe {probe_run.run_id} is not completed")
         inputs.append({"system": "probe", "budget": None, "run_id": probe_run.run_id,
-                       "stage": "read", "path": probe_run.run_dir.resolve().as_posix(),
+                       "stage": probe_run.run.get("stage"), "call_types": types,
+                       "path": probe_run.run_dir.resolve().as_posix(),
                        "run_json_sha256": hashlib.sha256(
                            (probe_run.run_dir / "run.json").read_bytes()).hexdigest()})
-        probe = qc.probe_cached_means(probe_run.records)
+        means = qc.probe_cached_means(probe_run.records)
+        for call_type in types.split(","):
+            if call_type in probe:
+                raise SystemExit(f"call type {call_type} given by two probes")
+            if call_type not in means:
+                raise SystemExit(f"probe {probe_run.run_id} has no {call_type} call")
+            probe[call_type] = {**means[call_type], "run_id": probe_run.run_id}
     weightings = {name: dict(w or {}) for name, w in cost["weights"].items()}
 
     def pricer(accounting: str, weighting: str) -> qc.Pricer:
@@ -188,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         "unreported_runs": sorted([list(k) for k in unreported]),
         "static_prefix_tokens": {p["name"]: p["tokens"] for p in prefixes.values()},
         "block_tokens": block, "probe": probe,
-        "probe_run": str(args.probe) if args.probe else None})
+        "probe_specs": args.probe})
 
     # Quality and cost per read ------------------------------------------------------------
     quality_rows, ledger_rows, success_rows = [], [], []

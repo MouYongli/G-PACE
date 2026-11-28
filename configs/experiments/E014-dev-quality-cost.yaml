@@ -152,6 +152,8 @@ cost:
   #                tokens), applied to the Qwen3-8B records of the same call type.
   cache_imputation:
     block_tokens: 16               # vLLM KV block size: prefix hits are whole blocks
+    exempt_runs:                   # ran on a server without prefix caching: zero cached is real
+      - E001-20261125T184148Z-74ee
     probe:
       engine: configs/engines/grace.yaml
       upstream: shared_ingest
