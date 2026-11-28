@@ -1,0 +1,10 @@
+Allowed slots (name: description):
+{{slots}}
+
+Allowed functions: {{functions}}
+
+Earlier messages (context only, do not extract):
+{{earlier}}
+
+New messages:
+{{messages}}
