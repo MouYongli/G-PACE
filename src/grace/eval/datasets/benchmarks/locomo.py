@@ -5,7 +5,14 @@ One `sample_id` is one history; `session_<k>` lists are its segments, dated by
 Categories 1 to 4 are read at the end of the history; category 5 (adversarial) is excluded and
 counted. Image fields (`img_url`, `blip_caption`, `query`, `re-download`) and the generated
 summaries (`event_summary`, `session_summary`, `observation`) are excluded and counted.
-The evidence-anchored streaming schedule and v(q) belong to T007.
+
+Evidence-anchored streaming (plan 6.5; read points from T007, schedule from T031): besides the
+native schedule the adapter emits `read_tasks.streaming.jsonl`, every question with a read point
+asked at v(q) and at N, built from the committed read-point list named by the adapter option
+`streaming_read_points` (`configs/benchmarks/read-points/locomo.yaml` in
+`configs/benchmarks/locomo.yaml`; without the option no streaming schedule is emitted). The read
+points are recomputed from the records and must equal the list for every history of the split,
+else conversion fails.
 """
 
 from __future__ import annotations
@@ -17,6 +24,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from grace.config.paths import REPO_ROOT
+from grace.eval.datasets.benchmarks import locomo_read_points as rp
 from grace.eval.datasets.benchmarks.base import Adapter, HistoryBuilder, Records, SplitSpec
 from grace.eval.datasets.benchmarks.base import time_or_none as _time
 from grace.eval.datasets.benchmarks.records import Gold, ReadTask, RecordError
@@ -27,6 +36,7 @@ SUMMARY_FIELDS = ("event_summary", "session_summary", "observation")
 TURN_FIELDS = {"speaker", "dia_id", "text", *IMAGE_FIELDS}
 SESSION = re.compile(r"session_(\d+)")
 SESSION_DATE = re.compile(r"session_(\d+)_date_time")
+STREAMING_SCHEDULE = "read_tasks.streaming.jsonl"
 
 
 def parse_time(raw: str) -> str:
@@ -55,6 +65,11 @@ class LoCoMoAdapter(Adapter):
         missing = sorted((split.histories or set()) - found)
         if missing:
             raise RecordError(f"{source}: split {split.name} names unknown histories {missing}")
+        read_points = options.get("streaming_read_points")
+        if read_points is not None:
+            rows = rp.streaming_schedule(records, rp.load_committed(REPO_ROOT / read_points),
+                                         version)
+            records.schedules[STREAMING_SCHEDULE] = [ReadTask.from_record(r) for r in rows]
         return records
 
     def _convert_sample(self, records: Records, sample: dict, where: str, version: str,

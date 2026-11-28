@@ -18,6 +18,7 @@ Writes into a new directory under runs_root (never into `$PROJECT_ROOT/data`):
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import datetime as dt
 import json
 import platform
@@ -33,6 +34,8 @@ from grace.config.paths import REPO_ROOT, project_root, shared_dir
 from grace.eval.datasets.benchmarks import locomo_read_points as rp
 from grace.eval.datasets.benchmarks.base import Records, load_config, sha256_file
 from grace.eval.datasets.benchmarks.splits import load_split
+
+streaming_tasks = rp.streaming_tasks  # moved to the dataset module (T031); kept for callers
 
 SLUG = "locomo"
 READ_POINTS_CONFIG = REPO_ROOT / "configs" / "benchmarks" / "read-points" / "locomo.yaml"
@@ -77,12 +80,16 @@ def committed_threshold() -> tuple[rp.Threshold, dict[str, Any]]:
 
 
 def load(stage: str, allow_held_out: bool) -> dict[str, Records]:
-    loaded = {"dev": load_split(SLUG, "dev")}
+    # The adapter's streaming schedule is built from the list this command writes; it is turned
+    # off here, so the list can be regenerated from the data alone.
+    config = load_config(SLUG)
+    config = dataclasses.replace(config, options={**config.options, "streaming_read_points": None})
+    loaded = {"dev": load_split(SLUG, "dev", config=config)}
     if stage == "all":
         if not allow_held_out:
             raise SystemExit("stage all reads held-out annotations; pass "
                              "--held-out-annotation-only to confirm that no system runs on them")
-        loaded["held-out"] = load_split(SLUG, "held-out", tag_exists=lambda: True)
+        loaded["held-out"] = load_split(SLUG, "held-out", config=config, tag_exists=lambda: True)
     return loaded
 
 
@@ -114,20 +121,6 @@ def read_points_yaml(points: list[rp.ReadPoint], stats: list[rp.HistoryStats],
         "reported_separately": {p.task_id: p.reason for p in points
                                 if p.status == rp.SEPARATE},
     }
-
-
-def streaming_tasks(records: Records, points: list[rp.ReadPoint]) -> list[dict[str, Any]]:
-    """Read tasks of the `streaming` schedule (contracts.md, Read task): every question with a
-    read point is asked at v(q) and at N; excluded questions are not in the schedule."""
-    by_id = {t.task_id: t for t in records.read_tasks}
-    rows = []
-    for p in points:
-        if p.v is None:
-            continue
-        task = by_id[p.task_id].to_record()
-        for version in sorted({p.v, p.n_messages}):
-            rows.append({**task, "read_id": f"{p.task_id}@{version}", "version": version})
-    return rows
 
 
 def write_json(path: Path, payload: Any) -> None:
