@@ -16,13 +16,6 @@ and returns the update records (`UnitResult.to_record()`), one per extraction un
 to `updates.jsonl`. `limit` cuts each history after its first `limit` messages (a dry run); the
 store then ends at that version.
 
-`drive_segment` (E007, ablation G) writes one annotated segment of a history (the T024 graph-quality
-sample) from an empty graph: the messages before the segment are appended to the log without
-extraction (the writer sees the last `context_messages` of them as earlier context), one empty
-change set at the version before the segment moves the store head there, and only the segment's
-messages are extracted, at the configured granularity, with versions and message IDs as in the
-history. Its graph is saved under `<out>/graphs/<name>/`.
-
 Model calls: one `extract` call per unit and attempt, through `grace.llm` (the caller's
 `ChatClient`), recorded in `calls.jsonl` with their true statuses.
 """
@@ -34,7 +27,6 @@ from pathlib import Path
 from typing import Any
 
 from grace.context.api import HistoryInfo, Message
-from grace.context.memory.graph.changeset import ChangeSet
 from grace.context.memory.graph.store import ClaimStore
 from grace.context.memory.history.log import MessageLog
 from grace.context.pipeline.update.extract import Extractor
@@ -61,31 +53,6 @@ def drive_history(history: HistoryInfo, messages: Sequence[Message], extractor: 
     for result in updater.finish():
         records.append(result.to_record())
     target = Path(out_dir) / "graphs" / history.history_id
-    store.save(target / "store")
-    updater.save(target)
-    return records
-
-
-def drive_segment(history: HistoryInfo, messages: Sequence[Message], first_version: int,
-                  last_version: int, extractor: Extractor, config: WriterConfig, out_dir: Path,
-                  name: str) -> list[dict[str, Any]]:
-    """Write the messages `first_version..last_version` of one history from an empty graph."""
-    ordered = sorted(messages, key=lambda m: m.version)
-    if not 1 <= first_version <= last_version <= len(ordered):
-        raise ValueError(f"{name}: versions {first_version}..{last_version} out of range")
-    log = MessageLog(history.history_id)
-    store = ClaimStore(history.history_id)
-    updater = Updater(history, log, store, extractor, config)
-    for message in ordered[:first_version - 1]:
-        log.append(message)
-    if first_version > 1:
-        store.commit(ChangeSet(history.history_id, first_version - 1,
-                               vocabulary_version=updater.vocabulary.version))
-    records: list[dict[str, Any]] = []
-    for message in ordered[first_version - 1:last_version]:
-        records += [r.to_record() for r in updater.write(message)]
-    records += [r.to_record() for r in updater.finish()]
-    target = Path(out_dir) / "graphs" / name
     store.save(target / "store")
     updater.save(target)
     return records

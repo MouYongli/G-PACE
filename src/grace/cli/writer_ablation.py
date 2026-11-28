@@ -17,9 +17,11 @@ Targets (development data only; the driver refuses any other split kind):
 - `kind: histories`: every message of the listed histories, in order, as `grace.cli.writer_smoke`
   does (`writer_extract.drive_history`); graphs per history.
 - `kind: segments`: the annotated segments of T024's graph-quality sample (`sample.json`, texts in
-  `segments.jsonl`), each written from an empty graph (`writer_extract.drive_segment`); the data
-  versions and manifests of the sample must equal those of the benchmark configs, and every
-  segment text must equal the loaded message. Graphs per segment, named by the segment key.
+  `segments.jsonl`), each written on its own with its 6 context messages first, exactly as E006's
+  probe does (`grace.eval.runner.probes.extract.drive_segment`, mode `context+segment`), so that
+  `grace.cli.graph_quality score` reads the graphs (`graphs/<graph_id>/`); the data versions and
+  manifests of the sample must equal those of the benchmark configs, and every segment text must
+  equal the loaded message. Unit and token statistics include the context messages.
 
 Writes a new run directory `$PROJECT_ROOT/runs/E007/artifacts/<worker>/E007/<run-id>/` (stage
 `probe`): `run.json`, `resolved-config.yaml`, `run.log`, `calls.jsonl`, `updates.jsonl` (one
@@ -36,7 +38,6 @@ import argparse
 import dataclasses
 import hashlib
 import json
-import re
 import shlex
 import sys
 import threading
@@ -57,7 +58,9 @@ from grace.eval.analysis.metrics import writer as metric
 from grace.eval.datasets.benchmarks.base import write_records
 from grace.eval.datasets.benchmarks.splits import load_split
 from grace.eval.runner.harness import rundir
-from grace.eval.runner.probes.writer_extract import drive_history, drive_segment
+from grace.eval.runner.probes import extract as segment_probe
+from grace.eval.runner.probes.extract import graph_id as segment_graph_id
+from grace.eval.runner.probes.writer_extract import drive_history
 from grace.llm.client import ChatClient, Endpoint
 from grace.llm.records import CallLedger
 from grace.llm.tokens import HFTokenCounter, TokenizerPin, locate_snapshot
@@ -101,10 +104,6 @@ def arm_pin(model_config: Path, thinking: bool) -> TokenizerPin:
     return dataclasses.replace(pin, thinking=thinking,
                                template_kwargs={**pin.template_kwargs,
                                                 "enable_thinking": thinking})
-
-
-def graph_name(key: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_.-]+", "_", key)
 
 
 def extraction_items(update: dict[str, Any], speakers: dict[str, str], graph: str,
@@ -267,16 +266,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                     if (m.message_id, m.text) != (sm["message_id"], sm["text"]):
                         raise ValueError(f"{seg['key']}: message {sm['message_id']} differs "
                                          "from the loaded record")
-                for m in msgs[seg["first_version"] - 1:seg["last_version"]]:
-                    speakers[(seg["key"], m.message_id)] = m.speaker or m.role
-                    messages_by_key[(seg["key"], m.message_id)] = m.to_record()
-                name = graph_name(seg["key"])
+                wanted = set(seg["context_ids"]) | set(seg["message_ids"])
+                for m in msgs:
+                    if m.message_id in wanted:
+                        speakers[(seg["key"], m.message_id)] = m.speaker or m.role
+                        messages_by_key[(seg["key"], m.message_id)] = m.to_record()
+                name = segment_graph_id(seg)
 
-                def job(history=history, msgs=msgs, seg=seg, name=name):
-                    writer = llm_writer(writer_config, client, history)
-                    return drive_segment(history, msgs, seg["first_version"],
-                                         seg["last_version"], writer, writer_config, run_dir,
-                                         name)
+                def job(history=history, msgs=msgs, seg=seg):
+                    return segment_probe.drive_segment(
+                        history, msgs, seg,
+                        lambda info: llm_writer(writer_config, client, info), writer_config,
+                        run_dir)
                 jobs.append((name, seg["benchmark"], seg["key"], job))
             say(f"segments: {len(jobs)} of the T024 sample, "
                 f"{sum(s['last_version'] - s['first_version'] + 1 for s in segments)} messages")

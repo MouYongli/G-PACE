@@ -102,9 +102,12 @@ targets:
                 - apartment-search-rho3-L200-000
                 - apartment-search-rho30-L200-000
   # The 40 annotated segments of T024 (16 LoCoMo sessions, 24 LongMemEval-S windows; 578
-  # messages), each written from an empty graph, for E006's scorer. Session granularity on a
-  # segment is the whole segment: the full session for LoCoMo, the 8 to 14 message window of a
-  # session for LongMemEval-S. The sample is relative to the repository, the texts to PROJECT_ROOT.
+  # messages), for E006's scorer (grace.cli.graph_quality score). Each segment is written on its own
+  # with its 6 context messages first, as E006's probe does (segment_mode context+segment; the
+  # context is extracted, not scored). Session granularity on a segment: the context's session and
+  # the segment's session are separate units; the segment unit is the full session for LoCoMo and
+  # the 8 to 14 message window for LongMemEval-S. The sample is relative to the repository, the
+  # texts to PROJECT_ROOT.
   t024-segments:
     kind: segments
     sample: docs/research/annotations/graph-quality/sample.json
