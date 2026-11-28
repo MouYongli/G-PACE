@@ -65,6 +65,7 @@ All runs under `runs/E012/artifacts/w01-E012/E012/<run-id>/` (report in `report.
 | E012-20261128T102129Z-87c1 .. -102501Z-e6a1 (9 runs) | 2026-11-28 | completed | 83905a9 | LongMemEval other strata reads, all 31 histories (-87c1 full, -d315 no-bm25, -6b32 no-dense, -8dfb no-graph-channel, -fe69 no-graph-state, -bc4f no-graph, -882f no-verification, -3888 no-graph-no-verification, -e6a1 rules) |
 | E012-20261128T102529Z-38cd | 2026-11-28 | completed | 83905a9 | LongMemEval main-text strata per-arm metrics, 67 reads |
 | E012-20261128T102541Z-8574 | 2026-11-28 | completed | 83905a9 | LongMemEval other strata per-arm metrics, 31 reads |
+| E012-20261128T113435Z-7a58 .. -113653Z-5c00 (18 judge runs), E012-20261128T114219Z-3e61 .. -114437Z-56ec (18 score runs) | 2026-11-28 | completed | 125d34f (judge), 2389bd3 (score) | Local judge (uncalibrated) and `judge-accuracy` of the 18 LongMemEval read runs above; `runs/E012/artifacts/w01-judge/E012/<run-id>/report.yaml` |
 
 ## Results
 
@@ -130,6 +131,24 @@ All 98 development histories, read at code 83905a9 (main's snapshot-restore fixe
 
 Path recall of `full` by stratum: knowledge-update 0.893 (n 15), multi-session 0.710 (n 26), temporal-reasoning 0.904 (n 26); single-session-assistant 0.727 (n 11), -preference 0.861 (n 6), -user 1.000 (n 14). Without dense: -0.107, -0.193, -0.083; -0.091, -0.444, -0.077. Without BM25, multi-session rises by 0.100: BM25 candidates displace dense ones that carry the evidence. Unique evidence among the fused candidates of `full`: dense only 16 + 5, BM25 only 2 + 0, graph only 0 + 0 (main + other); the graph channel returns candidates in 15% and 42% of reads.
 
+### Judge (uncalibrated, T035 pending)
+
+Local primary judge DeepSeek-V4-Flash-0731 (D006; `configs/judges/blind.yaml` v2, chat mode, thinking off, temperature 0) on two B200 GPUs; registered metric `judge-accuracy` of `configs/common/scorers.yaml` (`grace.cli.judge_score`: answer reads take the verdict, `unknown` is correct exactly on abstention tasks). The judge is not yet calibrated against human labels (T035), so these numbers are development evidence only. Judge noise: a rerun of the judge on E013-20261128T094210Z-746d gave 46 of 46 identical verdicts (E013-20261128T114537Z-b627), on E014-20261128T090613Z-5f08 260 of 265 (E014-20261128T114539Z-7196); one prediction identical in two runs got different verdicts in two judge runs. Every stratum has fewer than 100 reads (descriptive only). Locally counted input tokens equalled the server's prompt_tokens on every call. Judge runs at 125d34f, score runs at 2389bd3 (branch `task/judge-local`); judge and score runs under `runs/E012/artifacts/w01-judge/E012/` (`report.yaml` in each). Accuracy pools the two score runs of each arm (main-text strata, 67 reads; other strata, 31 reads); `n` = 98 scored reads per arm, judge-invalid verdicts 0, invalid predictions 0.
+
+| Arm | judge runs (main / other) | score runs (main / other) | accuracy (98) | unknown | knowledge-update (15) | multi-session (26) | ss-assistant (11) | ss-preference (6) | ss-user (14) | temporal-reasoning (26) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| full | 113435Z-7a58 / 113549Z-b00b | 114219Z-3e61 / 114333Z-90f3 | 0.469 | 28 | 0.933 | 0.231 | 0.636 | 0.000 | 0.929 | 0.231 |
+| no-bm25 | 113444Z-aa62 / 113557Z-1f76 | 114227Z-1d04 / 114341Z-9df7 | 0.469 | 28 | 0.800 | 0.308 | 0.727 | 0.000 | 0.786 | 0.269 |
+| no-dense | 113452Z-97dc / 113605Z-0422 | 114235Z-5a07 / 114349Z-b07c | 0.418 | 41 | 0.667 | 0.269 | 0.636 | 0.000 | 0.714 | 0.269 |
+| no-graph-channel | 113500Z-4e9d / 113613Z-f0ac | 114244Z-4136 / 114357Z-4315 | 0.469 | 27 | 0.867 | 0.269 | 0.636 | 0.000 | 0.929 | 0.231 |
+| no-graph-state | 113508Z-f32f / 113621Z-fa4f | 114252Z-40fe / 114405Z-24a4 | 0.469 | 27 | 1.000 | 0.192 | 0.636 | 0.000 | 0.857 | 0.269 |
+| no-graph | 113517Z-bcdf / 113629Z-30d4 | 114300Z-9c2d / 114413Z-a7e0 | 0.469 | 26 | 0.933 | 0.231 | 0.636 | 0.000 | 0.929 | 0.231 |
+| no-verification | 113525Z-7b23 / 113637Z-c4a4 | 114308Z-704b / 114421Z-ad3b | 0.490 | 28 | 0.933 | 0.269 | 0.636 | 0.000 | 0.929 | 0.269 |
+| no-graph-no-verification | 113533Z-51ab / 113645Z-3998 | 114316Z-e2b6 / 114429Z-b8ab | 0.480 | 26 | 0.933 | 0.269 | 0.636 | 0.000 | 0.929 | 0.231 |
+| rules | 113541Z-523c / 113653Z-5c00 | 114325Z-b61d / 114437Z-56ec | 0.500 | 28 | 0.867 | 0.308 | 0.727 | 0.000 | 0.929 | 0.269 |
+
+Run IDs abbreviated: prefix `E012-20261128T`. Reading: removing dense costs 0.051 accuracy (5 reads of 98; 13 more `unknown`), consistent with its path-recall loss; every other arm is within 3 reads of `full`, inside judge and answer noise (`full` and E013's identical main configuration differ by 3 of 67 reads on the same snapshot). single-session-preference is 0 for every arm: its references are rubric-like descriptions of the preferred answer, which the blind prompt does not accept (the official LongMemEval preference template exists for this; not run, paid).
+
 ### Not measured
 
 - **Stale-value use.** Neither LoCoMo nor LongMemEval carries gold for the superseded value, and the knowledge-update stratum needs the judge. Not measured here; the controlled sequences (E016) are where it can be.
@@ -152,3 +171,4 @@ Development evidence, before D012. On LoCoMo and LongMemEval-S dev at 1,024 toke
 - 2026-11-28: MultiWOZ not run (estimate in Results). Proposed status: E012 planned -> review.
 - 2026-11-28: both restore defects were fixed on main meanwhile (aa2c9fc, 81e51d7, E013). After merging main, all LongMemEval arms were rerun on all 98 histories at 83905a9; the Results use these runs, the partial runs stay in the Runs table as superseded.
 - 2026-11-28: recorded done with a remark by the integration owner (s00-super): PR #178 merged. Decision: the MultiWOZ arms are not run (nine per-turn system runs re-run the Qwen3-32B writer, arm differences would mix with writer noise, and the graph channel showed no gain on LoCoMo or LongMemEval-S; MultiWOZ evidence for the guard comes from E011). Remark: the verification LLM call of plan 5.6 is not implemented, so the graph-versus-verification split is not testable; stale-value use needs the controlled sequences.
+- 2026-11-28: judge (uncalibrated, T035 pending): the local primary judge (DeepSeek-V4-Flash-0731, D006) judged the 18 LongMemEval-S read runs and `judge-accuracy` was scored (session w01-judge; Results, "Judge (uncalibrated, T035 pending)"). Removing dense costs 0.051 accuracy; the other arms stay within 3 of 98 reads of `full`.

@@ -58,6 +58,7 @@ Formal runs (2026-11-28; every run directory under `runs/E013/artifacts/w01-E013
 | 9 LongMemEval-S read runs E013-20261128T094004Z-842a, E013-20261128T094005Z-* (second attempt) | 2026-11-28 | failed: view restore, `QueryTypeError` (entity `50mm_f_1_8_prime_lens` lexed as a number); fixed in 81e51d7 | aa2c9fc | same |
 | 9 LongMemEval-S read runs E013-20261128T094210Z-* (upstream ingest E006-20261128T083145Z-6288) | 2026-11-28 | completed | 81e51d7 | same |
 | 12 LongMemEval-S evidence score runs E013-20261128T091523Z-59df, -091531Z-6fd9, -091540Z-d144, E013-20261128T0945*Z-*, E013-20261128T0946*Z-* | 2026-11-28 | completed | 5f91b4c (rrf), 81e51d7 | same |
+| 12 LongMemEval-S judge runs E013-20261128T1137*Z-* / T1138*Z-* and 12 score runs E013-20261128T1144*Z-* / T1145*Z-* / T1146*Z-* (9 read runs T094210Z-*, 3 rrf system runs T090658Z-*), one judge rerun E013-20261128T114537Z-b627 | 2026-11-28 | completed | 125d34f (judge), 2389bd3 (score) | `runs/E013/artifacts/w01-judge/E013/<run-id>/report.yaml` |
 
 Development diagnosis runs above the formal block: all rows of the first table are development diagnosis runs (LoCoMo dev, conv-26 and conv-49, 308 end-of-history reads, budget 1,024, Qwen3-8B answering and planning, Qwen3-32B writer with session units), not formal E013 runs. Per-read plan and assembly records and the analysis scripts are in `runs/E013/artifacts/w01-E013/diagnosis/`.
 
@@ -136,6 +137,29 @@ Decisions of s00-super on these findings (2026-11-28, development configuration 
 
 **Temporal scoring.** Token F1 on category 2 stays near 0.08 for every system because answers are written as ISO dates (item 5 above); no answer-path or scorer change was made. No judge accuracy exists for these runs: the LoCoMo judge is the remote comparison judge of the pilot (E001 reports it for `rrf` only), and it was not run here. s00-super raises the date format for D012.
 
+### Judge (uncalibrated, T035 pending)
+
+Local primary judge DeepSeek-V4-Flash-0731 (D006; `configs/judges/blind.yaml` v2, chat mode, thinking off, temperature 0); registered metric `judge-accuracy` (`grace.cli.judge_score`: answer reads take the verdict, `unknown` is correct exactly on abstention tasks). Not calibrated against human labels (T035): development evidence only. Judge runs at 125d34f, score runs at 2389bd3; run directories `runs/E013/artifacts/w01-judge/E013/<run-id>/` with `report.yaml`. Judge rerun noise: 46 of 46 identical verdicts (E013-20261128T114537Z-b627 against E013-20261128T113752Z-80f5), 260 of 265 on a LoCoMo run. Strata have fewer than 100 reads (descriptive). Judge-invalid verdicts 0 and invalid predictions 0 in every LongMemEval-S run; local input-token counts equal the server's on every call.
+
+**LongMemEval-S dev, main-text strata (67 reads: knowledge-update 15, multi-session 26, temporal-reasoning 26)**
+
+| Budget | Arm | Upstream run | Judge run | Score run | accuracy | unknown | knowledge-update | multi-session | temporal-reasoning |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 256 | greedy | E013-20261128T094210Z-8d78 | E013-20261128T113800Z-3b30 | E013-20261128T114542Z-31f8 | 0.328 | 27 | 0.600 | 0.192 | 0.308 |
+| 256 | truncate | E013-20261128T094210Z-9eca | E013-20261128T113809Z-0a72 | E013-20261128T114550Z-b699 | 0.299 | 29 | 0.533 | 0.154 | 0.308 |
+| 256 | no-open | E013-20261128T094210Z-00c9 | E013-20261128T113728Z-732b | E013-20261128T114510Z-07eb | 0.328 | 27 | 0.600 | 0.192 | 0.308 |
+| 256 | rrf | E013-20261128T090658Z-450c | E013-20261128T113711Z-ff0a | E013-20261128T114454Z-fff2 | 0.328 | 28 | 0.533 | 0.192 | 0.346 |
+| 512 | greedy | E013-20261128T094210Z-d012 | E013-20261128T113833Z-50c3 | E013-20261128T114615Z-24c9 | 0.403 | 21 | 0.733 | 0.308 | 0.308 |
+| 512 | truncate | E013-20261128T094210Z-62a7 | E013-20261128T113744Z-cda6 | E013-20261128T114526Z-6d94 | 0.463 | 19 | 0.733 | 0.385 | 0.385 |
+| 512 | no-open | E013-20261128T094210Z-cc12 | E013-20261128T113825Z-906b | E013-20261128T114606Z-9e25 | 0.418 | 21 | 0.733 | 0.308 | 0.346 |
+| 512 | rrf | E013-20261128T090658Z-10d1 | E013-20261128T113702Z-0c91 | E013-20261128T114446Z-3a69 | 0.463 | 19 | 0.867 | 0.385 | 0.308 |
+| 1,024 | greedy | E013-20261128T094210Z-746d | E013-20261128T113752Z-80f5 | E013-20261128T114534Z-2f31 | 0.433 | 21 | 0.933 | 0.269 | 0.308 |
+| 1,024 | truncate | E013-20261128T094210Z-55b2 | E013-20261128T113736Z-6229 | E013-20261128T114518Z-0559 | 0.418 | 20 | 0.933 | 0.308 | 0.231 |
+| 1,024 | no-open | E013-20261128T094210Z-a7a3 | E013-20261128T113817Z-0be7 | E013-20261128T114558Z-459f | 0.403 | 21 | 0.933 | 0.231 | 0.269 |
+| 1,024 | rrf | E013-20261128T090658Z-f05b | E013-20261128T113719Z-2cde | E013-20261128T114502Z-7c11 | 0.418 | 19 | 0.933 | 0.269 | 0.269 |
+
+Reading: on 67 reads one read is 0.015; at each budget the arms differ by at most 4 reads (greedy against truncate and rrf at 512), within the 3-read difference between two identical main-configuration read runs (E012 `full` against E013 greedy at 1,024). The judge does not separate the assembly arms or GRACE from rrf on LongMemEval-S dev; accuracy rises from 256 to 512 for every arm and is flat or lower from 512 to 1,024 (rrf 0.463 -> 0.418, truncate 0.463 -> 0.418).
+
 ## Conclusion
 
 On development data (LoCoMo dev, 308 reads; LongMemEval-S dev main-text strata, 67 reads; budgets 256 to 1,024), C4 is not supported in the current implementation: evidence-demand assembly neither raises full evidence hits nor lowers unsupported answers compared with rank truncation of the same candidates or with the rrf fused top-k baseline. Greedy and truncation mostly build identical contexts because the demand has one variable in almost every read and support is the lexical placeholder of plan 5.6 (no verification call). Whether a real verification call, multi-variable plans or summaries with expandable pointers change this is untested. LongMemEval-S answer accuracy is pending a judge (T035).
@@ -149,3 +173,4 @@ On development data (LoCoMo dev, 308 reads; LongMemEval-S dev main-text strata, 
 - 2026-11-28: reference rerun of the main configuration after the decisions (LoCoMo dev, 308 reads, budget 1,024): system E013-20261128T075426Z-89f2, score E013-20261128T080905Z-053e, F1 0.330, 47 unknown (Results).
 - 2026-11-28: formal ablation (session w01-E013, branch `task/E013-formal`): `configs/experiments/E013-ablation-e-assembly.yaml` finished (arms greedy, truncate, no-open, rrf; pointers-vs-summaries not runnable), arm configs in `configs/experiments/E013/`, new scorer `grace.cli.evidence_score`, `locomo_score` accepts read runs. 24 system/read runs and 36 score runs completed; two snapshot-restore bugs fixed after 18 failed LongMemEval-S read runs (Runs). Results and Conclusion written. Proposed status: E013 active -> review.
 - 2026-11-28: recorded done with a remark by the integration owner (s00-super): PR #176 merged; C4 not supported on development data. Remark: LongMemEval-S answer accuracy waits for a judge.
+- 2026-11-28: judge (uncalibrated, T035 pending): the local primary judge (DeepSeek-V4-Flash-0731, D006) judged the 9 LongMemEval-S read runs and the 3 rrf system runs, and `judge-accuracy` was scored (session w01-judge; Results, "Judge (uncalibrated, T035 pending)"). At each budget the arms and rrf lie within 4 of 67 reads.
