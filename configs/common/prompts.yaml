@@ -34,7 +34,7 @@ prompts:
     call_type: extract
     sha256: 6a86f26274511ff8e4953391f86740b7b2ae39a50537b48a4a7e0359a2636089
     schema: llm/tag-dialogue-acts  # resources/schemas/llm/tag-dialogue-acts.json
-    schema_sha256: 98023219f47f23889a54e5a618c233013737afd1208ef894a241e759d8db738b
+    schema_sha256: 83b93e8ccf0f16d0ad5f2eede810929e8d45c77b2089ab860c05aa414e0dc6d2
     note: >-
       Tagged-retrieval baseline (T027, plan 7.2): dialogue-act tags per message, predicted by the
       writer model with the writer's function labels, one call per unit of the writer's

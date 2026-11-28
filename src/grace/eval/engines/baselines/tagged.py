@@ -98,7 +98,7 @@ class TaggedRetrieval(Retrieval):
                 number = entry["message"]
                 if number > n or number in out:
                     raise ValueError(f"message number {number} outside 1..{n} or repeated")
-                out[number] = list(entry["acts"])
+                out[number] = list(dict.fromkeys(entry["acts"]))  # repeated acts dropped
             return out
         return check
 
