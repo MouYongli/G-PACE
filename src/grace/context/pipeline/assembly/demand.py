@@ -5,7 +5,10 @@ The demand of a read is the list of variables the planner named (`Plan.variables
 "?train: the accepted train", "?arrival: its arrival time". The engine passes these pairs in; this
 module does not import `query/`. When the planner named none (rule templates name none for some
 tasks, and a fallback plan names none), the demand is one variable, `answer`, described by the
-request itself.
+request itself. That fallback variable is marked (`Demand.fallback`): it is never listed as an
+open item, because "not supported" there only means that the lexical stand-in found too few of
+the question's own words (s00-super, 2026-11-28, after the E013 diagnosis: listing the question
+as "not found in memory" made the answering LLM abstain).
 
 Support is decided in two ways:
 
@@ -64,6 +67,7 @@ class Demand:
 
     request: str
     variables: tuple[Variable, ...]
+    fallback: bool = False  # the single `answer` variable made from the request (no planner ones)
 
     def __post_init__(self) -> None:
         if not self.variables:
@@ -83,13 +87,16 @@ class Demand:
         raise KeyError(name)
 
     def to_record(self) -> dict:
-        return {"request": self.request, "variables": [v.to_record() for v in self.variables]}
+        return {"request": self.request, "variables": [v.to_record() for v in self.variables],
+                "fallback": self.fallback}
 
 
 def demand_of(request: str, variables: Iterable[tuple[str, str]] = ()) -> Demand:
     """The demand of a read: the planner's `(var, describes)` pairs, else one `answer` variable."""
     listed = tuple(Variable(name, describes) for name, describes in variables)
-    return Demand(request, listed or (Variable(ANSWER, request),))
+    if listed:
+        return Demand(request, listed)
+    return Demand(request, (Variable(ANSWER, request),), fallback=True)
 
 
 def terms(text: str, stem: int = STEM) -> frozenset[str]:

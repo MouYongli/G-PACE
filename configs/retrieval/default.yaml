@@ -8,7 +8,10 @@ channels: [bm25, dense, graph]   # switch a channel off by removing it (ablation
 fusion: rrf          # rrf (main configuration) | weighted
 rrf_k: 60
 weights: {bm25: 1.0, dense: 1.0, graph: 1.0}
-routing: rules       # rules | all (always every available channel)
+routing: all         # rules | all. Main configuration: all (every available channel at every read;
+                     # s00-super 2026-11-28 after the E013 diagnosis: rule routing left BM25 out
+                     # whenever the graph channel was missing or empty). Rule routing is the E012
+                     # arm configs/retrieval/rules.yaml.
 min_confidence: 1    # structural signal families needed before routing narrows the channels
 backfill: true       # fill up to `total` from the other enabled channels when routed ones run dry
 bm25: {k1: 1.5, b: 0.75}
