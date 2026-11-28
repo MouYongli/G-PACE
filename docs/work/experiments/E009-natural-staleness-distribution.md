@@ -40,3 +40,4 @@ Pending.
 ## Log
 
 - 2026-11-23: created from the full project DAG.
+- 2026-11-28: preparation of the corrected LoCoMo input (worker w01-correction, outside this node's runs): correction page `web/human-reviewer/locomo/correction/`, agent pre-review `docs/research/annotations/locomo-correction/proposals-agent-w01.jsonl` of the shared ingest E007-20261128T174115Z-1b02 (final writer), and `python -m grace.cli.annotate.locomo_correction apply`, which writes the corrected change sets in the ingest's format. The human correction itself is pending.

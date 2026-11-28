@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoCoMo extraction correction</title>
+<!--
+  LoCoMo extraction correction page (E009 preparation). A human corrects the writer's extraction of
+  the LoCoMo development conversations message by message: accept, reject or edit each claim, mention,
+  ending and supersession, mark missed endings and supersessions, and add missed claims. An agent
+  pre-review proposes a decision for every item; the human confirms or overrides it.
+  Open index.html straight from disk, or serve the repository root and open the page:
+      uv run python -m http.server 8000 --bind 127.0.0.1
+      http://localhost:8000/web/human-reviewer/locomo/correction/
+  The dialogue text is development data and is not part of the repository: use "Import data" to pick
+  the bundle written by
+      uv run python -m grace.cli.annotate.locomo_correction bundle
+  (default: runs/E009/artifacts/correction/bundle-<ingest run ID>.json). Without imported data the page
+  shows data/example.js, a synthetic example. Imported data and decisions stay in this browser.
+-->
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/shell.css">
+<link rel="stylesheet" href="../../css/locomo-correction.css">
+</head>
+<body>
+
+<header class="topbar bar">
+  <h1><a href="#/" class="home">LoCoMo extraction correction</a></h1>
+  <span class="spacer"></span>
+  <span class="save-state" data-save></span>
+  <div class="bar-group">
+    <button type="button" id="import-data">Import data</button>
+    <button type="button" id="import-labels">Import labels</button>
+    <button type="button" id="export-jsonl">Export JSONL</button>
+    <button type="button" class="help-button" aria-label="Help">?</button>
+  </div>
+  <label class="annotator">Annotator
+    <input type="text" id="annotator" placeholder="your ID" autocomplete="off" spellcheck="false">
+  </label>
+</header>
+<div id="notice" class="notice-line" hidden><span id="notice-text"></span><button type="button" class="icon" id="notice-close" aria-label="Dismiss">×</button></div>
+
+<!-- View 1: conversation list -->
+<div class="view" id="list-view" hidden>
+  <main class="list-main">
+    <div class="table-wrap card">
+      <table id="convs" class="data-table">
+        <thead>
+          <tr>
+            <th>Conversation</th><th class="num">Messages</th><th class="num">Items</th>
+            <th class="num wide-only">Change events</th><th class="num wide-only">Agent: missed</th><th>Progress</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <footer class="list-foot">
+      <span class="muted">Agent proposals are pre-filled for review; only decisions you make or confirm are exported.</span>
+      <span class="spacer"></span>
+      <span id="data-source" class="muted"></span>
+    </footer>
+  </main>
+</div>
+
+<!-- View 2: one conversation -->
+<div class="view" id="conv-view" hidden>
+  <nav class="context-bar" aria-label="Conversation">
+    <label class="conv-pick">Conversation:
+      <select id="conv-select" aria-label="Conversation"></select>
+    </label>
+    <span id="conv-progress" class="progress-text"></span>
+    <span class="spacer"></span>
+    <div class="segmented" role="group" aria-label="Messages shown">
+      <button type="button" data-filter="all">All messages</button>
+      <button type="button" data-filter="items">With items</button>
+      <button type="button" data-filter="change">Change events</button>
+    </div>
+    <button type="button" id="next-open">Next undecided ↓</button>
+    <a class="back" href="#/">← Back to List</a>
+  </nav>
+  <main class="lc-main scroll" id="lc-main"><div id="lc-inner"></div></main>
+  <datalist id="claim-ids"></datalist>
+</div>
+
+<dialog id="help">
+  <form method="dialog" class="help-head"><h2>Help</h2><button aria-label="Close">Close</button></form>
+  <div class="help-body">
+    <h3>Task</h3>
+    <p>Each message shows the dialogue text (extracted evidence underlined) and what the writer extracted there.
+       E009 counts change events, so they matter most: a new value, an ending, a supersession, a correction.
+       <b>Change events</b> shows only those items and the proposed missed events.</p>
+    <table class="help-table">
+      <tr><td><b>claim</b></td><td>A new claim with the stance (speaker, function, polarity, mode, certainty) that wrote it.</td></tr>
+      <tr><td><b>mention of cX</b></td><td>A later stance on an earlier claim. Accept or reject; a rejected claim drops its mentions too.</td></tr>
+      <tr><td><b>supersession</b></td><td>An ending (no replacing claim), a change or a correction. Edit the kind, valid end or replacing claim.</td></tr>
+      <tr><td><b>Accept / Reject / Edit</b></td><td>Keep, remove (spurious) or correct subject, predicate, object and valid time.</td></tr>
+      <tr><td><b>+ Missed …</b></td><td>Add a claim, an ending or a supersession the writer missed at this message. Endings and supersessions name claim IDs (suggestions appear while typing).</td></tr>
+    </table>
+    <h3>Agent proposals</h3>
+    <p>An agent read both conversations and proposed a decision with a one-line reason for every item (blue box) and
+       a few missed events (dashed cards). They are proposals only: <b>Confirm</b> takes one over, or decide otherwise.
+       Only your decisions and confirmations are exported.</p>
+    <h3>Files</h3>
+    <p><b>Import data</b> reads the bundle JSON (dialogue, items, proposals). Decisions are kept at once in this browser.
+       <b>Export JSONL</b> writes one record per decision as <span class="mono">locomo-corrections-&lt;annotator&gt;.jsonl</span>;
+       <b>Import labels</b> reads such a file back (it replaces the decisions of the conversations it names).
+       <span class="mono">python -m grace.cli.annotate.locomo_correction apply --corrections FILE</span> turns it into the corrected extraction.</p>
+    <p class="muted" id="help-source"></p>
+  </div>
+</dialog>
+
+<input type="file" id="data-file" accept=".json,application/json" hidden>
+<input type="file" id="labels-file" accept=".jsonl,.json,application/jsonl" hidden>
+
+<script src="data/example.js"></script>
+<script src="../../js/base.js"></script>
+<script src="../../js/locomo-correction-data.js"></script>
+<script src="../../js/locomo-correction.js"></script>
+</body>
+</html>
