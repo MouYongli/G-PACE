@@ -505,12 +505,12 @@ nodes:
     type: experiment
     title: Graph quality
     milestone: M3
-    status: active
+    status: done
     depends_on: [T022, T024]
     issue: 142
     owner: w01-E006
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E006-graph-quality.md
   - id: E007
     type: experiment
@@ -549,11 +549,11 @@ nodes:
     type: experiment
     title: Ablation C on extracted graphs
     milestone: M3
-    status: planned
+    status: active
     depends_on: [T022, T023, E005]
-    issue: null
-    owner: null
-    start: null
+    issue: 170
+    owner: w01-E010
+    start: 2026-11-28
     finish: null
     file: ../experiments/E010-ablation-c-extracted.md
   - id: D009
@@ -660,11 +660,11 @@ nodes:
     type: experiment
     title: "Ablation D: retrieval channels"
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T026]
-    issue: null
-    owner: null
-    start: null
+    issue: 171
+    owner: w01-E012
+    start: 2026-11-28
     finish: null
     file: ../experiments/E012-ablation-d-channels.md
   - id: E013
@@ -682,11 +682,11 @@ nodes:
     type: experiment
     title: Development quality-versus-cost curves
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T026, T027, T029, T030]
-    issue: null
-    owner: null
-    start: null
+    issue: 172
+    owner: w01-E014
+    start: 2026-11-28
     finish: null
     file: ../experiments/E014-dev-quality-cost.md
   - id: D010

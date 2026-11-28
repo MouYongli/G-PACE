@@ -162,14 +162,29 @@ def norm_predicate(value: Any) -> str:
     return " ".join(words)
 
 
+def head_tokens(value: Any) -> set[str]:
+    """Tokens of the head of a name: what follows its last possessive ("Caroline's necklace"
+    -> {necklace}); the whole name when it has none."""
+    text = str(value or "").lower().replace("’", "'")
+    parts = re.split(r"'s\b|s'(?=\s)", text)
+    return set(norm_text(parts[-1]).split()) or set(norm_text(text).split())
+
+
 def same_name(a: Any, b: Any) -> bool:
+    """Equal after normalisation, or the tokens of one name contained in the other's, provided
+    the shorter name shares a token with the longer one's head: "Caroline" does not match
+    "Caroline's necklace" (the possessor is not the thing), "necklace" does."""
     x, y = norm_text(a), norm_text(b)
     if not x or not y:
         return False
     if x == y:
         return True
     tx, ty = set(x.split()), set(y.split())
-    return tx <= ty or ty <= tx
+    if tx <= ty:
+        return bool(tx & head_tokens(b))
+    if ty <= tx:
+        return bool(ty & head_tokens(a))
+    return False
 
 
 def _tokens(value: str) -> set[str]:

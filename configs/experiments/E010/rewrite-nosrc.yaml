@@ -1,0 +1,23 @@
+# E010 arm rewrite-nosrc: GRACE main configuration (configs/engines/grace.yaml) with one component
+# replaced: the view slot is the read-time content source `rewrite` (src/grace/context/views/
+# readtime.py, registry name read-time-views), and the state lines are shown without
+# their message IDs (configs/assembly/no-state-citations.yaml). Read-side only: one ingest run of the main
+# configuration serves every arm (stages.py).
+engine: grace
+description: GRACE, read-time view source rewrite, without source annotation
+prefix_caching: false
+writer_model: configs/models/qwen3-32b.yaml
+params:
+  writer: configs/common/writer.yaml
+  planner: configs/common/planner.yaml
+  retrieval: configs/retrieval/default.yaml
+  assembly: configs/assembly/no-state-citations.yaml
+  views: configs/views/default.yaml           # families, threshold, speakers, rendering decoding
+  staleness: {strategy: push_confirm, local_filters: true}   # unused: no resident views
+  fragment: {max_predicates: 30, max_entities: 30}
+  components:
+    views: {factory: read-time-views, source: rewrite}
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B

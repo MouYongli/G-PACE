@@ -1,52 +1,84 @@
 # E013 · Ablation E: assembly (plan 5.5, 7.3 ablation E; claim C4; experiment file
-# docs/work/experiments/E013-ablation-e-assembly.md). DRAFT, written during the E013 development
-# diagnosis (2026-11-28) and not yet reviewed: arms, budgets and metrics below follow the experiment
-# file; open points are marked TODO. No formal run uses this file until s00-super accepts it.
-# Development data only (no held-out split before the T033 preregistration tag).
+# docs/work/experiments/E013-ablation-e-assembly.md). Written before the first formal run
+# (2026-11-28); later changes are logged in the experiment file. Development data only (no held-out
+# split before the T033 preregistration tag).
 #
-# Driver (one system run per arm x benchmark x budget, then the benchmark's scorer):
-#   uv run python src/grace/eval/runner/harness/drive.py --engine <arm.engine> \
-#       --benchmark <slug> --split dev --budget <budget> --experiment E013 --run-root <RUN_ROOT> \
-#       --backend client --base-url <answer/planner url> --embed-url <embed url> \
-#       --writer-url <writer url>
-#   uv run python -m grace.cli.locomo_score --run <system run> --experiment E013 --run-root <RUN_ROOT>
+# Question: at the same token budget, does evidence-demand assembly raise full evidence hits and
+# lower unsupported answers compared with a fused top-k?
+#
+# GRACE arms are `read` runs on the shared main-configuration ingest runs (one graph per benchmark,
+# written once by the Qwen3-32B writer; the arms differ only on the read side, so writer variance
+# does not enter the comparison):
+#   uv run python src/grace/eval/runner/harness/drive.py --stage read --upstream <ingest run dir> \
+#       --engine <arm.engine> --benchmark <slug> --split dev --budget <budget> --experiment E013 \
+#       --run-root <RUN_ROOT> --workers <N> --backend client --base-url <8B url> \
+#       --embed-url <embedding url> --writer-url <32B url>
+# The rrf arm is a `system` run (baselines declare no read side):
+#   uv run python src/grace/eval/runner/harness/drive.py --engine configs/engines/rrf.yaml ... \
+#       [--history <id> ...]
+# Scoring of every run:
+#   uv run python -m grace.cli.evidence_score --run <run> --experiment E013 --run-root <RUN_ROOT>
+#   uv run python -m grace.cli.locomo_score --run <run> --experiment E013 --run-root <RUN_ROOT>
+#       (LoCoMo only)
 experiment: E013
 seed: 0
 
-# Main configuration of E007 (user decision 2026-11-28): writer Qwen3-32B (session units), planner,
-# view rendering and answering Qwen3-8B, Qwen3-Embedding-0.6B for the dense channel.
 models:
-  answer: configs/models/qwen3-8b.yaml
-  writer: configs/models/qwen3-32b.yaml
+  answer: configs/models/qwen3-8b.yaml     # answering, planner, view rendering (D006)
+  writer: configs/models/qwen3-32b.yaml    # writer of the ingest runs (E007 main configuration)
+  embedding: Qwen/Qwen3-Embedding-0.6B     # dense channel (configs/engines/grace.yaml `embedding`)
 
-# The arms differ only in the selection rule of assembly; everything else (writer, planner,
-# retrieval, filter, fill rule, layout, answer prompt) is the main configuration.
+# Shared ingest runs (E006, main configuration configs/engines/grace.yaml).
+ingest:
+  locomo-dev: E006-20261128T082608Z-21cb          # runs/E006/artifacts/w02-E006/E006/
+  longmemeval-s-dev: E006-20261128T083145Z-6288   # main-text strata, 67 histories
+
 arms:
-  greedy:                  # evidence-demand assembly (plan 5.5 steps 1-5), main configuration
+  greedy:      # evidence-demand assembly (plan 5.5 steps 1-5); the main configuration
     engine: configs/engines/grace.yaml
-  truncate:                # fused top-k: rank truncation of the same candidates (T026 decision 3)
-    engine: configs/experiments/E013-dev/grace-truncate.yaml   # TODO: move to configs/engines/
-  rrf-baseline:            # the text-only fused top-k baseline, as a reference row
+    stage: read
+  truncate:    # fused top-k inside GRACE: rank truncation of the same candidates, same filter,
+               # fill rule and layout, no assembler expansion (T026 decision 3)
+    engine: configs/experiments/E013/grace-truncate.yaml
+    stage: read
+  no-open:     # the main configuration without the open-items section (open_items: false)
+    engine: configs/experiments/E013/grace-no-open.yaml
+    stage: read
+  rrf:         # text-only fused top-k baseline (BM25 + dense, RRF, top 20, chronological)
     engine: configs/engines/rrf.yaml
-  # TODO "expandable pointers versus summaries only": the engine produces no summary items yet
-  # (assembly/expand.py supports them; context/engine.py never creates one), so this arm needs an
-  # implementation decision first (s00-super).
+    stage: system
+  pointers-vs-summaries:
+    runnable: false
+    reason: >-
+      The engine creates no summary items (context/engine.py builds items from retrieval
+      candidates, query answers and views only; assembly/expand.py could expand a summary but none
+      is ever handed in), so "expandable pointers versus summaries only" cannot be compared without
+      building a summary producer. Not built for E013 (s00-super, 2026-11-28).
 
-budgets: [256, 512, 1024]
+budgets: [256, 512, 1024]   # plan 7.1 memory budgets in answering-model tokens
 
 targets:
   locomo-dev:
     benchmark: locomo
-    split: dev             # conv-26, conv-49; 308 end-of-history reads
+    split: dev              # conv-26, conv-49; 308 end-of-history reads (categories 1-4)
+    workers: 2
   longmemeval-s-dev:
     benchmark: longmemeval-s
-    split: dev             # TODO: confirm the development subset and its size
+    split: dev              # the 67 main-text-strata histories of the ingest run, one read each
+    workers: 8
 
+# Metrics (grace.cli.evidence_score; definitions in grace.eval.analysis.metrics.evidence).
+# Evidence is the gold `evidence_ids` (LoCoMo `evidence`, LongMemEval turns with has_answer);
+# reads without gold evidence (abstention questions, unresolved evidence) are excluded and counted.
 metrics:
-  - full_evidence_hit      # all gold evidence messages shown as raw text in the context
-  - unsupported_answer     # answer given although no gold evidence is shown (TODO: definition
-                           # with the contracts owner; candidate: answer output and full hit false)
-  - context_tokens         # working-context tokens (<= budget) and total prompt tokens
-  - f1                     # LoCoMo token F1 as registered in configs/common/scorers.yaml
-# TODO: decide whether a claim-cited message (citation shown, raw text not shown) counts as a hit;
-# the read trace's `included_ids` lists raw messages only (E013 diagnosis).
+  - full_evidence_hit       # every gold evidence message's raw text is in the context
+                            # (`context_ids`, the strict set R of plan 3.1)
+  - full_evidence_lenient   # the same with claim and view citations counted (read-trace provenance)
+  - evidence_recall         # |G ∩ context_ids| / |G|
+  - unsupported_answer      # the LLM answered (output `answer`) although the context holds none
+                            # of the gold evidence messages; share of scored reads
+  - context_tokens          # mean working-context tokens (<= budget)
+  - prompt_tokens           # mean input tokens of the answer call (context plus the shared prompt)
+  - f1                      # LoCoMo only: token F1 registered in configs/common/scorers.yaml.
+                            # LongMemEval-S answer accuracy needs a judge; none is run in E013
+                            # (the local primary judge is scheduled for T035).

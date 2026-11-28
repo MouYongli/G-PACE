@@ -17,12 +17,12 @@ At the same token budget, does assembly by evidence demand raise full evidence h
 | Benchmarks and splits | LoCoMo and LongMemEval-S development data |
 | Systems and baselines | Fixed top-k or RRF truncation versus evidence-demand assembly; expandable pointers versus summaries only |
 | Metrics | Full evidence hit rate; unsupported answer rate; final prompt and total tokens |
-| Seeds and budget | TBD in config |
-| Config | `configs/experiments/E013-ablation-e-assembly.yaml` (to be created) |
+| Seeds and budget | Seed 0 (temperature 0); memory budgets 256, 512 and 1,024 answering-model tokens |
+| Config | `configs/experiments/E013-ablation-e-assembly.yaml`; arms `greedy` (main configuration), `truncate`, `no-open` (read runs on the shared E006 ingest snapshots) and `rrf` (system runs); `pointers-vs-summaries` not runnable (the engine creates no summary items) |
 
 ## Acceptance
 
-- [ ] Every number traces to a run report.
+- [x] Every number traces to a run report.
 
 ## Runs
 
@@ -46,11 +46,73 @@ At the same token budget, does assembly by evidence demand raise full evidence h
 | E013-20261128T075426Z-89f2 (system: new main-configuration reference after the decisions) | 2026-11-28 | completed | 4e4aa94 | same directory scheme |
 | E013-20261128T080905Z-053e (score of 89f2) | 2026-11-28 | completed | 4e4aa94 | same directory scheme |
 
-All rows are development diagnosis runs (LoCoMo dev, conv-26 and conv-49, 308 end-of-history reads, budget 1,024, Qwen3-8B answering and planning, Qwen3-32B writer with session units), not formal E013 runs. Per-read plan and assembly records and the analysis scripts are in `runs/E013/artifacts/w01-E013/diagnosis/`.
+Formal runs (2026-11-28; every run directory under `runs/E013/artifacts/w01-E013/E013/` has a `report.yaml`; arm, budget and score-run IDs per run are in the Results tables):
+
+| Run ID | Date | Status | Code SHA | Report |
+| --- | --- | --- | --- | --- |
+| 9 LoCoMo read runs E013-20261128T090250Z-* / T090251Z-* (greedy, truncate, no-open x 256, 512, 1,024; upstream ingest E006-20261128T082608Z-21cb) | 2026-11-28 | completed | a44530f | `report.yaml` in each run directory |
+| 3 LoCoMo rrf system runs E013-20261128T090250Z-6815, -583b, E013-20261128T090251Z-7eea | 2026-11-28 | completed | a44530f | same |
+| 24 LoCoMo score runs E013-20261128T090612Z-f6e5 ... E013-20261128T090627Z-008e (12 `locomo_score`, 12 `evidence_score`) | 2026-11-28 | completed | 5f91b4c | same |
+| 3 LongMemEval-S rrf system runs E013-20261128T090658Z-450c, -10d1, -f05b (the 67 histories of the ingest run) | 2026-11-28 | completed | 5f91b4c | same |
+| 9 LongMemEval-S read runs E013-20261128T093822Z-* / T093823Z-f1b3 (first attempt) | 2026-11-28 | failed: snapshot restore, `JSONDecodeError` (message text with U+2028 split by `str.splitlines`); fixed in aa2c9fc | 5f91b4c | same |
+| 9 LongMemEval-S read runs E013-20261128T094004Z-842a, E013-20261128T094005Z-* (second attempt) | 2026-11-28 | failed: view restore, `QueryTypeError` (entity `50mm_f_1_8_prime_lens` lexed as a number); fixed in 81e51d7 | aa2c9fc | same |
+| 9 LongMemEval-S read runs E013-20261128T094210Z-* (upstream ingest E006-20261128T083145Z-6288) | 2026-11-28 | completed | 81e51d7 | same |
+| 12 LongMemEval-S evidence score runs E013-20261128T091523Z-59df, -091531Z-6fd9, -091540Z-d144, E013-20261128T0945*Z-*, E013-20261128T0946*Z-* | 2026-11-28 | completed | 5f91b4c (rrf), 81e51d7 | same |
+
+Development diagnosis runs above the formal block: all rows of the first table are development diagnosis runs (LoCoMo dev, conv-26 and conv-49, 308 end-of-history reads, budget 1,024, Qwen3-8B answering and planning, Qwen3-32B writer with session units), not formal E013 runs. Per-read plan and assembly records and the analysis scripts are in `runs/E013/artifacts/w01-E013/diagnosis/`.
 
 ## Results
 
-No formal E013 run yet.
+### Formal ablation (2026-11-28)
+
+Development data only; seed 0. GRACE arms are read runs restoring one shared ingest snapshot per benchmark (written once by the Qwen3-32B writer, E006), so they differ only in assembly; rrf is the text-only fused top-k baseline (BM25 + dense, RRF, top 20). Metrics: `grace.cli.evidence_score` (definitions in `src/grace/eval/analysis/metrics/evidence.py`; not registered in `configs/common/scorers.yaml`): full evidence hit = all gold evidence messages' raw text in the context (`context_ids`); lenient also counts claim and view citations; unsupported answer = output `answer` while no gold evidence message is in the context. Reads without gold evidence are excluded (LoCoMo 6, LongMemEval-S 2). `invalid` outputs are excluded and reported (at most 2 per run). LoCoMo F1 from `grace.cli.locomo_score` (registered `f1`, categories 1-4, 308 scored). LongMemEval-S answer accuracy needs a judge; none was run (`n/a`).
+
+**LoCoMo dev (308 reads; evidence metrics over 302 reads with gold evidence)**
+
+| Budget | Arm | Run | F1 (score run) | unknown | Full evidence hit | lenient | Recall | Unsupported answer | Evidence score run | Context / prompt tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 256 | greedy | E013-20261128T090250Z-ea12 | 0.261 (E013-20261128T090613Z-f0d6) | 89 | 0.421 | 0.434 | 0.475 | 0.212 | E013-20261128T090614Z-00e9 | 240 / 730 |
+| 256 | truncate | E013-20261128T090251Z-4141 | 0.276 (E013-20261128T090624Z-9ba8) | 83 | 0.434 | 0.450 | 0.484 | 0.215 | E013-20261128T090625Z-bc58 | 240 / 730 |
+| 256 | no-open | E013-20261128T090250Z-b4a2 | 0.261 (E013-20261128T090617Z-5c96) | 85 | 0.424 | 0.437 | 0.478 | 0.215 | E013-20261128T090617Z-bed0 | 241 / 731 |
+| 256 | rrf | E013-20261128T090250Z-6815 | 0.261 (E013-20261128T090621Z-b6c5) | 89 | 0.455 | 0.455 | 0.501 | 0.196 | E013-20261128T090621Z-7504 | 237 / 727 |
+| 512 | greedy | E013-20261128T090251Z-e67d | 0.313 (E013-20261128T090614Z-1dce) | 55 | 0.551 | 0.565 | 0.619 | 0.176 | E013-20261128T090615Z-50d2 | 495 / 984 |
+| 512 | truncate | E013-20261128T090250Z-d572 | 0.315 (E013-20261128T090626Z-db93) | 55 | 0.560 | 0.570 | 0.623 | 0.173 | E013-20261128T090627Z-008e | 495 / 984 |
+| 512 | no-open | E013-20261128T090250Z-1220 | 0.312 (E013-20261128T090618Z-4320) | 53 | 0.555 | 0.568 | 0.622 | 0.173 | E013-20261128T090619Z-ff35 | 495 / 985 |
+| 512 | rrf | E013-20261128T090250Z-583b | 0.313 (E013-20261128T090622Z-f2ce) | 61 | 0.555 | 0.555 | 0.625 | 0.150 | E013-20261128T090622Z-6bc9 | 487 / 976 |
+| 1024 | greedy | E013-20261128T090251Z-1849 | 0.343 (E013-20261128T090612Z-f6e5) | 43 | 0.632 | 0.642 | 0.711 | 0.129 | E013-20261128T090613Z-611b | 1002 / 1491 |
+| 1024 | truncate | E013-20261128T090250Z-7242 | 0.345 (E013-20261128T090623Z-8d11) | 41 | 0.632 | 0.642 | 0.712 | 0.129 | E013-20261128T090624Z-fdbf | 1002 / 1491 |
+| 1024 | no-open | E013-20261128T090251Z-f179 | 0.346 (E013-20261128T090615Z-a7cd) | 39 | 0.629 | 0.639 | 0.709 | 0.132 | E013-20261128T090616Z-a243 | 1002 / 1492 |
+| 1024 | rrf | E013-20261128T090251Z-7eea | 0.345 (E013-20261128T090619Z-f605) | 44 | 0.632 | 0.632 | 0.719 | 0.116 | E013-20261128T090620Z-fe62 | 985 / 1475 |
+
+**LongMemEval-S dev, main-text strata (67 reads; evidence metrics over 65 reads with gold evidence)**
+
+| Budget | Arm | Run | F1 (score run) | unknown | Full evidence hit | lenient | Recall | Unsupported answer | Evidence score run | Context / prompt tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 256 | greedy | E013-20261128T094210Z-8d78 | n/a (judge only) | 25 | 0.323 | 0.323 | 0.565 | 0.031 | E013-20261128T094530Z-fc24 | 236 / 731 |
+| 256 | truncate | E013-20261128T094210Z-9eca | n/a (judge only) | 27 | 0.369 | 0.385 | 0.577 | 0.015 | E013-20261128T094555Z-f169 | 235 / 729 |
+| 256 | no-open | E013-20261128T094210Z-00c9 | n/a (judge only) | 25 | 0.338 | 0.338 | 0.573 | 0.031 | E013-20261128T094620Z-6cf0 | 237 / 731 |
+| 256 | rrf | E013-20261128T090658Z-450c | n/a (judge only) | 26 | 0.385 | 0.385 | 0.608 | 0.000 | E013-20261128T091531Z-6fd9 | 233 / 728 |
+| 512 | greedy | E013-20261128T094210Z-d012 | n/a (judge only) | 19 | 0.569 | 0.569 | 0.754 | 0.015 | E013-20261128T094538Z-5260 | 491 / 985 |
+| 512 | truncate | E013-20261128T094210Z-62a7 | n/a (judge only) | 17 | 0.585 | 0.585 | 0.758 | 0.031 | E013-20261128T094604Z-cb0c | 491 / 985 |
+| 512 | no-open | E013-20261128T094210Z-cc12 | n/a (judge only) | 19 | 0.569 | 0.569 | 0.754 | 0.015 | E013-20261128T094629Z-13a0 | 492 / 986 |
+| 512 | rrf | E013-20261128T090658Z-10d1 | n/a (judge only) | 17 | 0.615 | 0.615 | 0.781 | 0.015 | E013-20261128T091540Z-d144 | 486 / 980 |
+| 1024 | greedy | E013-20261128T094210Z-746d | n/a (judge only) | 19 | 0.677 | 0.677 | 0.827 | 0.000 | E013-20261128T094521Z-adff | 1006 / 1501 |
+| 1024 | truncate | E013-20261128T094210Z-55b2 | n/a (judge only) | 18 | 0.692 | 0.692 | 0.837 | 0.000 | E013-20261128T094546Z-d1a0 | 1004 / 1499 |
+| 1024 | no-open | E013-20261128T094210Z-a7a3 | n/a (judge only) | 19 | 0.677 | 0.677 | 0.827 | 0.000 | E013-20261128T094612Z-aec8 | 1006 / 1500 |
+| 1024 | rrf | E013-20261128T090658Z-f05b | n/a (judge only) | 17 | 0.677 | 0.677 | 0.813 | 0.031 | E013-20261128T091523Z-59df | 998 / 1492 |
+
+Answer-side noise: in LoCoMo reads whose contexts are byte-identical between `greedy` and `truncate`, 6 to 7 predictions differ between runs (of 218, 262 and 288 such reads at 256, 512 and 1,024), so F1 differences below about 0.01 are not distinguishable. On LongMemEval-S one read is 0.015 of a rate.
+
+Findings:
+
+1. **Evidence-demand assembly does not beat rank truncation.** Greedy and truncation build the same context in 218, 262 and 288 of 308 LoCoMo reads (256, 512, 1,024). Where they differ, truncation is as good or slightly better: full evidence hit is equal or higher for `truncate` at every budget on both benchmarks (LoCoMo 0.434 against 0.421 at 256; LongMemEval-S 0.369 against 0.323 at 256, 0.692 against 0.677 at 1,024), and F1 is equal within noise (0.276 against 0.261 at 256). The demand rarely has more than one variable (in the development diagnosis 85 of 308 LoCoMo plans fell back to the single `answer` variable and 215 named one, item 4; 71 fell back in the reference run), so coverage per token only reorders the first pick and then prefers short items.
+2. **GRACE does not raise full evidence hits over the rrf baseline.** LoCoMo: equal at 1,024 (0.632 all), lower at 256 (0.421 against 0.455) and 512 (0.551 against 0.555). LongMemEval-S: lower at 256 and 512 (0.323 against 0.385, 0.569 against 0.615), equal at 1,024 (0.677). Claim and view citations add up to 0.016 (lenient against strict); the structured state does not make up for the raw text it displaces at small budgets.
+3. **GRACE does not lower unsupported answers.** LoCoMo: GRACE 0.212, 0.176, 0.129 against rrf 0.196, 0.150, 0.116 (256, 512, 1,024). LongMemEval-S: rates are 0 to 0.031 for every arm (0 to 2 reads of 65); no difference can be read from them.
+4. **Open items on or off makes no difference** at the main configuration: after the E013 decision that the fallback variable is never listed, only 15 of 308 LoCoMo greedy contexts list open items; F1 0.261/0.312/0.346 (no-open) against 0.261/0.313/0.343 (greedy), full evidence hit within 0.004; LongMemEval-S identical at 512 and 1,024.
+5. **Tokens.** Every arm fills the budget (context 233 to 241, 486 to 495, 985 to 1,006 tokens); GRACE's contexts are 3 to 17 tokens longer than rrf's (headings), the prompt adds about 490 tokens for every system.
+6. **Pointers versus summaries** was not run: the engine creates no summary items (config `pointers-vs-summaries: runnable: false`).
+
+Two restore bugs found on the LongMemEval-S snapshot and fixed on this branch (not assembly): JSON Lines restore of the message log, claim store and view store split records at U+2028 (`str.splitlines`), and the query lexer read an entity starting with digits (`50mm_f_1_8_prime_lens`) as a number. Both made every read run of LongMemEval-S fail before any read; the completed runs use 81e51d7.
 
 ### Development diagnosis (2026-11-28): why GRACE scored below rrf in E007
 
@@ -76,7 +138,7 @@ Decisions of s00-super on these findings (2026-11-28, development configuration 
 
 ## Conclusion
 
-Pending.
+On development data (LoCoMo dev, 308 reads; LongMemEval-S dev main-text strata, 67 reads; budgets 256 to 1,024), C4 is not supported in the current implementation: evidence-demand assembly neither raises full evidence hits nor lowers unsupported answers compared with rank truncation of the same candidates or with the rrf fused top-k baseline. Greedy and truncation mostly build identical contexts because the demand has one variable in almost every read and support is the lexical placeholder of plan 5.6 (no verification call). Whether a real verification call, multi-variable plans or summaries with expandable pointers change this is untested. LongMemEval-S answer accuracy is pending a judge (T035).
 
 ## Log
 
@@ -85,3 +147,4 @@ Pending.
 - 2026-11-28: development diagnosis of the E007 gap to rrf on LoCoMo dev (session w01-E013, branch `task/E013-ablation-e-assembly`): 7 system runs and their scores in `runs/E013/artifacts/w01-E013/`; fixed the rank-order fill so that claim citations no longer hide raw evidence (`assembly/select.py`, test in `tests/unit/test_assembly.py`); development variants in `configs/experiments/E013-dev/`; draft `configs/experiments/E013-ablation-e-assembly.yaml` (not reviewed). Findings in Results, "Development diagnosis".
 - 2026-11-28: decisions of s00-super on the diagnosis (development configuration, before D012). (1) Fill fix accepted (evidence: raw full evidence hit 163 -> 187, F1 0.296 -> 0.314). (2) The main configuration uses `routing: all`: `configs/retrieval/default.yaml` changed, rule routing kept as the E012 arm `configs/retrieval/rules.yaml`, T025 code unchanged (evidence: 110 to 121 reads were dense-only, F1 +0.007 to +0.009 with routing all). (3) The fallback `answer` variable is never listed as an open item; the section stays for planner variables (`Demand.fallback`; evidence: 24 of 33 open-item reads, 20 unknown answers against 9 for rrf, F1 +0.015 without the section). (4) No assembler query expansion for a fallback plan; kept for compiled plans (`Assembler.assemble(query_expansion=...)`; evidence: 37 expansions closed 4 variables, the fallback query repeats the request and spends the read's retrieval). (5) No answer-path or scorer change for temporal scoring; judge accuracy next to F1 where available; the date-format effect is noted in Results. Tests: `tests/unit/test_assembly.py`, `tests/integration/test_grace_engine.py`.
 - 2026-11-28: reference rerun of the main configuration after the decisions (LoCoMo dev, 308 reads, budget 1,024): system E013-20261128T075426Z-89f2, score E013-20261128T080905Z-053e, F1 0.330, 47 unknown (Results).
+- 2026-11-28: formal ablation (session w01-E013, branch `task/E013-formal`): `configs/experiments/E013-ablation-e-assembly.yaml` finished (arms greedy, truncate, no-open, rrf; pointers-vs-summaries not runnable), arm configs in `configs/experiments/E013/`, new scorer `grace.cli.evidence_score`, `locomo_score` accepts read runs. 24 system/read runs and 36 score runs completed; two snapshot-restore bugs fixed after 18 failed LongMemEval-S read runs (Runs). Results and Conclusion written. Proposed status: E013 active -> review.

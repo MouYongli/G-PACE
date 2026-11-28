@@ -103,7 +103,8 @@ class Rig:
 class ConfigTest(unittest.TestCase):
     def test_variant_configs_build_through_the_registry_with_their_components(self):
         self.assertEqual(set(registry.COMPONENTS),
-                         {"serialised-views", "query-time-resolution", "slot-table"})
+                         {"serialised-views", "query-time-resolution", "slot-table",
+                          "read-time-views"})
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         ledger = CallLedger(Path(tmp.name) / "calls.jsonl", "T027-20261128T000000Z-0002")
@@ -142,6 +143,45 @@ class TemplateSerialisationTest(unittest.TestCase):
         self.assertEqual(len(engine.views.events), 1)   # one template build, at this read
         self.assertFalse(engine.views.events[0].call_ids)  # no rendering call
         self.assertEqual(engine.views.save(rig.tmp), [])  # nothing cached
+
+
+class ReadTimeSourcesTest(unittest.TestCase):
+    """E010: the read-time content sources present the plan's answers (`present`)."""
+
+    def engine(self, rig, *, state_citations=True):
+        from dataclasses import replace
+        make = registry.load_component("read-time-views")(
+            writer=rig.writer, client=rig.client, source="template",
+            view_config=load_view_config(REPO_ROOT / "configs/views/default.yaml"))
+        components = replace(rig.components(views=make),
+                             assembly=AssemblyConfig(state_citations=state_citations))
+        return rig.ingest(GraceEngine(components))
+
+    def test_family_query_is_a_hit_and_ad_hoc_query_a_temporary_view(self):
+        rig = Rig(self, WRITER_SCRIPT)
+        engine = self.engine(rig)
+        rig.planner.query = CURRENT_VIEW
+        hit = engine.read(rig.task(4), 256)
+        self.assertEqual(hit.trace.view_hits, ("current:user:livesIn",))
+        self.assertIn("Currently, user lives in Berlin.", hit.context.text)
+        engine.end_read(rig.task(4))
+        rig.planner.query = LIVES_IN
+        ad_hoc = engine.read(rig.task(4), 256)
+        self.assertEqual(ad_hoc.trace.view_hits, ())
+        views = [f for f in ad_hoc.context.fragments if f.kind == "view"]
+        self.assertTrue(views)
+        self.assertTrue(all(f.evidence_ids for f in views))
+        self.assertIn("x = Berlin.", ad_hoc.context.text)
+
+    def test_without_source_annotation_state_lines_show_no_message_ids(self):
+        rig = Rig(self, WRITER_SCRIPT)
+        engine = self.engine(rig, state_citations=False)
+        rig.planner.query = CURRENT_VIEW
+        result = engine.read(rig.task(4), 256)
+        line = next(x for x in result.context.text.splitlines() if "lives in Berlin" in x)
+        self.assertEqual(line, "Currently, user lives in Berlin.")
+        view = next(f for f in result.context.fragments if f.kind == "view")
+        self.assertTrue(view.evidence_ids)
 
 
 class QueryTimeResolutionTest(unittest.TestCase):
