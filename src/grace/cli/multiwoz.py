@@ -351,6 +351,7 @@ def bootstrap(values_by_cluster: dict[str, list[float]], seed: int = 0,
 
 
 def lenient(a: str, b: str) -> bool:
+    """T006 rule `values_match`: the comparison of the PRIMARY offer-turn values."""
     return mo.values_match(a, b)
 
 
@@ -392,7 +393,8 @@ def score_values(aligned, gold_by_ann, derived) -> dict[str, dict[str, Any]]:
         label = item["labels"]["response"]
         for i, r in enumerate(ref["retention"]):
             key = f"{rid}#r{i}"
-            for name, match in (("retained", None), ("retained-lenient", lenient)):
+            # primary: T006 values_match; sensitivity: exact match after normalise_state
+            for name, match in (("retained", lenient), ("retained-exact", None)):
                 value = dst.retained(state, r, match)
                 put(f"{name}|{ANN_D}", key, value, hid, output)
                 put(f"{name}|{ANN_D}|response={label}", key, value, hid, output)
@@ -402,7 +404,7 @@ def score_values(aligned, gold_by_ann, derived) -> dict[str, dict[str, Any]]:
             key = f"{rid}#p{i}"
             choice = dst.current_choice(state, choices, p["domain"], p["entity_slot"])
             conflict = {s: p["originals"][s] for s in p["conflict_slots"]}
-            for suffix, match in (("", None), ("-lenient", lenient)):
+            for suffix, match in (("", lenient), ("-exact", None)):
                 value = dst.paired_correct(state, choices, p, p["originals"], match)
                 put(f"paired_correct{suffix}|{ANN_D}", key, value, hid, output)
                 put(f"paired_correct{suffix}|{ANN_D}|domain={p['domain']}", key, value, hid,
@@ -496,8 +498,9 @@ def cmd_score(args, command: str) -> int:
     run.finish(len(aligned))
     for metric in ("jga|2.4", "jga|2.2", "jga|2.1", "jga-lenient|2.1", f"retained|{ANN_D}",
                    f"retained|{ANN_D}|conflict=true", f"choice_correct|{ANN_D}",
-                   f"paired_correct|{ANN_D}", f"paired_correct-lenient|{ANN_D}",
-                   f"paired_correct_conflict|{ANN_D}"):
+                   f"paired_correct|{ANN_D}", f"paired_correct_conflict|{ANN_D}",
+                   f"retained-exact|{ANN_D}", f"choice_correct-exact|{ANN_D}",
+                   f"paired_correct-exact|{ANN_D}", f"paired_correct_conflict-exact|{ANN_D}"):
         s = summary.get(metric)
         if s:
             ci = s["ci95"]

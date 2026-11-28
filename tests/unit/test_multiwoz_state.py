@@ -329,6 +329,30 @@ class OfferMetrics(unittest.TestCase):
                                            lambda a, b: a.replace("the ", "").replace(" ", "")
                                            == b.replace("the ", "").replace(" ", "")))
 
+    def test_score_values_primary_is_lenient_exact_is_sensitivity(self):
+        from types import SimpleNamespace
+
+        from grace.cli import multiwoz as cli
+        item = {**self.ITEM, "domain": "hotel", "entity_slot": "hotel-name",
+                "offered_entity": ["the acorn guest house"]}
+        derived = {"t1": {"reference": {
+            "retention": [{"slot": "hotel-name", "original": "acorn guest house",
+                           "conflict": False}],
+            "paired": [{**item, "originals": {"hotel-name": "acorn guest house"},
+                        "conflict_slots": ["hotel-name"]}]},
+            "labels": {"response": "accept"}}}
+        aligned = {"r1": SimpleNamespace(
+            read_task={"task_id": "t1", "history_id": "h1"},
+            prediction={"output": "state", "prediction": {"hotel-name": "acorn guesthouse"},
+                        "metadata": {}})}
+        gold = {ann: {"t1": {"reference": {}}} for ann in cli.ANNOTATIONS}
+        out = cli.score_values(aligned, gold, derived)
+        ann = cli.ANN_D
+        for name in ("retained", "choice_correct", "paired_correct", "paired_correct_conflict"):
+            self.assertEqual(list(out[f"{name}|{ann}"]["values"].values()), [1.0], name)
+            self.assertEqual(list(out[f"{name}-exact|{ann}"]["values"].values()), [0.0], name)
+        self.assertNotIn(f"paired_correct-lenient|{ann}", out)
+
 
 if __name__ == "__main__":
     unittest.main()

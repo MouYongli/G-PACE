@@ -56,7 +56,10 @@ def slot_f1(predicted: Mapping | None, gold: Mapping) -> float:
 # ---------------------------------------------------------------------------------------------
 # Offer turns (plan 6.5; T028). Gold items come from the derived annotation `2.4-current-choice`
 # (grace.eval.datasets.benchmarks.multiwoz_derived). Values are compared after `normalise_state`
-# normalisation, or by a lenient `match(a, b)` the caller passes (sensitivity analysis).
+# normalisation (exact match: the sensitivity value), or by the `match(a, b)` the caller passes.
+# The registry (configs/common/scorers.yaml) compares PRIMARY values with the T006 rule
+# `multiwoz_offers:values_match`, so the score command passes it as `match`; `match=None` is the
+# exact comparison.
 
 Match = Callable[[str, str], bool]
 
