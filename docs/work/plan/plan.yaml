@@ -549,12 +549,12 @@ nodes:
     type: experiment
     title: Ablation C on extracted graphs
     milestone: M3
-    status: active
+    status: done
     depends_on: [T022, T023, E005]
     issue: 170
     owner: w01-E010
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E010-ablation-c-extracted.md
   - id: D009
     type: decision
@@ -671,23 +671,23 @@ nodes:
     type: experiment
     title: "Ablation E: assembly"
     milestone: M4
-    status: active
+    status: done
     depends_on: [T026]
     issue: 160
     owner: w01-E013
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E013-ablation-e-assembly.md
   - id: E014
     type: experiment
     title: Development quality-versus-cost curves
     milestone: M4
-    status: active
+    status: done
     depends_on: [T026, T027, T029, T030]
     issue: 172
     owner: w01-E014
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E014-dev-quality-cost.md
   - id: D010
     type: decision
