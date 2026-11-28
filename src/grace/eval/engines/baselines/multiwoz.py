@@ -127,7 +127,8 @@ def project(rows: Iterable[SlotRow], version: int, policy: str,
             continue   # an agent request asks for a value; it states none
         if row.slot in slots:
             state[row.slot] = norm_value(row.value)
-    choice = {d: state.get(f"{d}-{s}") for d, s in ENTITY.items() if f"{d}-{s}" in slots}
+    choice = {d: state.get(f"{d}-{s}") if f"{d}-{s}" in slots else None
+              for d, s in ENTITY.items()}
     return Projection(state, choice)
 
 
@@ -233,6 +234,8 @@ def rows_from_graph(state: Any, mapping: GraphMapping, roles: Mapping[str, str])
 
 def _object_text(state: Any, term: Any) -> str:
     if hasattr(term, "lexical"):
+        if getattr(term, "datatype", None) == "time":   # xsd:time -> MultiWOZ HH:MM
+            return term.lexical[:5]
         return term.lexical
     entity = getattr(term, "id", str(term))
     return state.display_name(entity) if hasattr(state, "display_name") else entity
