@@ -13,6 +13,8 @@ verdict `invalid` leaves the denominator as `n_judge_invalid`, `unknown` is corr
 registered abstention tasks, `invalid` predictions follow the invalid-output policy). Writes a new
 `score` run with `run.json`, `resolved-config.yaml`, `run.log`, `metrics.json` and `scores.jsonl`
 (the value of every read). The experiment is the upstream run's unless `--experiment` is given.
+A run without any `answer` prediction (all `unknown` or `invalid`) is scored without a judge run;
+any answer without a judgement aborts the run.
 Development splits only.
 """
 
@@ -72,8 +74,11 @@ def score(aligned, gold: dict, verdicts: dict[str, str], metric: dict):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--run", type=Path, required=True, help="completed system or read RUN_DIR")
-    parser.add_argument("--judge-run", type=Path, required=True,
-                        help="completed judge RUN_DIR whose upstream is --run")
+    parser.add_argument("--judge-run", type=Path, default=None,
+                        help="completed judge RUN_DIR whose upstream is --run; omitted only when "
+                             "the run has no answer to judge (then --judge names the judge)")
+    parser.add_argument("--judge", default="blind",
+                        help="judge config name when --judge-run is omitted")
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--experiment", default=None)
     args = parser.parse_args(argv)
@@ -81,15 +86,17 @@ def main(argv: list[str] | None = None) -> int:
     system = json.loads((args.run / "run.json").read_text(encoding="utf-8"))
     if system["status"] != "completed" or system["stage"] not in ("system", "read"):
         parser.error(f"{system['run_id']}: not a completed system or read run")
-    judge_run = json.loads((args.judge_run / "run.json").read_text(encoding="utf-8"))
-    if judge_run["status"] != "completed" or judge_run["stage"] != "judge":
-        parser.error(f"{judge_run['run_id']}: not a completed judge run")
-    up = judge_run["upstream"][0]
-    if up["run_id"] != system["run_id"] or \
-            up["run_json_sha256"] != rundir.file_sha256(args.run / "run.json"):
-        parser.error(f"{judge_run['run_id']} did not judge {system['run_id']} as it is now")
-    judge_cfg = yaml.safe_load((args.judge_run / "resolved-config.yaml").read_text("utf-8"))
-    judge_name = judge_cfg["judge"]
+    judge_run, judge_cfg, judge_name = None, {}, args.judge
+    if args.judge_run is not None:
+        judge_run = json.loads((args.judge_run / "run.json").read_text(encoding="utf-8"))
+        if judge_run["status"] != "completed" or judge_run["stage"] != "judge":
+            parser.error(f"{judge_run['run_id']}: not a completed judge run")
+        up = judge_run["upstream"][0]
+        if up["run_id"] != system["run_id"] or \
+                up["run_json_sha256"] != rundir.file_sha256(args.run / "run.json"):
+            parser.error(f"{judge_run['run_id']} did not judge {system['run_id']} as it is now")
+        judge_cfg = yaml.safe_load((args.judge_run / "resolved-config.yaml").read_text("utf-8"))
+        judge_name = judge_cfg["judge"]
     resolved = yaml.safe_load((args.run / "resolved-config.yaml").read_text(encoding="utf-8"))
     slug, split = resolved["benchmark"], resolved["split"]
     if load_config(slug).splits[split].kind != "development":
@@ -103,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     experiment = args.experiment or system["experiment"]
     run_dir = rundir.create(args.run_root, experiment)
     out = {"stage": "score", "experiment": experiment, "system_run": system["run_id"],
-           "judge_run": judge_run["run_id"], "judge": judge_name,
+           "judge_run": judge_run and judge_run["run_id"], "judge": judge_name,
            "judge_config_sha256": judge_cfg.get("judge_config_sha256"), "benchmark": slug,
            "split": split, "schedule": resolved["read_tasks"], "metrics": metrics_spec}
     (run_dir / "resolved-config.yaml").write_text(yaml.safe_dump(out, sort_keys=False),
@@ -113,7 +120,8 @@ def main(argv: list[str] | None = None) -> int:
         "run_id": run_dir.name, "experiment": experiment, "stage": "score",
         "upstream": [{"run_id": r["run_id"], "stage": r["stage"], "path": p.resolve().as_posix(),
                       "run_json_sha256": rundir.file_sha256(p / "run.json")}
-                     for r, p in ((system, args.run), (judge_run, args.judge_run))],
+                     for r, p in ((system, args.run), (judge_run, args.judge_run))
+                     if r is not None],
         "code_sha": code.sha, "code_dirty": code.dirty,
         "config_path": "configs/common/scorers.yaml",
         "config_sha256": rundir.file_sha256(run_dir / "resolved-config.yaml"),
@@ -132,7 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         messages = [m.to_record() for m in records.messages if m.history_id in histories]
         gold_rows = [g.to_record() for g in records.gold if g.history_id in histories]
         aligned = align(tasks, messages, gold_rows, read_jsonl(args.run / "predictions.jsonl"))
-        judgements = read_judgements(args.judge_run / "judgements.jsonl", judge_name)
+        judgements = ({} if args.judge_run is None else
+                      read_judgements(args.judge_run / "judgements.jsonl", judge_name))
         verdicts = {rid: j.verdict for rid, j in judgements.items()}
         rows, per_read = [], defaultdict(dict)
         for m in metrics_spec:
