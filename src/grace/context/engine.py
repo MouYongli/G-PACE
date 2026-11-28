@@ -39,8 +39,10 @@ Construction. `GraceEngine(components)` takes the components directly (tests, pr
 T027 variants built in code). The harness builds it from an engine config through the component
 registry (`config/registry.py`) with `GraceEngine.from_port(model, **params)`, where `model` is
 the harness's model port (`count_tokens`, `embed`, and `client`, the `grace.llm.ChatClient` of
-the run, used by the writer, the planner and LLM rendering). Without a `client` (the fake backend
-of tests and dry runs) the writer extracts nothing and the planner uses its rule templates only.
+the run, used by the planner and LLM rendering, and by the writer unless the port also has a
+`writer_client`: the engine config's `writer_model`, E007 main configuration). Without a `client`
+(the fake backend of tests and dry runs) the writer extracts nothing and the planner uses its rule
+templates only.
 
 Config params (`configs/engines/grace.yaml`): `writer`, `planner`, `retrieval`, `assembly`,
 `views` (paths of the component configs, relative to the repository; `views: null` gives the empty
@@ -386,6 +388,11 @@ class GraceEngine(api.ContextEngine):
                              "writer and the planner; allow_no_client=True is for dry runs only")
         if client is not None:
             client = ObservedClient(client, getattr(model, "observe", None))
+        # The writer's own client when the run's port has one (engine config `writer_model`);
+        # the planner and LLM rendering stay on the run's client.
+        writer_client = getattr(model, "writer_client", None)
+        writer_client = (ObservedClient(writer_client, getattr(model, "observe", None))
+                         if writer_client is not None and client is not None else client)
         seed = (getattr(model, "decoding", None) or {}).get("seed")
         writer_config, planner_config, view_config = cls._configs(writer, planner, views, seed)
         staleness = dict(staleness or {"strategy": "push_confirm", "local_filters": True})
@@ -402,14 +409,17 @@ class GraceEngine(api.ContextEngine):
         def make_extractor(history: api.HistoryInfo) -> Extractor:
             if client is None:
                 return NullExtractor()
-            return llm_writer(writer_config, client, history)
+            return llm_writer(writer_config, writer_client, history)
 
         extension = _no_extension
         for slot, spec in (components or {}).items():
             spec = dict(spec)
             factory = registry.load_component(spec.pop("factory"))
-            built = factory(writer=writer_config, client=client, view_config=view_config,
-                            **spec)
+            # an extension replaces or extends the writer side (slot writer, deferred
+            # resolution): it gets the writer's client; a views factory gets the run's
+            built = factory(writer=writer_config,
+                            client=writer_client if slot == "extension" else client,
+                            view_config=view_config, **spec)
             if slot == "views":
                 make_views = built
             elif slot == "extension":

@@ -91,6 +91,16 @@ How much graph quality and answer accuracy does a larger writer or thinking reco
 | `E007-20261128T011156Z-501d` | 2026-11-28 | completed | `e648679` | score (E006 scorer, segments) of `E007-20261128T003438Z-23eb`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T011156Z-501d/report.yaml` |
 | `E007-20261128T014112Z-e4b3` | 2026-11-28 | completed | `e648679` | score (E006 scorer, full-history, LoCoMo segments) of `E007-20261128T002721Z-7812`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T014112Z-e4b3/report.yaml` |
 | `E007-20261128T014114Z-87f8` | 2026-11-28 | completed | `e648679` | recall (graph channel) on `E007-20261128T002721Z-7812`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T014114Z-87f8/report.yaml` |
+| `E007-20261128T062349Z-3ea4` | 2026-11-28 | completed | `af0f87e` | system: configs/engines/grace-writer-segment8.yaml on LoCoMo dev, budget 1024; `runs/E007/artifacts/w01-E007/E007/E007-20261128T062349Z-3ea4/report.yaml` |
+| `E007-20261128T062349Z-41ff` | 2026-11-28 | failed | `af0f87e` | system: configs/engines/grace-writer-8b.yaml on LoCoMo dev, budget 1024; aborted by the worker: the Qwen3-8B writer was sent to --writer-url (the Qwen3-32B server); fixed in the harne; `runs/E007/artifacts/w01-E007/E007/E007-20261128T062349Z-41ff/report.yaml` |
+| `E007-20261128T062349Z-8899` | 2026-11-28 | completed | `af0f87e` | system: configs/engines/grace.yaml on LoCoMo dev, budget 1024; `runs/E007/artifacts/w01-E007/E007/E007-20261128T062349Z-8899/report.yaml` |
+| `E007-20261128T062513Z-aa58` | 2026-11-28 | completed | `528b043` | system: configs/engines/grace-writer-8b.yaml on LoCoMo dev, budget 1024; `runs/E007/artifacts/w01-E007/E007/E007-20261128T062513Z-aa58/report.yaml` |
+| `E007-20261128T062749Z-b374` | 2026-11-28 | failed | `46977f7` | T013 break-even with measured writer runs (write_budget estimate); ModuleNotFoundError: No module named 'matplotlib'; `runs/E007/artifacts/w01-E007/E007/E007-20261128T062749Z-b374/report.yaml` |
+| `E007-20261128T062759Z-f620` | 2026-11-28 | completed | `42de3d5` | T013 break-even with measured writer runs (write_budget estimate); `runs/E007/artifacts/w01-E007/E007/E007-20261128T062759Z-f620/report.yaml` |
+| `E007-20261128T062931Z-a884` | 2026-11-28 | completed | `3e5235a` | score (LoCoMo F1, grace.cli.locomo_score) of `E001-20261125T182212Z-2cd5`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T062931Z-a884/report.yaml` |
+| `E007-20261128T063748Z-9feb` | 2026-11-28 | completed | `f0f5c1e` | score (LoCoMo F1, grace.cli.locomo_score) of `E007-20261128T062349Z-8899`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T063748Z-9feb/report.yaml` |
+| `E007-20261128T063919Z-5126` | 2026-11-28 | completed | `f0f5c1e` | score (LoCoMo F1, grace.cli.locomo_score) of `E007-20261128T062513Z-aa58`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T063919Z-5126/report.yaml` |
+| `E007-20261128T064049Z-0d19` | 2026-11-28 | completed | `f0f5c1e` | score (LoCoMo F1, grace.cli.locomo_score) of `E007-20261128T062349Z-3ea4`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T064049Z-0d19/report.yaml` |
 
 ## Results
 
@@ -135,6 +145,38 @@ Token columns are per message of history (calls x tokens / messages). "Cached" i
 | 32b-segment8 | `E007-20261128T002500Z-ff7d` | 1000 | 158 | 651 | 582 | 68 | 24.1 | 1 (0.0063); 1/1 | 40/157 (0.2548) | 166 | - | - | - | - | - |
 | 32b-session | `E007-20261128T002500Z-a973` | 1000 | 67 | 296 | 246 | 50 | 23.0 | 2 (0.0299); 2/2 | 3/65 (0.0462) | 171 | - | - | - | - | - |
 
+#### Answer accuracy per writer arm (main configuration)
+
+Default GRACE (planner, retrieval, views, assembly as in `configs/engines/grace.yaml`), LoCoMo dev, native end-of-history reads (308), memory budget 1,024 tokens; planner, rendering and answering on Qwen3-8B, embeddings Qwen3-Embedding-0.6B; registered rule-based LoCoMo F1 (`grace.cli.locomo_score`, categories 1-4; the 308 development reads hold no category 5). Reference: the T003 `rrf` baseline at 1,024 from E001.
+
+| System | System run | Score run | F1 all (308) | cat 1 (69) | cat 2 (70) | cat 3 (26) | cat 4 (143) | Outputs answer / unknown / invalid |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GRACE, Qwen3-32B writer, session (main) | `E007-20261128T062349Z-8899` | `E007-20261128T063748Z-9feb` | 0.293 | 0.238 | 0.071 | 0.150 | 0.453 | 251 / 56 / 1 |
+| GRACE, Qwen3-8B writer, session | `E007-20261128T062513Z-aa58` | `E007-20261128T063919Z-5126` | 0.271 | 0.235 | 0.071 | 0.120 | 0.412 | 237 / 70 / 1 |
+| GRACE, Qwen3-32B writer, segment-8 | `E007-20261128T062349Z-3ea4` | `E007-20261128T064049Z-0d19` | 0.283 | 0.240 | 0.071 | 0.148 | 0.433 | 249 / 56 / 3 |
+| rrf baseline (E001) | `E001-20261125T182212Z-2cd5` | `E007-20261128T062931Z-a884` | 0.347 | 0.292 | 0.081 | 0.200 | 0.530 | 264 / 44 / 0 |
+
+Read-side calls of the main arm (from its `calls.jsonl`): 350 `plan` calls (997,424 input, 32,366 output tokens) and 143 `repair` calls (437,082 / 14,644) next to 310 `answer` calls (453,637 / 10,435); the writer made 44 `extract` calls on Qwen3-32B (254,253 input of which 158,336 cached, 37,659 output). The Qwen3-8B server does not report cached tokens.
+
+#### T013 break-even with measured writer tokens (D007)
+
+Run `E007-20261128T062759Z-f620` (`write_budget estimate`, config `configs/experiments/E007-break-even.yaml`: T013's config with the E007 writer runs as reference writers, each priced at c from its own call records). c* = smallest c at which payback falls within the history's own reads (conv-26 152, conv-49 156). Read side as in T013: the cached full-history run and the `rrf` answer calls at 1,024 as GRACE's answer call, central planner (1 call per read); c marks measured on Qwen3-8B (warm-read 0.130, pooled 0.191).
+
+| Writer | Weight | c* conv-26 / conv-49 | M* at c = 0.130 (conv-26 / conv-49) | M* at c = 0.191 |
+| --- | --- | --- | --- | --- |
+| T013 paper model, session, central | 1 | 0.075 / 0.061 | 47 / 38 | 27 / 24 |
+| measured Qwen3-32B session (`1f87`) | 1 | 0.072 / 0.057 | 40 / 32 | 24 / 21 |
+| measured Qwen3-32B segment-8 (`e513`) | 1 | 0.092 / 0.072 | 83 / 62 | 51 / 41 |
+| measured Qwen3-32B message (`e01f`) | 1 | 0.338 / 0.218 | 373 / 243 (no payback) | 239 / 172 (no payback) |
+| measured Qwen3-32B segment-8, thinking (`7812`) | 1 | 0.175 / 0.131 | 233 / 158 (no payback) | 136 / 99 |
+| measured Qwen3-8B session (`7946`; input priced in full) | 1 | 0.102 / 0.081 | 98 / 72 | 55 / 43 |
+| measured Qwen3-32B session, compute-weighted | 4.0 | 0.134 / 0.112 | 159 (no payback) / 128 | 94 / 81 |
+| measured Qwen3-32B segment-8, compute-weighted | 4.0 | 0.253 / 0.198 | 332 / 245 (no payback) | 203 / 162 (no payback) |
+
+Weight 4.0: assumption that compute per token, prefill and decode alike, scales with the parameter count (Qwen3-32B 32.8 B / Qwen3-8B 8.2 B); the read side stays on Qwen3-8B.
+
+Verdict (as stated to s00-super): token-based, as T013 defines it, the LoCoMo token-savings claim survives with session units on the Qwen3-32B writer (c* 0.057-0.072 below the measured warm-read c of 0.13; payback within 32-40 of 152-156 reads). Compute-weighted at x4 it is at or beyond break-even: c* 0.11-0.13 against a measured c of 0.13 that is an upper bound (conv-26 does not pay back at 0.13, conv-49 does). Limits: the read side is T013's `rrf` proxy, not GRACE's measured read calls; the measured main arm spends about 4,650 planner input tokens per read (plan and repair, above) against T013's central assumption of one call of about 2,645 input tokens (2,265 prompt + 300 vocabulary + 80 request), so the proxy understates GRACE's read cost; c was measured on Qwen3-8B.
+
 Prompt round (one round, user decision of 2026-11-26), scored once on the 16 LoCoMo T024 segments from the full-history graphs (the segments were not used to write the prompt), segment-8:
 
 | Writer | Prompt | Writer run | Empty patches | Claims | Loose P | Loose R | Score run |
@@ -148,11 +190,13 @@ Prompt round (one round, user decision of 2026-11-26), scored once on the 16 LoC
 
 ## Conclusion
 
-Pending the main-configuration decision (s00-super) and the arms not run (Log). What the completed runs support, each comparison within one extraction mode:
+Main configuration (decided 2026-11-28, Log): Qwen3-32B writer (user decision, D006 amendment) at session units (s00-super). What the completed runs support, each comparison within one extraction mode:
 
 - Granularity: session units give the highest claim precision for both writers in both modes (Qwen3-32B loose P 0.250-0.273 full-history and 0.349-0.395 on segments; Qwen3-8B 0.089-0.093 and 0.209-0.246) at about the same recall as segment-8, and the fewest writer tokens per message (Qwen3-32B on LoCoMo: input 274 vs 743 for segment-8 and 4,621 for message; output 40 vs 55 and 87). Per-message units have the lowest precision and about six times the input tokens (the fixed prompt is resent per message; most of it is a cached prefix). Recommended main configuration: session granularity (proposal; s00-super decides). Not measured: the cost of read-triggered flushes inside an open session (no reads in these runs), which session units make more frequent under per-turn reading.
 - Scale: Qwen3-32B is about four times as precise as Qwen3-8B in full-history writing (segment-8 0.195-0.215 vs 0.050-0.058) and about 1.7 times on segments, at similar recall, with fewer output tokens.
 - Thinking (Qwen3-32B, segment-8): output tokens per message grow about tenfold (LoCoMo 555 vs 55; segments 803 vs 59) and parse failures rise to 0.10-0.16 (thinking cut at max_tokens 16384 at temperature 0; 2 of 19 split units on the segments were not repaired). Precision rises in full-history writing (0.253-0.263 vs 0.195-0.215) but falls on the segments (0.204-0.233 vs 0.304-0.342); recall is within the bounds of thinking off in both modes. Session units without thinking reach the same full-history precision (0.250-0.273) at 40 output tokens per message, so thinking does not pay for the writer here.
+- Answer accuracy (LoCoMo dev, budget 1,024): the main configuration reaches F1 0.293 against 0.271 with the Qwen3-8B writer and 0.283 with Qwen3-32B segment-8, so the writer ordering follows graph quality; every GRACE arm is below the `rrf` baseline (0.347), and category 2 (temporal) is 0.071 in all three arms. Not explained from these runs.
+- Break-even (D007): token-based the LoCoMo savings claim survives; compute-weighted it does not robustly (Results).
 - The one prompt round helped Qwen3-32B (full history: P 0.172-0.179 to 0.195-0.215, R 0.183-0.253 to 0.210-0.275, empty patches 44 to 38 of 136) but not Qwen3-8B in full-history writing (P 0.068-0.077 to 0.050-0.058, R 0.126-0.159 to 0.111-0.137), where emotion and mention predicates the prompt forbids grew (`hasEmotionalImpact` 339, `mentions` 293 claims).
 
 ## Log
@@ -166,3 +210,6 @@ Pending the main-configuration decision (s00-super) and the arms not run (Log). 
 - 2026-11-28: results of the scale and granularity arms (thinking off) on LoCoMo dev, the controlled sequences and the T024 segments, with E006 scores and the graph-channel recall proxy: Results. Answer accuracy was not run (no answering pipeline over extracted graphs exists yet); the T025 recall probe on each arm's graphs stands in as a proxy (graph R@20 0.071-0.117, fused R@20 0.730-0.747 across arms; fusion moves by about one point). D007 request (s00-super): writer tokens per granularity, model and thinking setting per message of history, input split into cached prefix and rest, are in the Results tables and in each writer run's `report.yaml` (`metrics.writer_tokens`).
 - 2026-11-28: not run or not finished in this session: thinking on for Qwen3-8B (needs a Qwen3-8B server with a reasoning parser; the shared server has none); thinking on for Qwen3-32B at message and session granularity and on the controlled sequences; graph quality on the controlled sequences (no scorer against their gold graphs yet).
 - 2026-11-28: thinking on, Qwen3-32B, segment-8: LoCoMo dev `E007-20261128T002721Z-7812` (score `E007-20261128T014112Z-e4b3`, recall `E007-20261128T014114Z-87f8`) and T024 segments `E007-20261128T003438Z-23eb` (score `E007-20261128T011144Z-2c97`); results in Results and Conclusion. The Qwen3-32B server on GPU 0 was stopped and its `runs/compute.yaml` entry removed.
+- 2026-11-28: decisions recorded (s00-super, 2026-11-28). User decision: the main writer is Qwen3-32B (D006 amendment, PR #158); planning, rendering and answering stay Qwen3-8B; the Qwen3-8B writer stays as the small-writer arm; one prompt for all arms, no second prompt round. Decision of s00-super: main granularity session units. The Qwen3-8B thinking arm is not run: thinking does not pay for the writer on Qwen3-32B (the same full-history precision at about a tenth of the output tokens without it). The slot-table arms of ablation B also use the Qwen3-32B writer, so the representations are compared with one writer.
+- 2026-11-28: main configuration on branch `task/E007-main-config`: engine config key `writer_model` (a model config reached at `--writer-url`; the writer and writer-side extensions use the port's `writer_client`, planner, views and answering the run's client); `configs/common/writer.yaml` session units with max_tokens 12288 (`writer-segment8.yaml` keeps the segment-8 settings); `grace.yaml` and all T027 variants on `writer_model: configs/models/qwen3-32b.yaml`; arms `grace-writer-8b.yaml` and `grace-writer-segment8.yaml`. The first small-writer run `E007-20261128T062349Z-41ff` sent the Qwen3-8B writer to the Qwen3-32B endpoint and was aborted; since `528b043` a writer model equal to the run's model is always reached at `--base-url`.
+- 2026-11-28: answer accuracy per writer arm with `grace.cli.locomo_score` (new: score stage of a LoCoMo system run with the registered rule-based metrics of `configs/common/scorers.yaml`), and the T013 break-even with measured writer tokens (`write_budget` gained weighted reference writers and `--no-plot`; the first estimate `E007-20261128T062749Z-b374` failed on the missing matplotlib): Results. E001's LoCoMo table lists 0.310 for `rrf`: that column is the answer calls' prefix-cache hit ratio ("A hit ratio"; the table counts outputs, not scores), not an F1; E001 reports judge accuracy for `rrf` on LoCoMo (0.3929 / 0.4583) and no rule-based F1, so 0.347 here is the first F1 of run `E001-20261125T182212Z-2cd5` and no scorer differs.

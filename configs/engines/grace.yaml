@@ -5,8 +5,11 @@
 engine: grace
 description: GRACE (writer, planner, three-channel retrieval, views, evidence-driven assembly)
 prefix_caching: false
+# GRACE's writer model (user decision 2026-11-28, D006 amendment): Qwen3-32B, reached at the run's
+# --writer-url; the planner, view rendering and answering stay on the run's model (Qwen3-8B).
+writer_model: configs/models/qwen3-32b.yaml
 params:
-  writer: configs/common/writer.yaml          # T022 writer (granularity, guard, prompt)
+  writer: configs/common/writer.yaml          # T022 writer, session units (E007 main configuration)
   planner: configs/common/planner.yaml        # T023 planner (rules, LLM, one repair)
   retrieval: configs/retrieval/default.yaml   # T025 channels, routing, fusion
   assembly: configs/assembly/default.yaml     # T026 greedy assembly; truncate.yaml = rank truncation

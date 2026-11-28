@@ -8,6 +8,9 @@
 engine: grace
 description: GRACE assembly over the fixed slot table (guard true, time bitemporal)
 prefix_caching: false
+# Same writer model as the main configuration (s00-super, 2026-11-28): the slot writer runs on
+# Qwen3-32B at --writer-url, so ablation B compares representations with the same writer.
+writer_model: configs/models/qwen3-32b.yaml
 params:
   writer: configs/common/writer.yaml
   planner: configs/common/planner.yaml

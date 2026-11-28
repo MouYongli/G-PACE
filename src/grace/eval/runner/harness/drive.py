@@ -67,7 +67,10 @@ from grace.llm.tokens import HFTokenCounter, TokenizerJsonCounter, TokenizerPin,
 
 BUDGETS = REPO_ROOT / "configs" / "common" / "budgets.yaml"
 DEFAULT_MODEL = REPO_ROOT / "configs" / "models" / "qwen3-8b.yaml"
-ENGINE_KEYS = {"engine", "description", "params", "prefix_caching", "embedding", "engine_llm"}
+ENGINE_KEYS = {"engine", "description", "params", "prefix_caching", "embedding", "engine_llm",
+               "writer_model"}
+# `writer_model`: a model config (configs/models/) for GRACE's writer when it is not the run's
+# model; reached at --writer-url (E007 main configuration: Qwen3-32B writer).
 # `engine_llm`: the engine's own chat model. Required keys, then descriptive ones.
 ENGINE_LLM_REQUIRED = {"label", "base_url_env", "deployment_env", "api_key_env", "tokenizer",
                        "decoding"}
@@ -88,6 +91,8 @@ def load_engine_config(path: Path) -> dict[str, Any]:
         if keys - ENGINE_LLM_KEYS or ENGINE_LLM_REQUIRED - keys:
             raise ValueError(f"{path}: engine_llm needs {sorted(ENGINE_LLM_REQUIRED)} and allows "
                              f"{sorted(ENGINE_LLM_KEYS - ENGINE_LLM_REQUIRED)}; got {sorted(keys)}")
+    if "writer_model" in config and not (REPO_ROOT / str(config["writer_model"])).is_file():
+        raise ValueError(f"{path}: writer_model {config['writer_model']!r} is not a model config")
     config.setdefault("params", {})
     config.setdefault("prefix_caching", False)
     return config
@@ -143,6 +148,7 @@ class ClientSettings:
     model_config: Path = DEFAULT_MODEL
     embed_url: str | None = None
     serving: dict[str, Any] | None = None  # server settings to record (e.g. prefix caching)
+    writer_url: str | None = None  # endpoint of the engine's `writer_model`, if it names one
 
     def model_info(self) -> dict[str, Any]:
         config = yaml.safe_load(Path(self.model_config).read_text(encoding="utf-8"))
@@ -174,8 +180,35 @@ class ClientSettings:
                              model_label=f"{emb['hf_repo']}@{emb['revision']}"),
                     ledger, counter.count_text, max_attempts=attempts)
             decoding = {**config["decoding"], "seed": seed}
-            return ClientModel(client, counter, decoding=decoding, embedder=embedder)
+            model = ClientModel(client, counter, decoding=decoding, embedder=embedder)
+            if writer is not None:
+                w_counter = _counter(writer["path"])
+                model.writer_client = ChatClient(
+                    Endpoint.for_model(w_counter.pin, writer["base_url"],
+                                       writer["served_name"]),
+                    ledger, w_counter, max_attempts=attempts)
+            return model
+        writer = self.writer_info(engine_config)
+        if writer is not None:
+            writer["path"] = REPO_ROOT / engine_config["writer_model"]
         return make
+
+    def writer_info(self, engine_config: dict[str, Any]) -> dict[str, Any] | None:
+        """The engine's own writer model (`writer_model`: a model config) and its endpoint
+        (the run's `base_url` when it is the run's model, else `writer_url`); None when the
+        engine config names none (the writer shares the run's client)."""
+        name = engine_config.get("writer_model")
+        if name is None:
+            return None
+        path = REPO_ROOT / name
+        config = yaml.safe_load(path.read_text(encoding="utf-8"))
+        same = path.resolve() == Path(self.model_config).resolve()
+        url = self.base_url if same else self.writer_url
+        if url is None:
+            raise ValueError(f"this engine's writer is {name}: pass --writer-url")
+        return {"model_config": name, "served_name": config["served_name"],
+                "label": f"{config['hf_repo']}@{config['revision']}",
+                "thinking": config["thinking"], "base_url": url}
 
     def engine_factory(self, engine_config: dict[str, Any], seed: int
                        ) -> Callable[[CallLedger, ClientModel], EngineLLMModel] | None:
@@ -293,6 +326,8 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
         make_model = client.factory(config, seed)
         make_engine_model = client.engine_factory(config, seed)
         model_info, device = client.model_info(), "cpu (model on the serving endpoint)"
+        if (writer_info := client.writer_info(config)) is not None:
+            model_info = {**model_info, "writer": writer_info}
     else:
         backend = (backend_factory or (lambda caching: FakeBackend(prefix_caching=caching)))(
             config["prefix_caching"])
@@ -398,6 +433,9 @@ def main(argv: list[str] | None = None) -> int:
                                                          "http://127.0.0.1:8061/v1")
     parser.add_argument("--embed-url", default=None, help="embedding endpoint (dense, rrf)")
     parser.add_argument("--model-config", type=Path, default=DEFAULT_MODEL)
+    parser.add_argument("--writer-url", default=None,
+                        help="endpoint of the engine's writer_model when it is not the run's "
+                             "model (the run's model is always reached at --base-url)")
     parser.add_argument("--task", action="append", default=None,
                         help="keep only the reads of this task ID (repeatable)")
     parser.add_argument("--read-order", choices=streaming.READ_ORDERS, default="schedule",
@@ -411,7 +449,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.backend == "client":
         if not args.base_url:
             parser.error("--backend client needs --base-url")
-        client = ClientSettings(args.base_url, args.model_config, args.embed_url)
+        client = ClientSettings(args.base_url, args.model_config, args.embed_url,
+                                writer_url=args.writer_url)
     result = run_system(engine_config=args.engine, records=args.records,
                         benchmark=args.benchmark, split=args.split, budget=budget,
                         experiment=args.experiment, run_root=run_root, schedule=args.schedule,

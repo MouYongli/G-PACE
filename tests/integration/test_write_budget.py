@@ -254,6 +254,20 @@ class EstimateStageTest(unittest.TestCase):
         self.assertTrue((run_dir / "curves.csv").is_file())
         self.assertTrue((run_dir / "units.csv").is_file())
 
+    def test_reference_weight_scales_the_writer_cost(self):
+        config = yaml.safe_load(self.config.read_text())
+        config["reference_writers"]["slot-table-x4"] = config["reference_writers"]["slot-table"]
+        config["reference_weights"] = {"slot-table-x4": 4.0}
+        self.config.write_text(yaml.safe_dump(config))
+        run_dir, _ = wb.run_estimate(self.config, self.tmp / "out", counter=WordCounter(),
+                                     loader=fixture_loader, code=CODE, command="test", draw=False)
+        rows = {r["granularity"]: r for r in json.loads(
+            (run_dir / "write-budget.json").read_text())["results"]}
+        one, four = rows["measured:slot-table"], rows["measured:slot-table-x4"]
+        self.assertEqual(four["W"]["logical"], 4 * one["W"]["logical"])
+        self.assertEqual((one["W"]["weight"], four["W"]["weight"]), (1.0, 4.0))
+        self.assertEqual(four["curve"][5]["w"], round(4 * one["curve"][5]["w"], 3))
+
     def test_refuses_incomplete_input_run(self):
         run = self.tmp / "project" / "runs" / "E001" / "E001-20261125T000000Z-0002" / "run.json"
         run.write_text(json.dumps({"run_id": "E001-20261125T000000Z-0002", "stage": "system",

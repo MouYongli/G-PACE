@@ -83,7 +83,8 @@ class BaselineRunsTest(unittest.TestCase):
             self.assertTrue(set(w["call_ids"]) <= call_ids)
 
     def test_every_baseline_on_every_fixture(self):
-        self.assertEqual(len(ALL_ENGINES), 20)  # + graphiti-native, rrf-tagged, grace, variants
+        self.assertEqual(len(ALL_ENGINES), 22)  # + graphiti-native, rrf-tagged, grace, variants,
+        # and the E007 writer arms grace-writer-8b, grace-writer-segment8
         for config in ENGINES:
             for benchmark in sorted(p.name for p in BENCHMARKS.iterdir()):
                 for budget in (None, 24):

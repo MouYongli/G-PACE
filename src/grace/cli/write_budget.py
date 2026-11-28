@@ -370,18 +370,23 @@ def estimate(exp: Mapping[str, Any], records, counter: TokenCounter, *,
                 results.append(_result(history_id, granularity["name"], scenario, cost.calls,
                                        fn, side.reads, steps, marks,
                                        {"logical": cost.logical, "computed": cost.computed}))
+        weights = exp.get("reference_weights", {})
         for name, refs in references.items():
             mine = [r for r in refs if r.history_id == history_id and r.category == "W"]
             if not mine:
                 continue
             planner = planners["central"]
+            # E007: a writer on a larger model than the answering model, priced in answering-model
+            # token equivalents (weight = compute per token relative to the primary model).
+            k = float(weights.get(name, 1.0))
 
-            def fn(c, mine=mine, planner=planner, side=side):
-                return point(c, lambda c: price(mine, c), side,
+            def fn(c, mine=mine, planner=planner, side=side, k=k):
+                return point(c, lambda c: k * price(mine, c), side,
                              lambda c: planner.per_read(c, planner_prompt_tokens))
             results.append(_result(history_id, f"measured:{name}", "measured",
                                    len(mine), fn, side.reads, steps, marks,
-                                   {"logical": price(mine, 1.0), "computed": price(mine, 0.0),
+                                   {"logical": k * price(mine, 1.0),
+                                    "computed": k * price(mine, 0.0), "weight": k,
                                     "cached_input": sum(r.cached_input_tokens for r in mine),
                                     "failed_attempts": sum(r.status != "ok" for r in mine)}))
     return {"histories": histories, "units": units_rows, "results": results,
@@ -780,6 +785,8 @@ def main(argv: list[str] | None = None) -> int:
     est = sub.add_parser("estimate", help="writer tokens and break-even curves (CPU)")
     est.add_argument("--config", type=Path, required=True)
     est.add_argument("--run-root", type=Path, default=None)
+    est.add_argument("--no-plot", action="store_true",
+                     help="skip break-even.png (needs matplotlib, absent from the base env)")
     mc = sub.add_parser("measure-c", help="compute ratio c on an exclusive GPU")
     mc.add_argument("--config", type=Path, required=True)
     mc.add_argument("--base-url", required=True)
@@ -789,7 +796,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.run_root or default_run_root()
     if args.command == "estimate":
-        run_dir, status = run_estimate(args.config, root)
+        run_dir, status = run_estimate(args.config, root, draw=not args.no_plot)
     else:
         run_dir, status = run_measure_c(args.config, root, base_url=args.base_url, gpu=args.gpu,
                                         server_pid=args.server_pid)
