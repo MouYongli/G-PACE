@@ -1,0 +1,11 @@
+# Rank truncation, the comparison mode of plan 5.5 (T026): the same candidates, filter and layout,
+# taken in fused rank order until the first that does not fit. No expansion.
+version: 1
+selection: truncate
+fill: false
+truncate_k: null
+recent_messages: 0
+open_items: true           # same layout as the main configuration
+max_expansions: 0
+support_threshold: 0.5
+min_budget: 16

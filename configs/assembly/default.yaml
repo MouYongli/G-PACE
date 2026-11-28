@@ -1,0 +1,12 @@
+# Evidence-driven assembly, main configuration (plan 5.5; T026; grace.context.pipeline.assembly).
+# Values other than `selection` and `max_expansions` are placeholders until they are fixed on
+# development data and frozen at the configuration lock (D012).
+version: 1
+selection: greedy          # new demand coverage per added token
+fill: true                 # fill the budget left after coverage in rank order
+truncate_k: null           # used only by selection: truncate
+recent_messages: 0         # last k visible messages in the "recent raw text" section
+open_items: true           # list uncovered variables in the context
+max_expansions: 1          # plan 5.6: at most one extra retrieval per read
+support_threshold: 0.5     # share of a variable's content terms an item must contain
+min_budget: 16             # smallest memory budget accepted (holds the empty-context marker)

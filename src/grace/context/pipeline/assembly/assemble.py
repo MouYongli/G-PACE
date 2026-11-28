@@ -1,0 +1,257 @@
+"""The assembler: demand -> filter -> select -> expand -> layout, within a token budget (plan 5.5).
+
+`Assembler.assemble` builds the working context of one read from the items the engine collected.
+Its configuration (`configs/assembly/*.yaml`, `AssemblyConfig`) fixes:
+
+- `selection`: `greedy` (main configuration: new demand coverage per added token) or `truncate`
+  (comparison mode: rank truncation, `truncate_k` optional).
+- `fill`: in greedy mode, fill the budget left after coverage in rank order.
+- `recent_messages`: the last k visible messages, kept first in the "recent raw text" section
+  (0 switches the section off).
+- `open_items`: list the still uncovered variables in the context.
+- `max_expansions`: expansions per read (plan 5.6: at most one extra retrieval per read; 0 or 1).
+  Rank truncation never expands.
+- `support_threshold`: lexical support threshold (`demand.Support`).
+- `min_budget`: the smallest budget accepted; it must hold the empty-context marker.
+
+Budget. `budget` is the memory budget of the read in tokens of the answering model's tokenizer
+(256, 512 or 1,024; `None` is the full history). Selection works on per-item estimates (the line
+of an item plus its line break, with section headings reserved); the serialised text is then
+counted exactly, and while it exceeds the budget the last-taken unit is dropped. So
+`context.tokens == count(context.text) <= budget` always holds, and the `TokenLedger` splits the
+total into fragment lines and layout tokens.
+
+Full history (`budget=None`): every item that passes the filter is shown, without selection or
+expansion; the engine passes the visible log as items (`items.history_items`) plus anything else
+it wants shown.
+
+The engine's read path, step by step:
+
+1. `demand = demand_of(request, plan.variables)`; `items` from retrieval, query answers, views.
+2. `a = assembler.assemble(task, demand, items, budget, constraints)`.
+3. If `a.pending` is a query expansion, run one restricted query for `a.pending.variables`, turn
+   the answers into items, and call `assemble(..., items + new, ..., expansions_used=1)`.
+4. `a.context` is the working context; `api.read_trace(a.context, ...)` gives the trace, whose
+   included IDs and provenance are the evidence IDs shown to the answering LLM.
+
+A further retrieval requested by the answering LLM is served the same way with the new
+candidates and `expansions_used=config.max_expansions` (no expansion on top of it).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from grace.context import api
+from grace.context.memory.history.log import MessageLog
+from grace.context.pipeline.assembly import layout
+from grace.context.pipeline.assembly.demand import Demand, Support, Variable
+from grace.context.pipeline.assembly.expand import Expansion, expand_summary, propose
+from grace.context.pipeline.assembly.filter import Constraints, filter_items
+from grace.context.pipeline.assembly.items import Item, recent_items
+from grace.context.pipeline.assembly.select import MODES, Unit, greedy, truncate, units_of
+
+CONFIG_KEYS = {"version", "selection", "fill", "truncate_k", "recent_messages", "open_items",
+               "max_expansions", "support_threshold", "min_budget"}
+
+
+@dataclass(frozen=True)
+class AssemblyConfig:
+    selection: str = "greedy"
+    fill: bool = True
+    truncate_k: int | None = None
+    recent_messages: int = 0
+    open_items: bool = True
+    max_expansions: int = 1
+    support_threshold: float = 0.5
+    min_budget: int = 16
+
+    def __post_init__(self) -> None:
+        if self.selection not in MODES:
+            raise ValueError(f"selection must be one of {MODES}")
+        if self.max_expansions not in (0, 1):
+            raise ValueError("plan 5.6 allows at most one extra retrieval per read")
+        if self.recent_messages < 0:
+            raise ValueError("recent_messages must be >= 0")
+        if self.truncate_k is not None and self.truncate_k < 1:
+            raise ValueError("truncate_k must be >= 1")
+        Support(self.support_threshold)
+
+    def to_record(self) -> dict[str, Any]:
+        return {"version": 1, "selection": self.selection, "fill": self.fill,
+                "truncate_k": self.truncate_k, "recent_messages": self.recent_messages,
+                "open_items": self.open_items, "max_expansions": self.max_expansions,
+                "support_threshold": self.support_threshold, "min_budget": self.min_budget}
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> AssemblyConfig:
+        if not isinstance(raw, Mapping) or raw.get("version") != 1:
+            raise ValueError("assembly config: expected a mapping with version: 1")
+        if unknown := sorted(set(raw) - CONFIG_KEYS):
+            raise ValueError(f"assembly config: unknown keys {unknown}")
+        return cls(**{k: v for k, v in raw.items() if k != "version"})
+
+    @classmethod
+    def load(cls, path: Path) -> AssemblyConfig:
+        return cls.from_dict(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
+
+
+@dataclass(frozen=True)
+class Assembly:
+    """The result of one assembly: the working context and how it was chosen."""
+
+    context: api.WorkingContext
+    demand: Demand
+    constraints: Constraints
+    selection: str
+    covered: tuple[str, ...]
+    open: tuple[Variable, ...]
+    candidates: int
+    dropped: tuple[tuple[str, str], ...]
+    ledger: layout.TokenLedger
+    expansion: Expansion | None = None
+    expansion_done: bool = False
+    expansions_used: int = 0
+    coverage: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+
+    @property
+    def pending(self) -> Expansion | None:
+        """A query expansion the engine must run, or None."""
+        return self.expansion if self.expansion is not None and not self.expansion_done else None
+
+    def to_record(self) -> dict[str, Any]:
+        return {"read_id": self.context.read_id, "selection": self.selection,
+                "demand": self.demand.to_record(), "constraints": self.constraints.to_record(),
+                "covered": list(self.covered), "open": [v.to_record() for v in self.open],
+                "candidates": self.candidates,
+                "dropped": [{"id": i, "reason": r} for i, r in self.dropped],
+                "coverage": {k: list(v) for k, v in self.coverage.items()},
+                "expansion": self.expansion.to_record() if self.expansion else None,
+                "expansion_done": self.expansion_done,
+                "expansions_used": self.expansions_used, "ledger": self.ledger.to_record()}
+
+
+class Assembler:
+    """Builds working contexts; `count` is the answering model's token counter for plain text."""
+
+    def __init__(self, config: AssemblyConfig, count: Callable[[str], int], *,
+                 log: MessageLog | None = None, counter_name: str = "unnamed"):
+        self.config = config
+        self.count = count
+        self.log = log
+        self.counter_name = counter_name
+        self.support = Support(config.support_threshold)
+
+    # ------------------------------------------------------------------------------------------
+    def assemble(self, task: api.ReadTask, demand: Demand, items: Sequence[Item],
+                 budget: int | None, constraints: Constraints | None = None, *,
+                 expansions_used: int = 0) -> Assembly:
+        c = constraints or Constraints(version=task.version)
+        if c.version != task.version:
+            raise ValueError(f"constraints bound to version {c.version}, read {task.read_id} "
+                             f"to {task.version}")
+        if budget is not None and budget < self.config.min_budget:
+            raise ValueError(f"budget {budget} < min_budget {self.config.min_budget}")
+        recent = (recent_items(self.log, task.version, self.config.recent_messages)
+                  if self.log is not None else [])
+        recent_ids = {i.item_id for i in recent}
+        pool = recent + [i for i in items if i.item_id not in recent_ids]
+        filtered = filter_items(pool, c)
+        kept = list(filtered.kept)
+        cache: dict[str, frozenset[str]] = {}
+
+        def covers(item: Item) -> frozenset[str]:
+            if item.item_id not in cache:
+                cache[item.item_id] = self.support.covers(item, demand.variables)
+            return cache[item.item_id]
+
+        show_open = self.config.open_items
+        if budget is None:
+            selected = kept
+        else:
+            selected, show_open = self._fit(self._select(kept, demand, budget, covers), demand,
+                                            budget, covers)
+        expansion, done = None, False
+        if (budget is not None and self.config.selection == "greedy"
+                and expansions_used < self.config.max_expansions):
+            open_now = self._open(selected, demand, covers)
+            have = {i.item_id for i in kept}
+
+            def raw_of(summary: Item) -> list[Item]:
+                return [i for i in filter_items(expand_summary(summary, self.log, task.version),
+                                                c).kept if i.item_id not in have]
+
+            def summary_covers(summary: Item) -> frozenset[str]:
+                return frozenset().union(*(covers(i) for i in raw_of(summary)))
+
+            expansion = propose(open_now, kept,
+                                summary_covers if self.log is not None else None)
+            if expansion is not None and expansion.kind == "summary":
+                summary = next(i for i in kept if i.item_id == expansion.item_id)
+                kept = [i for i in kept if i.item_id != summary.item_id] + raw_of(summary)
+                selected, show_open = self._fit(self._select(kept, demand, budget, covers),
+                                                demand, budget, covers)
+                done = True
+                expansions_used += 1
+        open_vars = self._open(selected, demand, covers)
+        serialised = layout.serialise(selected, open_vars if show_open else ())
+        frags = layout.fragments(serialised, self.count)
+        tokens = self.count(serialised.text)
+        context = api.WorkingContext(task.read_id, task.history_id, task.version, budget,
+                                     tokens, serialised.text, frags)
+        covered = tuple(n for n in demand.names if n not in {v.name for v in open_vars})
+        coverage = {i.item_id: tuple(sorted(covers(i))) for i in serialised.items if covers(i)}
+        return Assembly(context, demand, c, self.config.selection, covered, tuple(open_vars),
+                        len(pool), filtered.dropped,
+                        layout.ledger(serialised.text, frags, self.count, budget,
+                                      self.counter_name),
+                        expansion, done, expansions_used, coverage)
+
+    # ------------------------------------------------------------------------------------------
+    def _cost(self, item: Item) -> int:
+        return layout.item_cost(item, self.count)
+
+    def _open(self, selected: Sequence[Item], demand: Demand, covers) -> list[Variable]:
+        have = set().union(*(covers(i) for i in selected)) if selected else set()
+        return [v for v in demand.variables if v.name not in have]
+
+    def _select(self, kept: Sequence[Item], demand: Demand, budget: int, covers) -> list[Unit]:
+        units = units_of(kept, self._cost, covers)
+        sections = {i.layout_section for i in kept}
+        headings = sum(self.count(layout.HEADINGS[s] + layout.SEPARATOR) for s in sections)
+        room = budget - headings
+        taken: list[Unit] = []
+        used = 0
+        for u in units:  # recent raw text first, in log order
+            if all(i.layout_section == "recent" for i in u.items) and used + u.tokens <= room:
+                taken.append(u)
+                used += u.tokens
+        rest = [u for u in units if u not in taken]
+        if self.config.selection == "truncate":
+            return truncate(rest, room, k=self.config.truncate_k, taken=taken)
+        return greedy(rest, demand.names, room, fill=self.config.fill, taken=taken)
+
+    def _fit(self, chosen: list[Unit], demand: Demand, budget: int, covers
+             ) -> tuple[list[Item], bool]:
+        """Drop the last-taken units until the exact count of the serialised text fits; return
+        the items and whether the open items are listed."""
+        chosen = list(chosen)
+        while True:
+            items = [i for u in chosen for i in u.items]
+            open_vars = self._open(items, demand, covers) if self.config.open_items else []
+            text = layout.serialise(items, open_vars).text
+            if self.count(text) <= budget:
+                return items, self.config.open_items
+            if not chosen:
+                break
+            chosen.pop()
+        # Nothing selected and the open items alone do not fit: the context is the empty marker
+        # (min_budget guarantees that it fits); the open items are then not listed.
+        if self.count(layout.EMPTY) > budget:
+            raise ValueError(f"budget {budget} cannot hold the empty context")
+        return [], False
