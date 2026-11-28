@@ -50,10 +50,14 @@ targets:
     benchmark: longmemeval-s
     split: dev                # main-text strata first (67 histories), then the other 31
     ingest: E006-20261128T083145Z-6288   # main-text strata; second ingest E006-20261128T084142Z-ee92
+    # Histories whose ingest snapshot does not restore (defects in the experiment file's Log),
+    # excluded with --history: 6288 f9e8c073, 0ddfec37_abs, 7405e8b1, b46e15ee, f0e564bc,
+    # gpt4_2655b836; ee92 41275add.
+    exclude: [f9e8c073, 0ddfec37_abs, 7405e8b1, b46e15ee, f0e564bc, gpt4_2655b836, 41275add]
   multiwoz-dev:
     benchmark: multiwoz
-    split: dev                # only if a per-turn system run is affordable (estimate first)
-    ingest: null
+    split: dev                # not run: per-turn reads need a system run per arm (estimate in the
+    ingest: null              # experiment file)
 
 metrics:
   - f1                 # LoCoMo token F1 (categories 1-4), registered in configs/common/scorers.yaml
