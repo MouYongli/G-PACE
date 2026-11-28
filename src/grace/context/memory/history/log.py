@@ -102,6 +102,9 @@ class MessageLog:
     def restore(cls, directory: Path, history_id: str) -> MessageLog:
         log = cls(history_id)
         path = Path(directory) / LOG_FILE
-        for line in path.read_text(encoding="utf-8").splitlines():
+        # JSON Lines are split on "\n" only: str.splitlines() also splits on U+2028
+        # and U+0085, which json.dumps(ensure_ascii=False) leaves inside strings.
+        text = path.read_text(encoding="utf-8")
+        for line in filter(None, text.split("\n")):
             log.append(Message.from_record(json.loads(line)))
         return log

@@ -378,7 +378,10 @@ class ViewStore:
         store = cls(history_id, renderer, config=config, families=families,
                     vocabulary=vocabulary)
         directory = Path(directory)
-        for line in (directory / VIEWS_FILE).read_text(encoding="utf-8").splitlines():
+        # JSON Lines are split on "\n" only: str.splitlines() also splits on U+2028
+        # and U+0085, which json.dumps(ensure_ascii=False) leaves inside strings.
+        text = (directory / VIEWS_FILE).read_text(encoding="utf-8")
+        for line in filter(None, text.split("\n")):
             record = json.loads(line)
             view = View.from_record(record["view"])
             if view.history_id != history_id or view.lifecycle is not Lifecycle.RESIDENT:
@@ -388,7 +391,10 @@ class ViewStore:
             store._vocabulary_version = record["vocabulary_version"]
         events = directory / EVENTS_FILE
         if events.exists():
-            for line in events.read_text(encoding="utf-8").splitlines():
+            # JSON Lines are split on "\n" only: str.splitlines() also splits on U+2028
+            # and U+0085, which json.dumps(ensure_ascii=False) leaves inside strings.
+            text = events.read_text(encoding="utf-8")
+            for line in filter(None, text.split("\n")):
                 record = json.loads(line)
                 record["call_ids"] = tuple(record["call_ids"])
                 store.events.append(MaintenanceEvent(**record))
