@@ -1,0 +1,20 @@
+# E013 development diagnosis (not a frozen config): configs/retrieval/default.yaml with
+# `routing: all`, so every read searches every available channel (BM25 and dense always; the
+# graph when the planner compiled a query). Tests the rule router's narrowing (plan 5.5 compares
+# rule routing with always using all three channels).
+version: 1
+total: 20
+depth: 20
+channels: [bm25, dense, graph]
+fusion: rrf
+rrf_k: 60
+weights: {bm25: 1.0, dense: 1.0, graph: 1.0}
+routing: all
+min_confidence: 1
+backfill: true
+bm25: {k1: 1.5, b: 0.75}
+dense:
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
