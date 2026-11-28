@@ -300,6 +300,22 @@ class ScriptedEngineTest(unittest.TestCase):
         self.assertIn("Berlin", result.context.text)
         self.assertTrue(result.trace.staleness_decisions)  # vocabulary change: full rebuild
 
+    def test_a_fallback_plan_issues_no_query_and_lists_no_open_item(self):
+        # E013 decisions 3 and 4: for a fallback plan the demand is the request itself; the
+        # assembler neither re-queries it nor lists it as "not found in memory".
+        self.ingest()
+        task = api.ReadTask("fixture", "dev", CITY, "qb@4", "qb", 4, "question",
+                            "What colour is the bicycle?", None, None, None)
+        result = self.engine.read(task, 256)
+        assembly = self.engine._reads["qb@4"].assembly
+        self.assertEqual(self.engine._reads["qb@4"].plan.route, "fallback")
+        self.assertTrue(assembly.demand.fallback)
+        self.assertEqual([v.name for v in assembly.open], ["answer"])
+        self.assertIsNone(assembly.expansion)
+        self.assertFalse(result.trace.retrieval_used)
+        self.assertEqual(result.trace.expansions_used, 0)
+        self.assertNotIn("Open items", result.context.text)
+
     def test_time_travel_read_keeps_the_retired_answer(self):
         self.ingest()
         e = self.engine

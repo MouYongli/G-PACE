@@ -9,7 +9,8 @@ Its configuration (`configs/assembly/*.yaml`, `AssemblyConfig`) fixes:
   this fill rule alone (`select.truncate`), so the two modes differ only in the selection rule.
 - `recent_messages`: the last k visible messages, kept first in the "recent raw text" section
   (0 switches the section off).
-- `open_items`: list the still uncovered variables in the context.
+- `open_items`: list the still uncovered variables in the context. The fallback `answer`
+  variable (`Demand.fallback`) is never listed: it stays open in the record but is not shown.
 - `max_expansions`: assembler expansions per read (0 or 1). Demand-driven expansion is part of
   the greedy method; rank truncation never expands.
 - `support_threshold`, `support_stem`: the lexical support rule (`demand.Support`); unfrozen
@@ -34,6 +35,9 @@ query. A pending query expansion sets `Assembly.retrieval_used`; at such a read 
 LLM's `retrieve` output is resolved as `unknown` (chosen over withholding the option so that the
 pinned answer prompt stays identical for every system; enforced where the answer is parsed, see
 the T026 log). A summary expansion reads the message log and is not a retrieval.
+`query_expansion=False` (the engine passes it when the plan fell back) proposes no query: the
+query would be the request again and would only spend the read's one retrieval (s00-super,
+2026-11-28, E013 diagnosis).
 
 The engine's read path, step by step:
 
@@ -181,7 +185,8 @@ class Assembler:
     # ------------------------------------------------------------------------------------------
     def assemble(self, task: api.ReadTask, demand: Demand, items: Sequence[Item],
                  budget: int | None, constraints: Constraints | None = None, *,
-                 expansions_used: int = 0, retrieval_used: bool = False) -> Assembly:
+                 expansions_used: int = 0, retrieval_used: bool = False,
+                 query_expansion: bool = True) -> Assembly:
         c = constraints or Constraints(version=task.version)
         if c.version != task.version:
             raise ValueError(f"constraints bound to version {c.version}, read {task.read_id} "
@@ -225,7 +230,8 @@ class Assembler:
             def summary_covers(summary: Item) -> frozenset[str]:
                 return frozenset().union(*(covers(i) for i in raw_of(summary)))
 
-            used_now = self.count(layout.serialise(selected, open_now if show_open else ()).text)
+            used_now = self.count(layout.serialise(
+                selected, self._listed(open_now, demand) if show_open else ()).text)
             chosen_ids = {i.item_id for i in selected}
 
             def summary_fits(summary: Item) -> bool:
@@ -250,13 +256,14 @@ class Assembler:
                 else:  # the summary stays; unsupported variables may still get the query
                     expansion = propose(open_now, kept, covers)
             if expansion is not None and expansion.kind == "query":
-                if retrieval_used:
-                    expansion = None  # the read's one extra retrieval is spent
+                if retrieval_used or not query_expansion:
+                    expansion = None  # the read's one extra retrieval is spent, or a fallback plan
                 else:
                     expansions_used += 1
                     retrieval_used = True
         open_vars = self._open(selected, demand, covers)
-        serialised = layout.serialise(selected, open_vars if show_open else ())
+        serialised = layout.serialise(selected,
+                                      self._listed(open_vars, demand) if show_open else ())
         frags = layout.fragments(serialised, self.count)
         tokens = self.count(serialised.text)
         context = api.WorkingContext(task.read_id, task.history_id, task.version, budget,
@@ -276,6 +283,11 @@ class Assembler:
     def _open(self, selected: Sequence[Item], demand: Demand, covers) -> list[Variable]:
         have = set().union(*(covers(i) for i in selected)) if selected else set()
         return [v for v in demand.variables if v.name not in have]
+
+    @staticmethod
+    def _listed(open_vars: Sequence[Variable], demand: Demand) -> Sequence[Variable]:
+        """The open variables shown under "Open items": none for the fallback demand."""
+        return () if demand.fallback else open_vars
 
     def _select(self, kept: Sequence[Item], demand: Demand, budget: int, covers) -> list[Unit]:
         units = units_of(kept, self._cost, covers)
@@ -300,7 +312,8 @@ class Assembler:
         chosen = list(chosen)
         while True:
             items = [i for u in chosen for i in u.items]
-            open_vars = self._open(items, demand, covers) if self.config.open_items else []
+            open_vars = (self._listed(self._open(items, demand, covers), demand)
+                         if self.config.open_items else [])
             text = layout.serialise(items, open_vars).text
             if self.count(text) <= budget:
                 return items, self.config.open_items

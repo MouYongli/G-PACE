@@ -15,6 +15,13 @@ rank is the best rank of its items.
   rank truncation under the same conditions as greedy (same candidates, filter, fill rule and
   layout); only the coverage-driven first phase differs (decision of s00-super, 2026-11-28).
 
+A message counts as shown only when its raw text is in the context: a message or retrieved-chunk
+item shows the messages it cites, while a claim, view or summary only cites them. So a terse
+structured line ("event = picnic [D6:11]") never keeps the raw text of D6:11 out of the fill; a
+claim or view whose cited messages are all shown raw adds nothing and is skipped. (Before E013 a
+claim's citations counted as shown, which removed the raw evidence behind every selected claim,
+dates included; E013 development diagnosis, 2026-11-28.)
+
 Both return the units in the order they were taken, which is the order in which the assembler
 drops them again if the exact token count of the serialised context exceeds the budget.
 """
@@ -28,6 +35,7 @@ from grace.context.pipeline.assembly.items import Item
 
 MODES = ("greedy", "truncate")
 INF = float("inf")
+RAW_KINDS = frozenset({"message", "retrieved"})  # item kinds whose text is the raw message text
 
 
 @dataclass(frozen=True)
@@ -43,6 +51,11 @@ class Unit:
     @property
     def sources(self) -> frozenset[str]:
         return frozenset(c for i in self.items for c in i.citations)
+
+    @property
+    def shows(self) -> frozenset[str]:
+        """Messages whose raw text this unit puts into the context."""
+        return frozenset(c for i in self.items if i.kind in RAW_KINDS for c in i.citations)
 
     @property
     def unit_id(self) -> str:
@@ -104,10 +117,10 @@ def greedy(units: Sequence[Unit], demand: Iterable[str], budget: int, *, fill: b
 def fill_by_rank(units: Sequence[Unit], budget: int, *, taken: Sequence[Unit] = (),
                  k: int | None = None) -> list[Unit]:
     """Add units in rank order while they fit, skipping a unit that does not fit or whose
-    messages are all shown already; at most `k` units are added."""
+    messages are all shown already as raw text (`Unit.shows`); at most `k` units are added."""
     chosen = list(taken)
     used = sum(u.tokens for u in chosen)
-    shown = set().union(*(u.sources for u in chosen)) if chosen else set()
+    shown = set().union(*(u.shows for u in chosen)) if chosen else set()
     added = 0
     for u in by_rank([u for u in units if u not in chosen]):
         if k is not None and added >= k:
@@ -116,7 +129,7 @@ def fill_by_rank(units: Sequence[Unit], budget: int, *, taken: Sequence[Unit] = 
             continue
         chosen.append(u)
         used += u.tokens
-        shown |= u.sources
+        shown |= u.shows
         added += 1
     return chosen
 

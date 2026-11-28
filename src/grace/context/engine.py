@@ -530,7 +530,9 @@ class GraceEngine(api.ContextEngine):
         constraints = _constraints(task, plan)
         demand = demand_of(request, plan.variables)
         assembler = self._assembler()
-        assembly = assembler.assemble(task, demand, items, budget_tokens, constraints)
+        # No assembler query for a fallback plan: it would re-query the request (E013 diagnosis).
+        assembly = assembler.assemble(task, demand, items, budget_tokens, constraints,
+                                      query_expansion=plan.route != "fallback")
         if assembly.pending is not None:
             extra_plan, extra_result = self._plan(task, assembly.pending.query, graph)
             call_ids += list(extra_plan.call_ids)

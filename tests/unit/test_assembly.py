@@ -160,6 +160,18 @@ class SelectTest(unittest.TestCase):
         fill = greedy(units, [], 20)  # no demand: greedy is the fill alone
         self.assertEqual([u.unit_id for u in fill], ["r1", "r2", "r4"])
 
+    def test_a_claim_citation_does_not_count_as_shown_raw_text(self):
+        # E013 diagnosis: a claim citing D1:3 used to keep the raw message D1:3 (and its date)
+        # out of the fill. Only raw text counts as shown; a claim whose cited messages are all
+        # shown raw adds nothing and is skipped.
+        claim = Item("q1", "claim", "event = picnic", ("D1:3",), rank=1)
+        raw = item("D1:3", "A: we had a picnic yesterday", rank=2, timestamp="2023-05-08")
+        other = item("D1:4", "B: nice", rank=3)
+        late_claim = Item("q2", "claim", "food = cake", ("D1:4",), rank=4)
+        units = self.units([claim, raw, other, late_claim], {})
+        for select in (lambda us: truncate(us, 100), lambda us: greedy(us, [], 100)):
+            self.assertEqual([u.unit_id for u in select(units)], ["q1", "D1:3", "D1:4"])
+
 
 class LayoutTest(unittest.TestCase):
     def test_sections_order_citations_and_fragments(self):
@@ -299,6 +311,32 @@ class AssemblerTest(unittest.TestCase):
         self.assertEqual([v.name for v in result.open], ["arrival"])
         self.assertIsNone(result.expansion)
         self.assertFalse(result.retrieval_used)
+
+    def test_no_query_for_a_fallback_plan(self):
+        # E013 decision 4: a fallback plan's query would only repeat the request.
+        pool = [item("t", "We accepted train TR123.", rank=1)]
+        result = assembler().assemble(task(9), DEMAND, pool, 256, query_expansion=False)
+        self.assertEqual([v.name for v in result.open], ["arrival"])
+        self.assertIsNone(result.expansion)
+        self.assertEqual(result.expansions_used, 0)
+        self.assertFalse(result.retrieval_used)
+
+    def test_the_fallback_answer_variable_is_never_listed_as_open(self):
+        # E013 decision 3: the fallback `answer` variable stays open in the record but is not
+        # shown; planner variables are still listed.
+        fallback = demand_of("Where did Caroline move from?")
+        self.assertTrue(fallback.fallback)
+        self.assertFalse(DEMAND.fallback)
+        pool = [item("t", "We accepted train TR123.", rank=1)]
+        result = assembler().assemble(task(9), fallback, pool, 256)
+        self.assertEqual([v.name for v in result.open], [ANSWER])
+        self.assertNotIn("Open items", result.context.text)
+        self.assertEqual(result.context.tokens, words(result.context.text))
+        planned = assembler().assemble(task(9), DEMAND, pool, 256)
+        self.assertIn("Open items (not found in memory):", planned.context.text)
+        # a planner variable that happens to be called `answer` is listed
+        named = demand_of("x?", [("?answer", "the arrival time of the train")])
+        self.assertIn("Open items", assembler().assemble(task(9), named, pool, 256).context.text)
 
     def test_truncation_never_expands(self):
         pool = [item("t", "We accepted train TR123.", rank=1)]
