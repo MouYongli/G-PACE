@@ -1,0 +1,51 @@
+# E006 (graph quality) · Writer-only extraction of the 40 annotated T024 segments and its scoring.
+# Extraction (stage probe):
+#   uv run python -m grace.cli.graph_quality extract --config configs/experiments/E006-graph-quality.yaml \
+#       --writer-url http://localhost:8252/v1 [--compute "<reservation>"]
+# Scoring (stage score) of any writer run directory (this probe, a full-history writer run of
+# grace.cli.writer_smoke, or an E007 arm):
+#   uv run python -m grace.cli.graph_quality score <writer-run-dir> --config configs/experiments/E006-graph-quality.yaml
+# Development splits only. The writer is the primary writer configuration of T022 (Qwen3-8B,
+# configs/common/writer.yaml); the formal E006 run waits for the main writer configuration that E007
+# fixes, so runs under this config are provisional.
+experiment: E006
+seed: 0
+writer_config: configs/common/writer.yaml   # segment-8, context 2, temperature 0, seed 0, json_schema
+model_config: configs/models/qwen3-8b.yaml   # D006 primary model; thinking off (chat template)
+serving:
+  model: Qwen/Qwen3-8B@b968826d9c46dd6066d109eabc6255188de91218
+  server: shared vLLM server of s00-super (runs/compute.yaml)
+
+sample: docs/research/annotations/graph-quality/sample.json   # T024, seed T024-segments-v1
+# How the writer sees a segment (deviation from a full-history reading of plan 6.7, see the E006
+# log): each segment is written on its own, its 6 context messages first (extracted, not scored).
+segment_mode: context+segment
+
+benchmarks:
+  - slug: locomo
+    split: dev
+  - slug: longmemeval-s
+    split: dev
+
+scoring:
+  # Gold label files (guideline docs/research/graph-quality-annotation.md, section 6). Two files:
+  # claims found by both (one-to-one matching of eval/analysis/annotation/graph_quality.match) are
+  # the core reference, single-file claims are uncertain, and precision and recall are reported as
+  # bounds. One file (for example the human-reviewed reference): every claim is core.
+  gold:
+    - docs/research/annotations/graph-quality/labels-agent-A.jsonl
+    - docs/research/annotations/graph-quality/labels-agent-B.jsonl
+  # Segment texts written by the T024 sample command (relative to runs_root).
+  segments: T024/artifacts/sample/segments.jsonl
+  # Predicate matching of anchor-matched pairs (same message, subject and object): `normalised`
+  # (string equality after normalisation, the strict level of T024), `lexical` (normalised or
+  # sharing a content stem after removing light verbs), `judge` (lexical, then an LLM judge for the
+  # remaining pairs). See the E006 log for the check on the agent-agent pairs.
+  predicate_match: judge
+  judge:
+    model_config: configs/models/qwen3-8b.yaml
+    prompt: predicate-judge          # resources/prompts/predicate-judge, pinned in prompts.yaml
+    max_tokens: 4
+    temperature: 0.0
+    seed: 0
+  entailment_judge: true             # LLM check whether the cited span entails the claim
