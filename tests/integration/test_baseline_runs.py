@@ -83,7 +83,7 @@ class BaselineRunsTest(unittest.TestCase):
             self.assertTrue(set(w["call_ids"]) <= call_ids)
 
     def test_every_baseline_on_every_fixture(self):
-        self.assertEqual(len(ALL_ENGINES), 13)  # with graphiti-native, rrf-tagged
+        self.assertEqual(len(ALL_ENGINES), 14)  # with graphiti-native, rrf-tagged, grace
         for config in ENGINES:
             for benchmark in sorted(p.name for p in BENCHMARKS.iterdir()):
                 for budget in (None, 24):
@@ -96,7 +96,11 @@ class BaselineRunsTest(unittest.TestCase):
                 result = self.run_one(config, "locomo", 256, "streaming", retrieving)
                 self.check(result, "locomo", 256, "read_tasks.streaming.jsonl")
                 predictions = read_jsonl(result.run_dir / "predictions.jsonl")
-                self.assertTrue(all(p["further_retrieval"] for p in predictions))
+                # One extra retrieval per read (plan 5.6): an engine that spent it itself (GRACE's
+                # query expansion) has the `retrieve` output resolved as unknown instead.
+                self.assertTrue(all(p["further_retrieval"]
+                                    or p.get("metadata", {}).get("retrieve_refused")
+                                    for p in predictions))
                 early = next(p for p in predictions if p["version"] == 3)
                 self.assertTrue(set(early["context_ids"]) <= {"D1:1", "D1:2", "D1:3"})
 
