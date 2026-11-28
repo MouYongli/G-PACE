@@ -63,7 +63,6 @@ import yaml
 
 from grace.config.paths import REPO_ROOT
 from grace.context import api
-from grace.context.pipeline.retrieval.retrieve import RetrievalConfig
 from grace.eval.datasets.benchmarks.base import BenchmarkConfig
 from grace.eval.engines.baselines.base import message_time
 from grace.eval.runner.harness import rundir
@@ -101,8 +100,12 @@ def _file_sha(path: str | None) -> str | None:
 
 
 def _dense_on(params: dict[str, Any]) -> bool:
-    return "dense" in RetrievalConfig.load(
-        REPO_ROOT / params.get("retrieval", DEFAULT_RETRIEVAL)).channels
+    """Whether the retrieval config enables the dense channel (read from the file: the harness
+    imports nothing of `context/` but its api); a config without `channels` enables all."""
+    retrieval = yaml.safe_load((REPO_ROOT / params.get("retrieval", DEFAULT_RETRIEVAL))
+                               .read_text(encoding="utf-8"))
+    channels = retrieval.get("channels")
+    return channels is None or "dense" in channels
 
 
 def write_side(config: dict[str, Any]) -> dict[str, Any]:
