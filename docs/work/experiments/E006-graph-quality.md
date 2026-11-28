@@ -41,6 +41,10 @@ How good is the extracted graph itself: claim precision, recall and F1, attribut
 | E006-20261128T083758Z-b04e | 2026-11-28 | completed (probe: controlled sequences, main writer, 5 sequences) | `5ef3c24fbb28287c67ac2988dc672cb92fcdb33e` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083758Z-b04e/report.yaml` |
 | E006-20261128T084019Z-66ac | 2026-11-28 | completed (superseded by cda5) | `0a90160acbdb0ab2564406bcaad39603c97aa661` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T084019Z-66ac/report.yaml` |
 | E006-20261128T084058Z-cda5 | 2026-11-28 | completed (formal: controlled-sequence score of b04e) | `1615967a47c453e6ef812bfdc2cdacd90041ae9d` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T084058Z-cda5/report.yaml` |
+| E006-20261128T083145Z-6288 | 2026-11-28 | completed (ingest, main configuration, LongMemEval-S dev main-text strata, 67 histories) | `bd232a93a172881f6a49565ed4502ddddcd23e76` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083145Z-6288/report.yaml` |
+| E006-20261128T084142Z-ee92 | 2026-11-28 | completed (ingest, main configuration, LongMemEval-S dev other 31 histories) | `bd232a93a172881f6a49565ed4502ddddcd23e76` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T084142Z-ee92/report.yaml` |
+| E006-20261128T093835Z-e4b6 | 2026-11-28 | completed (formal: answer coverage, LongMemEval-S main strata, of 6288) | `d3572cea5b9318770ca481545ed872d76822812e` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T093835Z-e4b6/report.yaml` |
+| E006-20261128T092653Z-6d20 | 2026-11-28 | completed (formal: answer coverage, LongMemEval-S other strata, of ee92) | `d3572cea5b9318770ca481545ed872d76822812e` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T092653Z-6d20/report.yaml` |
 
 ## Results
 
@@ -98,6 +102,9 @@ Other measures:
   - every content word of the reference occurs in the claims of the evidence messages for 0.179 of 302, at least half of them for 0.305;
   - every content word occurs anywhere in the history's graph for 0.247 of 308;
   - the test is lexical, so restated dates or paraphrases count as not covered.
+- **Answer-coverage upper bound, LongMemEval-S**, on the full-history ingest graphs:
+  - main-text strata (`e4b6`, 67 questions): evidence messages carry a claim for 1.0 of 65 (all of them 0.892); answer words in the evidence claims 0.154 (at least half 0.262); anywhere in the graph 0.358. Per stratum (in evidence claims / anywhere): knowledge-update 0.286 / 0.400 (n 15), temporal-reasoning 0.231 / 0.385 (26), multi-session 0.0 / 0.308 (26; the answers are counts and aggregates).
+  - other 31 histories (`6d20`): evidence messages carry a claim for 0.5 of 30. Per stratum: single-session-assistant 1 of 11 (the writer extracts little from assistant turns), preference 3 of 6, single-session-user 0.846 of 13.
 
 ## Conclusion
 
@@ -117,7 +124,7 @@ Pending.
 - 2026-11-28: worker session `w02-E006` on `task/E006-ingest-formal` (Part 1, PR #168) and `task/E006-formal-scoring` (Part 2), from `e23c68f`; Issue #142.
   - Part 1, the harness `ingest` and `read` stages. One ingest run serves several read runs; a read refuses an upstream that differs on the write side.
   - Main-configuration ingest run of LoCoMo dev: `E006-20261128T082608Z-21cb`, 928 messages, 481 claims. A read smoke run from it at budget 1024 (`E006-20261128T083248Z-24b4`) answered all 308 reads.
-  - LongMemEval-S dev ingest runs: the three main-text strata (67 histories) `E006-20261128T083145Z-6288`, and the other 31 histories `E006-20261128T084142Z-ee92`.
+  - LongMemEval-S dev ingest runs: the three main-text strata (67 histories, 32,957 messages, 66 min with 8 workers) `E006-20261128T083145Z-6288`, and the other 31 histories (15,824 messages, 45 min) `E006-20261128T084142Z-ee92`. A read over all 98 histories takes one read run per ingest run.
 - 2026-11-28: T024 matcher tightened (follow-up of PR #148). `same_name` now counts token containment only when the shorter name shares a token with the longer name's head, after its last possessive: `Caroline` no longer matches "Caroline's necklace".
   - Agent agreement re-reported in `agreement-agent-A-agent-B.json`: anchor Dice 0.774 -> 0.730 overall (LoCoMo 0.820 -> 0.815, LongMemEval-S 0.743 -> 0.673); strict 0.534 -> 0.532.
   - All 24 lost anchor pairs are `user` against "user's <task>" (23) or `Caroline` against "Caroline's close friends" (1), i.e. different subjects.
@@ -125,6 +132,6 @@ Pending.
 - 2026-11-28: formal scoring at the main configuration (numbers in Results):
   - LoCoMo full-history graph `cef6`; segment-wise extraction `afed` with score `ac34` (LongMemEval-S bound and LoCoMo gap);
   - controlled sequences: new commands `extract-sequences` and `score-sequences`, extraction `b04e`, score `cda5`;
-  - answer-coverage upper bound: new command `coverage`, LoCoMo run `be52`.
+  - answer-coverage upper bound: new command `coverage`; LoCoMo `be52`, LongMemEval-S `e4b6` and `6d20`.
   - Finding for the writer prompt and for T019/T014: on controlled sequences most changes and corrections ("I don't speak Dutch anymore") are written as a negative stance on the old claim, not as an ending, so the old claim stays current (20 of 35 gold endings).
   - Not done: the split of graph-channel misses into writer, planner (T023) and fragment-selection errors; human review of the gold.
