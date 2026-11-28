@@ -32,6 +32,15 @@ How good is the extracted graph itself: claim precision, recall and F1, attribut
 | E006-20261128T002555Z-50c6 | 2026-11-28 | completed (predicate-matcher check) | `f2b69d7b6de65607820c2b22afaa3a7db5192e52` | `runs/E006/artifacts/w01-E006/E006/E006-20261128T002555Z-50c6/report.yaml` |
 | E006-20261128T002604Z-514e | 2026-11-28 | completed (provisional; score of E006-20261128T001447Z-0046) | `f2b69d7b6de65607820c2b22afaa3a7db5192e52` | `runs/E006/artifacts/w01-E006/E006/E006-20261128T002604Z-514e/report.yaml` |
 | E006-20261128T002611Z-896e | 2026-11-28 | completed (comparison; score of T022-20261126T214758Z-613e, LoCoMo segments) | `f2b69d7b6de65607820c2b22afaa3a7db5192e52` | `runs/E006/artifacts/w01-E006/E006/E006-20261128T002611Z-896e/report.yaml` |
+| E006-20261128T082608Z-21cb | 2026-11-28 | completed (ingest, main configuration, LoCoMo dev; upstream for read runs) | `684d15bbcc1904e76cb5ec7e5ccad7e4de84ffb7` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T082608Z-21cb/report.yaml` |
+| E006-20261128T083248Z-24b4 | 2026-11-28 | completed (read smoke, budget 1024, from 21cb; not scored) | `bd232a93a172881f6a49565ed4502ddddcd23e76` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083248Z-24b4/report.yaml` |
+| E006-20261128T083416Z-afed | 2026-11-28 | completed (probe: segment-wise extraction, main writer, 40 segments) | `b0dc4f9d123332888536eef5687b05bebd99e27e` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083416Z-afed/report.yaml` |
+| E006-20261128T083416Z-cef6 | 2026-11-28 | completed (formal: LoCoMo full-history score of 21cb) | `b0dc4f9d123332888536eef5687b05bebd99e27e` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083416Z-cef6/report.yaml` |
+| E006-20261128T083924Z-ac34 | 2026-11-28 | completed (formal: segment-wise score of afed) | `0a90160acbdb0ab2564406bcaad39603c97aa661` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083924Z-ac34/report.yaml` |
+| E006-20261128T083910Z-be52 | 2026-11-28 | completed (formal: answer coverage, LoCoMo, of 21cb) | `0a90160acbdb0ab2564406bcaad39603c97aa661` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083910Z-be52/report.yaml` |
+| E006-20261128T083758Z-b04e | 2026-11-28 | completed (probe: controlled sequences, main writer, 5 sequences) | `5ef3c24fbb28287c67ac2988dc672cb92fcdb33e` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T083758Z-b04e/report.yaml` |
+| E006-20261128T084019Z-66ac | 2026-11-28 | completed (superseded by cda5) | `0a90160acbdb0ab2564406bcaad39603c97aa661` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T084019Z-66ac/report.yaml` |
+| E006-20261128T084058Z-cda5 | 2026-11-28 | completed (formal: controlled-sequence score of b04e) | `1615967a47c453e6ef812bfdc2cdacd90041ae9d` | `runs/E006/artifacts/w02-E006/E006/E006-20261128T084058Z-cda5/report.yaml` |
 
 ## Results
 
@@ -49,6 +58,47 @@ Provisional only: the writer is the T022 configuration (Qwen3-8B), not the main 
 
 Other measures of run E006-20261128T002604Z-514e (all segments): the cited span anchors in the message text for 523 of 611 claims (0.856); the Qwen3-8B judge finds the span entails the claim for 0.828 of 523 (0.941 of 101 loose-matched, 0.801 of 422 unmatched; 0 invalid); on loose matches with core units the fields agree for function 0.897 (n 97), certainty 0.891 (92), speaker 0.969 (98), polarity, report mode and derived 1.0, time expression 0.837 (92) but 0.444 of the 27 where the gold sets one, and the writer sets `valid_from` on none (gold sets it on 12). Catch-all predicates are 8 of 611 claims (precision 0.375); 152 distinct predicates. Entity labels: 2 of 507 are first-person (`my fam`, `my dad`), 34 (0.067) have a content word that is not in the segment or context text (mostly abstract nouns typed as entities); on loose matches the writer's subject equals the gold name in 0.937 (n 111) and an entity object in 0.743 (n 105). Ending-evidence check: 10 ending stances dropped on units with segment messages and no gold ending stance exists in the 40 segments, so the false-drop rate is 0 of 10 by construction and the check's recall cannot be measured on this sample. The full-history run (896e) has 44 `felt` claims (10% catch-all, precision 0) against 1.3% in the segment-wise run, and its span entailment rate is 0.655 (n 377).
 
+### Formal run, main configuration (2026-11-28)
+
+Writer Qwen3-32B with `configs/common/writer.yaml` (session units) and the default `grace` engine. Gold: the two T024 agent label files (human review pending), so precision and recall are bounds: precision against core units (both agents) up to all units, and recall against all units up to core units. Loose matching: same message, subject and object (T024 normalisation with the possessive head rule of 2026-11-28), and an equivalent predicate (lexical, then the Qwen3-8B judge). LoCoMo is scored on the full-history graph and LongMemEval-S segment-wise (decisions of PR #148). The provisional rows above use the earlier name matcher and are not rescored.
+
+| Run | Benchmark (reading) | Writer claims | Gold core / all | Level | Precision | Recall | F1 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| E006-20261128T083416Z-cef6 | LoCoMo (full history, 16 segments) | 229 | 181 / 263 | anchor | 0.345–0.371 | 0.323–0.437 | 0.334–0.401 |
+| | | | | loose | 0.214–0.236 | 0.205–0.271 | 0.210–0.252 |
+| | | | | strict | 0.079–0.083 | 0.072–0.099 | 0.075–0.091 |
+| E006-20261128T083924Z-ac34 | LongMemEval-S (segment-wise, optimistic bound, 24 segments) | 153 | 221 / 436 | anchor | 0.503–0.706 | 0.248–0.348 | 0.332–0.467 |
+| | | | | loose | 0.353–0.477 | 0.167–0.244 | 0.227–0.323 |
+| | LoCoMo (segment-wise, for the gap) | 199 | 181 / 263 | loose | 0.246–0.276 | 0.209–0.271 | 0.226–0.274 |
+
+LoCoMo segment-vs-full gap with the main writer: reading segment-wise raises loose precision by 0.03–0.04 (0.246–0.276 against 0.214–0.236) and leaves recall unchanged (0.209–0.271 against 0.205–0.271). The gap is much smaller than with the provisional Qwen3-8B writer (0.140–0.163 against 0.068–0.077, earlier matcher). The LongMemEval-S segment-wise numbers are therefore an optimistic bound. If the LoCoMo gap carries over, they overstate precision by a few points.
+
+Other measures:
+
+- **LoCoMo full history (cef6), spans:** the cited span anchors in the message for 214 of 229 claims (0.935). The judge finds the span entails the claim for 0.729 of 214: 0.923 of 52 matched, 0.667 of 162 unmatched, 0 invalid.
+- **LoCoMo full history (cef6), fields on 49 loose core matches:**
+  - agreeing: function 0.939, certainty 0.938 (n 48), speaker 0.980, polarity, report mode and derived 1.0;
+  - time expression 0.804 (n 46), but 0.579 of the 19 where the gold sets one;
+  - `valid_from`: 0 of the 9 where the gold sets it.
+- **LoCoMo full history (cef6), predicates and entities:**
+  - 46 distinct predicates, 1 catch-all claim;
+  - the most used predicates have low precision: `hasGoal` 26 claims, precision 0.038; `hasHabit` and `hasHobby` 16 each, 0.25;
+  - entity labels: 0 pronouns; 23 of 125 (0.184) have a content word that is not in the segment text (mostly abstract nouns typed as entities, e.g. `safe space for self-expression`);
+  - on loose matches the subject equals the gold name in 1.0 (n 54) and the object in 0.755 (n 49);
+  - restatements: 7 of 20 gold stances are attributed by the writer (0.35).
+- **Segment-wise, all 40 segments (ac34):** span anchored 0.932 (328 of 352); entailed 0.893 (0.960 matched, 0.853 unmatched). Fields on loose core matches: function 0.941 (n 101), time expression 0.885 (n 96), 0.655 where the gold sets one, `valid_from` 0 of 10. Entity labels not in text 0.060 (n 331).
+- **Controlled sequences (cda5)** against their gold graphs: 5 sequences of the T015 model-rendered development set, one per family at rho 10, 1,000 messages; extraction run `E006-20261128T083758Z-b04e`.
+  - Claim occurrences: anchor precision 0.771, recall 0.830; loose precision 0.729, recall 0.785, F1 0.756 (245 matched; 312 gold, 336 writer). Loose precision ranges from 0.581 (flight-travel) to 0.902 (hotel-stay).
+  - Fields on loose matches: function 0.747, polarity 0.996.
+  - Per gold predicate (recall): user facts are found well (`speaksLanguage` 0.929 of 70, `worksIn` 0.922 of 51, `livesIn` 0.839 of 56). Task and offer predicates are not: `selectedService` 0.267 of 30, `scheduledArrival`, `scheduledDeparture`, `pickupTime`, `viewingTime`, `seatPreference` and `apartmentSize` all 0 of 2–3.
+  - Endings: 9 of 35 gold endings committed and matched (recall 0.257); 9 of 17 writer endings match (precision 0.529). Of the 26 missed endings, 20 have a negative writer attribution on the ended claim at the ending message but no supersession ("I don't speak Dutch anymore" becomes a negative stance, and the claim stays current in the store).
+  - Ending-evidence check: 5 ending stances dropped (all `ended_without_evidence`), 1 of them a false drop. The false-drop rate is 0.2 (n 5, too small for an estimate), and 1 gold ending was lost to a drop.
+- **Answer-coverage upper bound, LoCoMo (be52)**, on the full-history graph, 308 questions:
+  - evidence messages: at least one carries a claim for 0.894 of 302 questions, all of them for 0.752;
+  - every content word of the reference occurs in the claims of the evidence messages for 0.179 of 302, at least half of them for 0.305;
+  - every content word occurs anywhere in the history's graph for 0.247 of 308;
+  - the test is lexical, so restated dates or paraphrases count as not covered.
+
 ## Conclusion
 
 Pending.
@@ -64,3 +114,17 @@ Pending.
 - 2026-11-28: deviation from a full-history reading (plan 6.7 does not fix how the writer sees a sampled segment): the provisional extraction writes each T024 segment on its own, with a fresh graph, its 6 context messages first (extracted, not scored) and the segment after (`eval/runner/probes/extract.py`, `segment_mode: context+segment`). Reason: cost; the LongMemEval-S segments sit in haystacks of about 50 sessions, and writing every prefix would cost the whole development histories for 578 scored messages; the segment-wise run made 132 calls. Effect measured on LoCoMo by scoring the T022 full-history Qwen3-8B run (same prompt, schema and writer config): loose precision 0.068–0.077 and recall 0.126–0.159 against 0.140–0.163 and 0.214–0.264 segment-wise; the full-history graph carries 10% catch-all claims (44 `felt`) against 1.3%. The segment-wise reading therefore overstates a full-history writer's graph quality; the formal E006 run should use full-history extraction at least for LoCoMo (both development histories are already written by any writer run) and decide for LongMemEval-S.
 - 2026-11-28: provisional runs (not the formal E006 result): extraction `E006-20261128T001447Z-0046` (Qwen3-8B, T022 writer config, 40 segments, 132 calls, all schema-valid); score `E006-20261128T002604Z-514e`; comparison score `E006-20261128T002611Z-896e` of `T022-20261126T214758Z-613e`. Numbers in Results. Findings for the writer prompt round (E007): many conversational claims that the guideline excludes (`asks`, `askedAbout`, `contacted`, `expressedGratitude`, `feels`); speaker-as-subject claims where the gold describes an entity (`Caroline hasOrigin Sweden` for the necklace); `valid_from` never filled; 88 of 611 quotes do not anchor in the message text.
 - 2026-11-28: not measurable or not done in this round: (1) the false-drop rate of the ending-evidence check: no gold ending stance exists in the 40 T024 segments (both agents), so all 10 drops on segment units are true drops by construction and the check's recall needs sequences with real endings (the controlled sequences); (2) the controlled sequences with gold graphs are not scored yet; (3) the separation of writer errors from planner (T023) and fragment-selection errors in graph-channel misses is not done (needs the retrieval traces of a T025-style run on the formal writer graph); (4) the answer-coverage upper bound. Contract note for the integration owner: a `score` run whose upstream is a `probe` run (writer-only extraction) is not in the stage table of contracts.md (Experiment run).
+- 2026-11-28: worker session `w02-E006` on `task/E006-ingest-formal` (Part 1, PR #168) and `task/E006-formal-scoring` (Part 2), from `e23c68f`; Issue #142.
+  - Part 1, the harness `ingest` and `read` stages. One ingest run serves several read runs; a read refuses an upstream that differs on the write side.
+  - Main-configuration ingest run of LoCoMo dev: `E006-20261128T082608Z-21cb`, 928 messages, 481 claims. A read smoke run from it at budget 1024 (`E006-20261128T083248Z-24b4`) answered all 308 reads.
+  - LongMemEval-S dev ingest runs: the three main-text strata (67 histories) `E006-20261128T083145Z-6288`, and the other 31 histories `E006-20261128T084142Z-ee92`.
+- 2026-11-28: T024 matcher tightened (follow-up of PR #148). `same_name` now counts token containment only when the shorter name shares a token with the longer name's head, after its last possessive: `Caroline` no longer matches "Caroline's necklace".
+  - Agent agreement re-reported in `agreement-agent-A-agent-B.json`: anchor Dice 0.774 -> 0.730 overall (LoCoMo 0.820 -> 0.815, LongMemEval-S 0.743 -> 0.673); strict 0.534 -> 0.532.
+  - All 24 lost anchor pairs are `user` against "user's <task>" (23) or `Caroline` against "Caroline's close friends" (1), i.e. different subjects.
+  - Core gold units fall from 426 to 402. The merged review file was not regenerated: it still pairs with the earlier matcher.
+- 2026-11-28: formal scoring at the main configuration (numbers in Results):
+  - LoCoMo full-history graph `cef6`; segment-wise extraction `afed` with score `ac34` (LongMemEval-S bound and LoCoMo gap);
+  - controlled sequences: new commands `extract-sequences` and `score-sequences`, extraction `b04e`, score `cda5`;
+  - answer-coverage upper bound: new command `coverage`, LoCoMo run `be52`.
+  - Finding for the writer prompt and for T019/T014: on controlled sequences most changes and corrections ("I don't speak Dutch anymore") are written as a negative stance on the old claim, not as an ending, so the old claim stays current (20 of 35 gold endings).
+  - Not done: the split of graph-channel misses into writer, planner (T023) and fragment-selection errors; human review of the gold.
