@@ -84,9 +84,11 @@ def retained(state: Mapping | None, item: Mapping, match: Match | None = None) -
         else 0.0
 
 
-def choice_correct(choice: str | None, item: Mapping, match: Match | None = None) -> bool:
+def choice_correct(choice: str | None, item: Mapping, match: Match | None = None) -> float:
+    """1 when the current choice is right: the offered entity after `accept`, anything else
+    (including no choice) after `reject`."""
     hit = any(_same(choice, v, match) for v in item["offered_entity"])
-    return hit if item["response"] == "accept" else not hit
+    return 1.0 if (hit if item["response"] == "accept" else not hit) else 0.0
 
 
 def paired_correct(state: Mapping | None, choices: Mapping | None, item: Mapping,
@@ -95,4 +97,4 @@ def paired_correct(state: Mapping | None, choices: Mapping | None, item: Mapping
     pred = normalise_state(state)
     kept = all(_same(pred.get(slot), value, match) for slot, value in originals.items())
     choice = current_choice(state, choices, item["domain"], item["entity_slot"])
-    return 1.0 if kept and choice_correct(choice, item, match) else 0.0
+    return 1.0 if kept and choice_correct(choice, item, match) == 1.0 else 0.0

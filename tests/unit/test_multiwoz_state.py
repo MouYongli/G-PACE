@@ -264,7 +264,7 @@ class DerivedGold(unittest.TestCase):
             [{"Train-Inform": [["Arrive", "20:45"], ["Day", "monday"]]},
              {"Train-Request": [["Leave", "?"]]},
              {"Train-Inform": [["Dest", "cambridge"]]},
-             {"Train-OfferBook": [["Id", "TR7143"], ["Arrive", "20:38"]]},
+             {"Train-OfferBook": [["Id", "TR7143"], ["Arrive", "20:38"], ["Dest", "cambridge"]]},
              {"Train-Inform": [["People", "1"]]},
              {"Booking-Book": [["Ref", "X"]]}],
             [{"train-arriveby": "20:45", "train-day": "monday"},
@@ -274,18 +274,26 @@ class DerivedGold(unittest.TestCase):
         [gold] = md.derive(d, "multiwoz", "dev")
         self.assertEqual(gold.annotation, "2.4-current-choice")
         self.assertEqual(gold.task_id, "SYN.json:4")
-        self.assertEqual(gold.reference["retention"],
-                         [{"slot": "train-arriveby", "original": "20:45", "offered": ["20:38"]}])
+        self.assertEqual(gold.reference["retention"], [
+            {"slot": "train-arriveby", "original": "20:45", "offered": ["20:38"],
+             "conflict": True},
+            {"slot": "train-destination", "original": "cambridge", "offered": ["cambridge"],
+             "conflict": False}])
         [pair] = gold.reference["paired"]
         self.assertEqual((pair["response"], pair["offered_entity"]), ("accept", ["tr7143"]))
-        self.assertEqual(gold.reference["paired_broad"][0]["originals"],
-                         {"train-arriveby": "20:45"})
-        self.assertEqual(md.summary([gold])["paired_items"], 1)
+        self.assertEqual(pair["originals"], {"train-arriveby": "20:45",
+                                             "train-destination": "cambridge"})
+        self.assertEqual(pair["conflict_slots"], ["train-arriveby"])
+        summary = md.summary([gold])
+        self.assertEqual((summary["retention_items"], summary["retention_items_conflict"]),
+                         (2, 1))
+        self.assertEqual((summary["paired_items"], summary["paired_items_conflict"]), (1, 1))
 
 
 class OfferMetrics(unittest.TestCase):
     ITEM = {"domain": "train", "response": "accept", "entity_slot": "train-trainid",
-            "offered_entity": ["tr7143"], "slots": ["train-arriveby"]}
+            "offered_entity": ["tr7143"], "originals": {"train-arriveby": "20:45"},
+            "conflict_slots": ["train-arriveby"]}
     ORIGINALS = {"train-arriveby": "20:45"}
 
     def test_retention_and_paired(self):
@@ -316,7 +324,7 @@ class OfferMetrics(unittest.TestCase):
     def test_lenient_match(self):
         item = {**self.ITEM, "domain": "hotel", "entity_slot": "hotel-name",
                 "offered_entity": ["the acorn guest house"]}
-        self.assertFalse(dst.choice_correct("acorn guesthouse", item))
+        self.assertEqual(dst.choice_correct("acorn guesthouse", item), 0.0)
         self.assertTrue(dst.choice_correct("acorn guesthouse", item,
                                            lambda a, b: a.replace("the ", "").replace(" ", "")
                                            == b.replace("the ", "").replace(" ", "")))
