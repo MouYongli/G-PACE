@@ -195,7 +195,7 @@ class ClientSettings:
 
     def writer_info(self, engine_config: dict[str, Any]) -> dict[str, Any] | None:
         """The engine's own writer model (`writer_model`: a model config) and its endpoint
-        (`writer_url`, or the run's `base_url` when it is the run's model); None when the
+        (the run's `base_url` when it is the run's model, else `writer_url`); None when the
         engine config names none (the writer shares the run's client)."""
         name = engine_config.get("writer_model")
         if name is None:
@@ -203,7 +203,7 @@ class ClientSettings:
         path = REPO_ROOT / name
         config = yaml.safe_load(path.read_text(encoding="utf-8"))
         same = path.resolve() == Path(self.model_config).resolve()
-        url = self.writer_url or (self.base_url if same else None)
+        url = self.base_url if same else self.writer_url
         if url is None:
             raise ValueError(f"this engine's writer is {name}: pass --writer-url")
         return {"model_config": name, "served_name": config["served_name"],
@@ -434,8 +434,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--embed-url", default=None, help="embedding endpoint (dense, rrf)")
     parser.add_argument("--model-config", type=Path, default=DEFAULT_MODEL)
     parser.add_argument("--writer-url", default=None,
-                        help="endpoint of the engine's writer_model (default: --base-url when "
-                             "it is the run's model)")
+                        help="endpoint of the engine's writer_model when it is not the run's "
+                             "model (the run's model is always reached at --base-url)")
     parser.add_argument("--task", action="append", default=None,
                         help="keep only the reads of this task ID (repeatable)")
     parser.add_argument("--read-order", choices=streaming.READ_ORDERS, default="schedule",

@@ -99,8 +99,9 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual((info["base_url"], info["served_name"]),
                          ("http://writer/v1", "Qwen/Qwen3-32B"))
         small = load_engine_config(ENGINES / "grace-writer-8b.yaml")
-        info = ClientSettings("http://run/v1", Path(run_model)).writer_info(small)
-        self.assertEqual(info["base_url"], "http://run/v1")
+        info = ClientSettings("http://run/v1", Path(run_model),
+                              writer_url="http://writer/v1").writer_info(small)
+        self.assertEqual(info["base_url"], "http://run/v1")   # the run's model: --base-url
         self.assertIsNone(ClientSettings("http://run/v1", run_model).writer_info({}))
 
 
