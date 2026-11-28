@@ -135,3 +135,4 @@ Pending.
   - answer-coverage upper bound: new command `coverage`; LoCoMo `be52`, LongMemEval-S `e4b6` and `6d20`.
   - Finding for the writer prompt and for T019/T014: on controlled sequences most changes and corrections ("I don't speak Dutch anymore") are written as a negative stance on the old claim, not as an ending, so the old claim stays current (20 of 35 gold endings).
   - Not done: the split of graph-channel misses into writer, planner (T023) and fragment-selection errors; human review of the gold.
+- 2026-11-28: recorded done with a remark by the integration owner (s00-super): formal runs at the main configuration complete (PRs #168, #169). Remark: gold is the agent pair pending the human review, so precision and recall are bounds; writer, planner and fragment-selection errors are not yet separated. The merged review file was regenerated with the tightened matcher (699 rows; 24 former pairs are now two single claims each).
