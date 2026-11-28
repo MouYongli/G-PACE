@@ -18,7 +18,7 @@ from pathlib import Path
 
 from grace.context.memory.graph.store import ClaimStore
 from grace.context.memory.graph.vocabulary import Vocabulary
-from grace.context.pipeline.query.grammar import to_text
+from grace.context.views import hitrule
 from grace.context.views.render import TemplateRenderer
 from grace.context.views.store import MaintenanceEvent, ViewStore
 from grace.context.views.template_families import (
@@ -50,7 +50,8 @@ def serialise_at_read(graph: ClaimStore, version: int, *, config: ViewConfig | N
 class SerialisedViews:
     """The view component of the template-serialisation variant (the engine's `views` slot, the
     interface of `engine.Views`): nothing is stored at write; at a read, the plan's query is
-    matched against the bindings the graph instantiates at the read version, and the matching
+    matched against the bindings the graph instantiates at the read version (modulo variable
+    renaming, `hitrule`), and the matching
     view is evaluated and template-serialised on a fresh store, then dropped. No staleness
     marks, no maintenance, no model call. A view counts only if it reaches the instantiation
     threshold, as a resident view would."""
@@ -78,11 +79,11 @@ class SerialisedViews:
             return None
         store = ViewStore(self.history_id, TemplateRenderer(), config=self.config,
                           families=self.families, vocabulary=self.vocabulary)
-        target = to_text(plan.query)
         state = self._graph.state(self._version)
         for binding in candidate_bindings(state, self.families, self.config, self.vocabulary):
             query, _ = store.bind(binding)
-            if to_text(query) != target:
+            mapping = hitrule.match(plan.query, query)  # modulo variable renaming
+            if mapping is None:
                 continue
             view = store.build(binding, self._graph, self._version, read_id=self._read_id)
             # The instantiation rule of `ViewStore.materialise`: distinct claims in the
@@ -91,7 +92,7 @@ class SerialisedViews:
             if len(claims) < self.config.threshold(binding.family):
                 return None  # a resident store would not hold this view either
             self.events += store.events
-            return view
+            return hitrule.for_plan(view, plan.query, mapping)
         return None
 
     def present(self, plan, result, graph, version, read_id, message):

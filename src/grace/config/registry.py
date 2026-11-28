@@ -25,6 +25,7 @@ COMPONENTS: dict[str, str] = {
     "read-time-views": "grace.context.views.readtime:read_time_views",
     "query-time-resolution": "grace.context.pipeline.update.deferred:query_time_resolution",
     "slot-table": "grace.context.pipeline.update.slots:slot_table",
+    "single-time": "grace.context.pipeline.update.single_time:single_time",
 }
 
 

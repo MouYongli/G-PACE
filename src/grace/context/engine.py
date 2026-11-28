@@ -21,7 +21,8 @@ Read path (`read(task, budget)`), plan 5.3-5.6:
 2. `pipeline/query/` (T023): the planner turns the request into a plan (rule templates, then the
    planner LLM, one repair); the plan runs on the graph at the read version.
 3. Views: the staleness strategy checks and repairs resident views (lazy rebuilds are booked to
-   W); a resident view whose bound query equals the plan's query is a view hit, and its sentences
+   W); a resident view whose bound query equals the plan's query modulo variable renaming
+   (`views/hitrule.py`) is a view hit, and its sentences
    are verified state. Without a hit, the query answers themselves are the state items, unless
    the view component presents them (`present`, ablation C read-time view sources, E010): it
    then turns the answers into sentences (template, LLM rendering of the rows, or LLM rewriting
@@ -97,7 +98,6 @@ from grace.context.pipeline.assembly.assemble import Assembler, Assembly, Assemb
 from grace.context.pipeline.assembly.demand import demand_of
 from grace.context.pipeline.assembly.filter import Constraints
 from grace.context.pipeline.assembly.items import Item, answer_items, message_item
-from grace.context.pipeline.query.grammar import to_text
 from grace.context.pipeline.query.ir import State
 from grace.context.pipeline.query.planner import (
     Plan,
@@ -111,6 +111,7 @@ from grace.context.pipeline.retrieval.retrieve import RetrievalConfig, Retriever
 from grace.context.pipeline.retrieval.text import BM25Channel, DenseChannel
 from grace.context.pipeline.update.extract import Extractor, NullExtractor
 from grace.context.pipeline.update.updater import Updater, WriterConfig, llm_writer
+from grace.context.views import hitrule
 from grace.context.views.render import LLMRenderer, TemplateRenderer
 from grace.context.views.staleness import make_strategy
 from grace.context.views.store import ViewStore
@@ -218,13 +219,15 @@ class Views:
         return None
 
     def hit(self, plan: Plan):
-        """The resident view whose bound query is the plan's query, or None."""
+        """The resident view whose bound query is the plan's query modulo variable renaming
+        (`views.hitrule`), in the plan's variable names, or None. `on_read` has checked and
+        repaired every resident view before the read looks for a hit."""
         if not plan.view_eligible:
             return None
-        text = to_text(plan.query)
         for view in self.store.views():
-            if to_text(view.query) == text:
-                return view
+            mapping = hitrule.match(plan.query, view.query)
+            if mapping is not None:
+                return hitrule.for_plan(view, plan.query, mapping)
         return None
 
     def save(self, directory: Path) -> list[Path]:

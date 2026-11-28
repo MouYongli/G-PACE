@@ -1,6 +1,7 @@
 """Read-time view content sources of ablation C on extracted graphs (E010, `views/readtime.py`)."""
 
 import json
+import re
 import unittest
 
 from grace.context import api
@@ -89,8 +90,7 @@ class ReadTimeViewsTest(unittest.TestCase):
         views = ReadTimeViews(HISTORY, ViewConfig(), VOCABULARY, "template")
         view = next(v for v in self.reference.views() if v.view_id == "list:lina:maintains")
         text = to_text(view.query)
-        for changed, kind in ((text.replace("?value", "?thing"), "variable_names"),
-                              (text.replace("[_, inform]", "[user, inform]"), "attribution")):
+        for changed, kind in ((text.replace("[_, inform]", "[user, inform]"), "attribution"),):
             with self.subTest(kind=kind):
                 plan = plan_of(parse(changed))
                 result = execute_query(plan.compiled, self.graph, HEAD)
@@ -102,6 +102,21 @@ class ReadTimeViewsTest(unittest.TestCase):
                 self.assertIn(view.view_id, record["near"])
                 self.assertEqual(record["near_class"], kind)
                 self.assertEqual(record["near_query"], text)
+
+    def test_a_query_with_other_variable_names_is_a_hit(self):
+        from grace.context.pipeline.query.grammar import to_text
+        views = ReadTimeViews(HISTORY, ViewConfig(), VOCABULARY, "template")
+        for view in self.reference.views():
+            renamed = to_text(view.query)
+            for name in sorted(set(re.findall(r"\?([A-Za-z]\w*)", renamed))):
+                renamed = re.sub(rf"\?{name}\b", f"?{name}_planner", renamed)
+            with self.subTest(view=view.view_id):
+                plan = plan_of(parse(renamed))
+                result = execute_query(plan.compiled, self.graph, HEAD)
+                shown = views.present(plan, result, self.graph, HEAD, "r", message)
+                self.assertEqual(shown.view_id, view.view_id)
+                self.assertEqual(sorted(t for t, _, _ in shown.sentences),
+                                 sorted(s.text for s in view.sentences))
 
     def test_llm_source_renders_and_books_calls(self):
         views = ReadTimeViews(HISTORY, ViewConfig(), VOCABULARY, "llm",
