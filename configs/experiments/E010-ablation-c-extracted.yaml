@@ -52,7 +52,7 @@ targets:
     split: dev
     # Per-turn reading (system stage) with the main configuration's writer on the model-rendered
     # development set of T015 (as E005), one sequence per family at density 10 (the primary
-    # schedule A20d1): 5 sequences, 334 reads. The 32B writer runs once per arm and sequence (about
+    # schedule A20d1): 5 sequences, 338 reads. The 32B writer runs once per arm and sequence (about
     # 30 extraction units per sequence), which bounds the set; writer output differs slightly
     # between runs at temperature 0 (server batching), measured as graph agreement between arms.
     histories:
