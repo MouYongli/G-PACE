@@ -101,6 +101,26 @@ How much graph quality and answer accuracy does a larger writer or thinking reco
 | `E007-20261128T063748Z-9feb` | 2026-11-28 | completed | `f0f5c1e` | score (LoCoMo F1, grace.cli.locomo_score) of `E007-20261128T062349Z-8899`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T063748Z-9feb/report.yaml` |
 | `E007-20261128T063919Z-5126` | 2026-11-28 | completed | `f0f5c1e` | score (LoCoMo F1, grace.cli.locomo_score) of `E007-20261128T062513Z-aa58`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T063919Z-5126/report.yaml` |
 | `E007-20261128T064049Z-0d19` | 2026-11-28 | completed | `f0f5c1e` | score (LoCoMo F1, grace.cli.locomo_score) of `E007-20261128T062349Z-3ea4`; `runs/E007/artifacts/w01-E007/E007/E007-20261128T064049Z-0d19/report.yaml` |
+| `E007-20261128T110034Z-b2de` | 2026-11-28 | failed | `f131e31` | ending round, tuning set, baseline prompt; pyshacl not thread safe under 10 parallel sequences (ParseException); relaunched as `2f7e`; `runs/E007/artifacts/w02-E007/E007/E007-20261128T110034Z-b2de/report.yaml` |
+| `E007-20261128T110306Z-2f7e` | 2026-11-28 | completed | `191836f` | ending round, tuning set (10 sequences), prompt before the round (baseline); `runs/E007/artifacts/w02-E007/E007/E007-20261128T110306Z-2f7e/report.yaml` |
+| `E007-20261128T110603Z-7f5b` | 2026-11-28 | completed | `050ad90` | ending round, tuning set, prompt iteration 1 (not judge-scored); `runs/E007/artifacts/w02-E007/E007/E007-20261128T110603Z-7f5b/report.yaml` |
+| `E007-20261128T110903Z-e42d` | 2026-11-28 | completed | `51e25ee` | ending round, tuning set, prompt iteration 2 (final prompt); `runs/E007/artifacts/w02-E007/E007/E007-20261128T110903Z-e42d/report.yaml` |
+| `E007-20261128T111356Z-94b8` | 2026-11-28 | completed | `f839d3e` | ending round, tuning set, prompt iteration 3 (closing reminder; rejected and reverted); `runs/E007/artifacts/w02-E007/E007/E007-20261128T111356Z-94b8/report.yaml` |
+| `E007-20261128T111659Z-1642` | 2026-11-28 | completed | `f839d3e` | score (E006 sequence scorer) of `2f7e`; `runs/E007/artifacts/w02-E007/E007/E007-20261128T111659Z-1642/report.yaml` |
+| `E007-20261128T111659Z-3b57` | 2026-11-28 | completed | `f839d3e` | score (E006 sequence scorer) of `94b8`; `runs/E007/artifacts/w02-E007/E007/E007-20261128T111659Z-3b57/report.yaml` |
+| `E007-20261128T112034Z-ab5f` | 2026-11-28 | completed | `511d851` | score (E006 sequence scorer) of `e42d`; `runs/E007/artifacts/w02-E007/E007/E007-20261128T112034Z-ab5f/report.yaml` |
+| `E007-20261128T112542Z-c8d3` | 2026-11-28 | completed | `511d851` | ingest, main configuration with the final prompt, LoCoMo dev (shared ingest; supersedes `E006-20261128T082608Z-21cb`); `runs/E007/artifacts/w02-E007/E007/E007-20261128T112542Z-c8d3/report.yaml` |
+| `E007-20261128T112648Z-1453` | 2026-11-28 | completed | `511d851` | ingest, main configuration with the final prompt, LongMemEval-S dev main-text strata, 67 histories (shared ingest; supersedes `E006-20261128T083145Z-6288`); `runs/E007/artifacts/w02-E007/E007/E007-20261128T112648Z-1453/report.yaml` |
+| `E007-20261128T112653Z-065d` | 2026-11-28 | completed | `511d851` | ingest, main configuration with the final prompt, LongMemEval-S dev other 31 histories (shared ingest; supersedes `E006-20261128T084142Z-ee92`); `runs/E007/artifacts/w02-E007/E007/E007-20261128T112653Z-065d/report.yaml` |
+| `E007-20261128T173601Z-456a` | 2026-11-28 | completed | `dee3edb` | final round, tuning set (10 sequences), final writer (updater fix, prompt `44bf11d6`); `runs/E007/artifacts/w03-E007/E007/E007-20261128T173601Z-456a/report.yaml` |
+| `E007-20261128T174032Z-c448` | 2026-11-28 | completed | `dee3edb` | score (E006 sequence scorer) of `456a`; `runs/E007/artifacts/w03-E007/E007/E007-20261128T174032Z-c448/report.yaml` |
+| `E007-20261128T174115Z-1b02` | 2026-11-28 | completed | `dee3edb` | ingest, main configuration with the final writer, LoCoMo dev (shared ingest; supersedes `E007-20261128T112542Z-c8d3`); `runs/E007/artifacts/w03-E007/E007/E007-20261128T174115Z-1b02/report.yaml` |
+| `E007-20261128T174321Z-ac51` | 2026-11-28 | completed | `dee3edb` | ingest, main configuration with the final writer, LongMemEval-S dev main-text strata, 67 histories (shared ingest; supersedes `E007-20261128T112648Z-1453`); `runs/E007/artifacts/w03-E007/E007/E007-20261128T174321Z-ac51/report.yaml` |
+| `E007-20261128T174321Z-8bf2` | 2026-11-28 | completed | `dee3edb` | ingest, main configuration with the final writer, LongMemEval-S dev other 31 histories (shared ingest; supersedes `E007-20261128T112653Z-065d`); `runs/E007/artifacts/w03-E007/E007/E007-20261128T174321Z-8bf2/report.yaml` |
+| system, E011 MultiWOZ dev setup, arm `graph-guard-bi`, final writer, 10 shards: `E011-20261128T174228Z-3c37`, `E011-20261128T174231Z-bc3d`, `E011-20261128T174232Z-3f4b`, `E011-20261128T174232Z-b9fc`, `E011-20261128T174234Z-b79e`, `E011-20261128T174236Z-c77d`, `E011-20261128T174237Z-554a`, `E011-20261128T174237Z-aaf2`, `E011-20261128T174238Z-d530`, `E011-20261128T174326Z-d81b` | 2026-11-28 | completed | `dee3edb` | `report.yaml` in each run directory under `runs/E007/artifacts/w03-E007/E011-setup/E011/` |
+| system, E011 MultiWOZ dev setup, arm `graph-noguard-bi`, final writer, 10 shards: `E011-20261128T174240Z-37c7`, `E011-20261128T174241Z-8a22`, `E011-20261128T174243Z-2576`, `E011-20261128T174243Z-f0bd`, `E011-20261128T174244Z-19ac`, `E011-20261128T174245Z-1fa1`, `E011-20261128T174246Z-9cef`, `E011-20261128T174247Z-9ebb`, `E011-20261128T174248Z-7393`, `E011-20261128T174325Z-f3b9` | 2026-11-28 | completed | `dee3edb` | `report.yaml` in each run directory under `runs/E007/artifacts/w03-E007/E011-setup/E011/` |
+| `E011-20261128T180539Z-0f1c` | 2026-11-28 | completed | `dee3edb` | score (E011 MultiWOZ metrics) of the `graph-guard-bi` shards; `runs/E007/artifacts/w03-E007/E011-setup/E011/E011-20261128T180539Z-0f1c/report.yaml` |
+| `E011-20261128T180619Z-42f8` | 2026-11-28 | completed | `dee3edb` | score (E011 MultiWOZ metrics) of the `graph-noguard-bi` shards; `runs/E007/artifacts/w03-E007/E011-setup/E011/E011-20261128T180619Z-42f8/report.yaml` |
 
 ## Results
 
@@ -188,6 +208,83 @@ Prompt round (one round, user decision of 2026-11-26), scored once on the 16 LoC
 
 (T022 counted 45 empty units for `c1fa`: units with nothing committed; 44 returned an empty patch.)
 
+#### Ending round (user decision of 2026-11-28, follow-up of E006)
+
+One writer-prompt round targeted at endings and changes, the same prompt for every writer arm. Tuned on 10 controlled development sequences that E006 did not score (`*-rho10-L200-001` and `*-rho30-L200-000`, one of each per family; 140 gold endings, 814 gold claim occurrences; config `configs/experiments/E007-ending-round.yaml`), then confirmed once with the E006 scorer on E006's five `*-rho10-L200-000` sequences and on the 40 T024 segments. Writer Qwen3-32B, session units, `configs/common/writer.yaml`. Endings: a gold supersession matched by a committed writer supersession on the same message with the same subject and object (E006 matcher; kind not compared). "Negated only": an unmatched gold ending whose message carries a negative writer attribution on the ended claim. Occurrences: loose and anchor matching of `grace.eval.analysis.metrics.graph_sequences`.
+
+Tuning set (scored with the Qwen3-8B predicate judge):
+
+| Prompt | Writer run | Score run | Endings matched / gold (recall) | Writer endings (precision) | Negated only | Ending drops (false) | Loose P | Loose R | Anchor P | Anchor R |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| before the round (`0ca40b38`) | `E007-20261128T110306Z-2f7e` | `E007-20261128T111659Z-1642` | 32 / 140 (0.2286) | 81 (0.3951) | 57 | 31 (7) | 0.6491 | 0.7273 | 0.6908 | 0.774 |
+| iteration 2, final (`d2461141`) | `E007-20261128T110903Z-e42d` | `E007-20261128T112034Z-ab5f` | 56 / 140 (0.4) | 126 (0.4444) | 35 | 82 (8) | 0.6329 | 0.6376 | 0.7439 | 0.7494 |
+| iteration 3, rejected | `E007-20261128T111356Z-94b8` | `E007-20261128T111659Z-3b57` | 59 / 140 (0.4214) | 147 (0.4014) | 32 | 74 (12) | 0.5933 | 0.5897 | 0.6972 | 0.6929 |
+
+Confirmation, scored once (E006 runs; before = E006's formal runs at the earlier prompt):
+
+| Set | Before (score run) | After: writer run, score run | Measure | Before | After |
+| --- | --- | --- | --- | --- | --- |
+| E006 controlled sequences (5, 35 gold endings) | `E006-20261128T084058Z-cda5` | `E006-20261128T112035Z-b09d`, `E006-20261128T112541Z-9386` | endings recall | 0.2571 (9/35) | 0.4857 (17/35) |
+| | | | endings precision | 0.5294 (17 writer endings) | 0.34 (50) |
+| | | | negated only | 20 | 12 |
+| | | | ending drops (false; gold endings lost) | 5 (1; 1) | 11 (2; 2) |
+| | | | loose occurrences P / R | 0.7292 / 0.7853 | 0.659 / 0.6442 |
+| | | | anchor occurrences P / R | 0.7708 / 0.8301 | 0.7607 / 0.7436 |
+| T024 segments, segment-wise (40) | `E006-20261128T083924Z-ac34` | `E006-20261128T112035Z-fa8b`, `E006-20261128T112541Z-d4d2` | loose P (all) | 0.2926-0.3636 | 0.2836-0.335 |
+| | | | loose R (all) | 0.1831-0.2562 | 0.196-0.2886 |
+| | | | loose P / R, LoCoMo | 0.2462-0.2764 / 0.2091-0.2707 | 0.23-0.2441 / 0.1977-0.2707 |
+| | | | loose P / R, LongMemEval-S | 0.3529-0.4771 / 0.1674-0.2443 | 0.3418-0.4337 / 0.195-0.3032 |
+| LoCoMo full history (16 T024 segments) | `E006-20261128T083416Z-cef6` (ingest `E006-20261128T082608Z-21cb`) | ingest `E007-20261128T112542Z-c8d3`, `E006-20261128T113433Z-87ea` | loose P / R | 0.214-0.2358 / 0.2053-0.2707 | 0.2146-0.2341 / 0.1825-0.2431 |
+| | | | writer claims on the segments | 229 | 205 |
+
+T024 bounds as in E006 (precision against core to all units, recall against all to core units; two agent label files). Each row is one writer run; writer output varies between runs at temperature 0, and no rerun of the same prompt was made, so differences of a few points are within unmeasured noise.
+
+#### Final writer round (user decision of 2026-11-28; the last round, accepted whatever the result)
+
+Three changes applied together (code `dee3edb`): (a) the updater applies an ending stance even when the same message already attributed the claim through a negative claim (before: dropped as `duplicate_in_message`; `validate.ending_evidence` unchanged and still first); (b) the change example "I'm a nurse now, not a teacher" replaced by a choir voice part; (c) D010 option B: task requirements one per claim on the task entity and exclusive, and an assistant offer of a value for something the user required also written on the requirement's subject and predicate with function `offer`, so the attribution guard compares them (guard rules unchanged). Prompt re-pinned `44bf11d6`. One iteration on the tuning set, then one confirmation. Same scorers as the ending round.
+
+Endings and claim occurrences (main = the prompt before the ending round; PR #185 = the ending round):
+
+| Set | Measure | Main | PR #185 | Final |
+| --- | --- | --- | --- | --- |
+| Tuning set (10 sequences, 140 gold endings) | score runs | `E007-20261128T111659Z-1642` | `E007-20261128T112034Z-ab5f` | `E007-20261128T174032Z-c448` |
+| | endings recall | 0.2286 (32/140) | 0.4 (56/140) | 0.5929 (83/140) |
+| | endings precision | 0.3951 (81 writer endings) | 0.4444 (126) | 0.5287 (157) |
+| | loose occurrences P / R | 0.6491 / 0.7273 | 0.6329 / 0.6376 | 0.6105 / 0.6413 |
+| | anchor occurrences P / R | 0.6908 / 0.774 | 0.7439 / 0.7494 | 0.7135 / 0.7494 |
+| E006 controlled sequences (5, 35 gold endings), confirmation | score runs | `E006-20261128T084058Z-cda5` | `E006-20261128T112541Z-9386` | `E006-20261128T174424Z-9db1` (extraction `E006-20261128T174115Z-ee5e`) |
+| | endings recall | 0.2571 (9/35) | 0.4857 (17/35) | 0.7143 (25/35) |
+| | endings precision | 0.5294 (17) | 0.34 (50) | 0.431 (58) |
+| | negated only | 20 | 12 | 3 |
+| | ending drops (false; gold endings lost) | 5 (1; 1) | 11 (2; 2) | 11 (5; 3) |
+| | loose occurrences P / R / F1 | 0.7292 / 0.7853 / 0.7562 | 0.659 / 0.6442 / 0.6515 | 0.6655 / 0.6314 / 0.648 |
+| | anchor occurrences P / R / F1 | 0.7708 / 0.8301 / 0.7994 | 0.7607 / 0.7436 / 0.7521 | 0.7669 / 0.7276 / 0.7467 |
+| T024 segments, segment-wise (40), confirmation | score runs | `E006-20261128T083924Z-ac34` | `E006-20261128T112541Z-d4d2` | `E006-20261128T174426Z-d4f3` (extraction `E006-20261128T174115Z-d899`) |
+| | loose P / R (all) | 0.2926-0.3636 / 0.1831-0.2562 | 0.2836-0.335 / 0.196-0.2886 | 0.2784-0.3479 / 0.1931-0.2687 |
+| | loose P / R, LoCoMo | 0.2462-0.2764 / 0.2091-0.2707 | 0.23-0.2441 / 0.1977-0.2707 | 0.2741-0.2995 / 0.2243-0.2983 |
+| | loose P / R, LongMemEval-S | 0.3529-0.4771 / 0.1674-0.2443 | 0.3418-0.4337 / 0.195-0.3032 | 0.2827-0.3979 / 0.1743-0.2443 |
+| LoCoMo full history (16 T024 segments) | score runs (ingest) | `E006-20261128T083416Z-cef6` (`21cb`) | `E006-20261128T113433Z-87ea` (`c8d3`) | `E006-20261128T174913Z-fdc6` (`E007-20261128T174115Z-1b02`) |
+| | loose P / R | 0.214-0.2358 / 0.2053-0.2707 | 0.2146-0.2341 / 0.1825-0.2431 | 0.2374-0.2525 / 0.1901-0.2597 |
+| | writer claims on the segments | 229 | 205 | 198 |
+
+- The job example (b): its removal did not restore `worksIn` on the tuning set (writer `jobTitle` 18 claims before the ending round, 50 after iteration 1 which introduced the example, 49 at the ending round, 44 now; unmatched gold `worksIn` 28, 60, 60), but on the confirmation sequences unmatched gold `worksIn` fell from 33 of 111 to 11 of 115 (new unmatched there: `homeAirport` 26). The claim that the example caused the shift is therefore supported on the confirmation set only; on the tuning set something else in the ending round keeps the writer on `jobTitle`. Not explained further (last round, no more tuning).
+- The updater fix (a) is active: 35 ending stances on the tuning set went through the removal rule that the old updater would have dropped (`ending_after_claim`); negated-only misses on the confirmation set fell from 12 to 3.
+
+MultiWOZ dev, E011 setup (270 dialogues, 374 offer-turn reads, budget 256; system runs with the final writer, both guard arms; offer placement counted on the committed change sets, script and output in `runs/E007/artifacts/w03-E007/analysis/`). "On the constraint's slot": a system offer attribution on a claim whose subject (up to merges) and predicate equal those of a current open-ended claim with a user request attribution and another object. "Guard acts": in the no-guard arm, supersessions of a user-requested claim licensed by a system attribution (the guard-on arm keeps these side by side; it has none).
+
+| Measure | E011 (writer before the ending round; `ad28` / `ec2d` shards) | Final writer (`0f1c` / `42f8` shards) |
+| --- | --- | --- |
+| system offer attributions (guard on) | 541 | 528 |
+| offers on the subject of a user requirement | 238 (44%) | 434 (82%) |
+| offers on the constraint's subject and predicate (guard on) | 17 (3.1%) | 53 (10.0%) |
+| no-guard supersessions of a user requirement by a system attribution (by an offer) | 3 (1) | 20 (10) |
+| supersessions guard on / off (change + correction) | 47 / 69 | 75 / 107 |
+| `paired_correct` guard on / off (n=313) | 21.4 / 22.7 | 20.8 / 18.5 |
+| `retained` guard on / off (n=581) | 45.1 / 45.1 | 45.4 / 45.3 |
+| offer overwrite on conflict, guard on / off (n=157, lower is better) | 11.5 / 11.5 | 9.6 / 7.6 |
+
+The guard now acts about seven times as often (20 against 3 user requirements it protects over 270 dialogues), but it stays rare against 528 offers, and guard on minus off on `paired_correct` (+2.2 points) is within E011's writer variance (+0.6 [-2.3, +3.6]); no paired bootstrap was run for this contrast. Offer overwrite on conflict is lower with the guard off (7.6) than on (9.6), which the guard cannot cause directly; it is read as writer and readout noise. Most offers still land on the option entity or on `selectedService`; the landing predicates are mostly `departureTime`, `scheduledArrival` and `selectedService`.
+
 ## Conclusion
 
 Main configuration (decided 2026-11-28, Log): Qwen3-32B writer (user decision, D006 amendment) at session units (s00-super). What the completed runs support, each comparison within one extraction mode:
@@ -198,6 +295,8 @@ Main configuration (decided 2026-11-28, Log): Qwen3-32B writer (user decision, D
 - Answer accuracy (LoCoMo dev, budget 1,024): the main configuration reaches F1 0.293 against 0.271 with the Qwen3-8B writer and 0.283 with Qwen3-32B segment-8, so the writer ordering follows graph quality; every GRACE arm is below the `rrf` baseline (0.347), and category 2 (temporal) is 0.071 in all three arms. Not explained from these runs.
 - Break-even (D007): token-based the LoCoMo savings claim survives; compute-weighted it does not robustly (Results).
 - The one prompt round helped Qwen3-32B (full history: P 0.172-0.179 to 0.195-0.215, R 0.183-0.253 to 0.210-0.275, empty patches 44 to 38 of 136) but not Qwen3-8B in full-history writing (P 0.068-0.077 to 0.050-0.058, R 0.126-0.159 to 0.111-0.137), where emotion and mention predicates the prompt forbids grew (`hasEmotionalImpact` 339, `mentions` 293 claims).
+- Ending round (2026-11-28, Results): on the confirmation sequences ending recall rises from 0.257 to 0.486, but ending precision falls from 0.53 to 0.34. On the controlled sequences claim-occurrence recall falls (loose 0.785 to 0.644; tuning set 0.727 to 0.638), largely through predicate choice: the writer now uses `jobTitle` for a field of work where the gold has `worksIn` (unmatched gold `worksIn` occurrences 4 of 67 unmatched before and 33 of 111 after on the confirmation sequences; 26 of 222 and 60 of 295 on the tuning set). A likely cause, not tested, is the job example in the new Changes rule ("I'm a nurse now, not a teacher"). On the T024 segments claim P/R do not change materially (segment-wise loose P 0.29-0.36 to 0.28-0.34, R 0.18-0.26 to 0.20-0.29; LoCoMo full history P unchanged, R 0.21-0.27 to 0.18-0.24). The main remaining loss is in the program, not the prompt: when the writer emits both a negative claim and an ending stance for the same known claim in one message, the updater keeps the claim's attribution and discards the stance as `duplicate_in_message`, so nothing is superseded.
+- Final writer round (2026-11-28, the last; Results): endings recall on the confirmation sequences 0.714 (PR #185 0.486, main 0.257) at precision 0.43 (0.34, 0.53); claim-occurrence loose F1 0.648 (0.652, 0.756); T024 bounds unchanged within noise (LoCoMo full history P 0.237-0.253, R 0.190-0.260). On MultiWOZ dev offers on the user constraint's subject and predicate rise from 3.1% to 10.0% and the guard protects 20 instead of 3 user requirements, still too rare to move `paired_correct` beyond writer noise.
 
 ## Log
 
@@ -215,3 +314,16 @@ Main configuration (decided 2026-11-28, Log): Qwen3-32B writer (user decision, D
 - 2026-11-28: answer accuracy per writer arm with `grace.cli.locomo_score` (new: score stage of a LoCoMo system run with the registered rule-based metrics of `configs/common/scorers.yaml`), and the T013 break-even with measured writer tokens (`write_budget` gained weighted reference writers and `--no-plot`; the first estimate `E007-20261128T062749Z-b374` failed on the missing matplotlib): Results. E001's LoCoMo table lists 0.310 for `rrf`: that column is the answer calls' prefix-cache hit ratio ("A hit ratio"; the table counts outputs, not scores), not an F1; E001 reports judge accuracy for `rrf` on LoCoMo (0.3929 / 0.4583) and no rule-based F1, so 0.347 here is the first F1 of run `E001-20261125T182212Z-2cd5` and no scorer differs.
 - 2026-11-28: recorded done with a remark by the integration owner (s00-super): main configuration fixed (Qwen3-32B writer, session units, one prompt for all arms). Remark: not run are Qwen3-8B thinking (thinking does not pay for the writer), Qwen3-32B thinking at message and session granularity, and graph quality on the controlled sequences (no gold-graph scorer yet; E006). GRACE scores below rrf on LoCoMo dev answer F1; the diagnosis is the first step of E013.
 - 2026-11-28: user decision: one additional writer-prompt round targeted only at endings and changes (E006 found 20 of 26 missed endings written as bare negative stances), tuned on controlled sequences E006 did not score, the same prompt then used for every writer arm; new shared ingest runs follow. Work on `task/E007-ending-round`.
+- 2026-11-28: worker session `w02-E007` on `task/E007-ending-round` from `d276860` (Issue #141), directed by s00-super: one additional writer-prompt round targeted at endings (user decision of 2026-11-28 after E006, PR #169), then new shared main-configuration ingest runs.
+  - Diagnosis (E006 extraction `E006-20261128T083758Z-b04e`, which E006 had already reported; then the tuning baseline `2f7e`): most missed endings are not missing stances. The writer emits the ended claim again as a claim with polarity negative *and* an ending stance on its handle; the updater applies the claim first (a repeated mention with a negative attribution) and drops the stance as `duplicate_in_message` (`pipeline/update/updater.py`, `_stance`), so the old claim stays current. Further causes: only a negative claim and no stance; an ending quote without the old value ("I don't anymore"), dropped by the ending-evidence check; a requirement ended with function `inform` instead of the `request` of its earlier stance, blocked by the guard (`speaker_or_function`); a change whose new claim uses another predicate, so nothing replaces the old claim.
+  - Prompt change (`extract-claims`, re-pinned `d2461141...` in `configs/common/prompts.yaml`; schema unchanged): an ending is written only as a negative stance with `ends`, never also as a negative claim; `polarity: negative` on a claim only for something that is not a known claim; `ends: change` or `correction` with cues; the stance takes the function of the claim's earlier stance (request for a requirement); the handle must be the claim with the old value; the quote must contain the old value; on a change that names the old value, the new claim keeps the old subject and predicate and the old claim also gets an ending stance (this replaces "do not add an ending stance for it as well"). One invented example (tennis/squash correction, rowing/climbing change, a hotel room requirement). No contract change: the stance with `ends` and the G2(ii) removal already express everything.
+  - Iterations on the tuning set only: 1 (`7f5b`, the Endings and Changes bullets and the example; 51 of 140 endings by the scorer's matcher run offline, not judge-scored), 2 (`e42d`, the polarity rule and the handle check; final), 3 (`94b8`, a closing reminder in `user.txt`; reverted because occurrence recall fell, anchor R 0.749 to 0.693). Two confirmation extractions made with iteration 3 (`E006-20261128T111659Z-5f3a`, `-824d`) were superseded before scoring: they were never scored or inspected, and the choice of iteration 2 rests on the tuning set alone. The confirmation was then run once with iteration 2.
+  - `graph_quality extract-sequences` now serialises SHACL validation when sequences run in parallel (pyshacl is not thread safe; run `b2de` failed on it).
+  - Results: Results, "Ending round". Shared ingest runs with the final prompt (main configuration, `configs/engines/grace.yaml`; they supersede the E006 ingests `E006-20261128T082608Z-21cb`, `-083145Z-6288` and `-084142Z-ee92`): LoCoMo dev `E007-20261128T112542Z-c8d3`, LongMemEval-S dev main-text strata `E007-20261128T112648Z-1453`, other 31 histories `E007-20261128T112653Z-065d`. All three completed: LoCoMo 928 messages, 511 claims, 1 supersession (8 min); LongMemEval-S main strata 32,957 messages, 12,232 claims, 44 supersessions (50 min, 8 workers); other 31 histories 15,824 messages, 5,071 claims, 18 supersessions (33 min, 6 workers).
+  - Not done: a rerun of the same prompt to measure writer noise on these measures; a program-side fix of the duplicate rule (outside the prompt round; proposed to s00-super: apply an ending stance even when the same message already attributed the claim).
+- 2026-11-28: final writer round (user decision of 2026-11-28: the last round, accepted afterwards whatever the result; no further tuning). Worker session `w03-E007` on `task/E007-ending-round` (PR #185), directed by s00-super. Run directory `runs/E007/artifacts/w03-E007/`.
+  - (a) Updater (`pipeline/update/updater.py`, `55e350c`): an ending stance whose key (claim, speaker, stance) was already attributed in the same message by a negative claim now reuses that attribution and goes through the guard's removal rule (note `ending_after_claim`) instead of being dropped as `duplicate_in_message`; the ending-evidence filter still runs first. Tests in `tests/integration/test_writer.py` reproduce the drop and check that the filter still drops an ending without the old value.
+  - (b) and (c) Prompt (`dee3edb`, re-pinned `44bf11d6`): the change example "I'm a nurse now, not a teacher" replaced by "I sing alto in the choir now, not soprano" (no choir, alto or soprano in the change-seq development set or the T024 segments). Check before the change, on the tuning runs already made: writer `jobTitle` 18 to 50 and `worksIn` 86 to 51 claims between the baseline `2f7e` and iteration 1 `7f5b`, the iteration that introduced the example (the only occupation text in the diff). D010 option B: requirements one per claim on the task entity, exclusive; an assistant offer of a value for something the user required also on the requirement's subject and predicate with function `offer`; example 1 shows it. Read from E011 before the design: the writer put offered values on the option entity (`Cityroomz priceRange moderate`) or lumped requirements (`USER requires moderately_priced_French_restaurant`), and the guard compares only claims of one subject, predicate and exclusive rule. Guard rules unchanged.
+  - One iteration on the tuning set (`456a`, score `c448`), kept; then one confirmation: controlled sequences `E006-20261128T174115Z-ee5e` / `E006-20261128T174424Z-9db1`, T024 segments `E006-20261128T174115Z-d899` / `E006-20261128T174426Z-d4f3`, LoCoMo full history `E006-20261128T174913Z-fdc6` and answer coverage `E006-20261128T174933Z-7cdc` on the new LoCoMo ingest. MultiWOZ dev with E011's driver and config (both claim-graph guard arms, 10 shards each, outputs under `runs/E007/artifacts/w03-E007/E011-setup/`; run IDs carry the driver's E011 prefix). Results: Results, "Final writer round".
+  - New shared ingests with the final writer (main configuration): LoCoMo dev `E007-20261128T174115Z-1b02` (928 messages, 430 claims, 3 supersessions; supersedes `c8d3`), LongMemEval-S dev main-text strata `E007-20261128T174321Z-ac51` (supersedes `1453`) and other 31 histories `E007-20261128T174321Z-8bf2` (supersedes `065d`). All completed: LongMemEval-S main strata 32,957 messages, 13,872 claims, 63 supersessions (59 min, 8 workers); other 31 histories 15,824 messages, 5,495 claims, 20 supersessions (37 min, 6 workers).
+  - Not done: a rerun to measure writer noise on these measures; a paired bootstrap of the MultiWOZ guard contrast; LongMemEval-S and change-seq E011 arms with the final writer.
