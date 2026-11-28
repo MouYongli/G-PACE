@@ -1,0 +1,116 @@
+# E007 · Ablation G: writer scale, thinking, granularity (plan 7.3 ablation G, 8.4; experiment file
+# docs/work/experiments/E007-ablation-g-writer.md). Driver, one run per arm and target:
+#   uv run python -m grace.cli.writer_ablation --config configs/experiments/E007-ablation-g-writer.yaml \
+#       --arm <arm> --target <target> --writer-url http://127.0.0.1:<port>/v1 --compute "<reservation>"
+# Written before the first formal run; later changes are logged in the experiment file.
+# Development data only (no held-out split before the T033 preregistration tag).
+experiment: E007
+seed: 0                                  # decoding seed of every call (temperature 0)
+samples: 30                              # units in samples.json (seeded)
+
+# Shared by every arm: prompt `extract-claims` and schema `llm/extract-claims` as pinned in
+# configs/common/prompts.yaml after E007's one prompt round (user decision of 2026-11-26), update
+# rules, temperature 0, seed 0, json_schema structured output. Arms override only granularity,
+# thinking and max_tokens.
+writer_config: configs/common/writer.yaml
+
+models:
+  qwen3-8b:                              # D006 primary model
+    model_config: configs/models/qwen3-8b.yaml
+    serving: Qwen/Qwen3-8B@b968826d9c46dd6066d109eabc6255188de91218, vLLM (envs/serve)
+    timeout_s: 600
+  qwen3-32b:                             # D006 larger same-family writer (the revision of E002, T022)
+    model_config: configs/models/qwen3-32b.yaml
+    serving: Qwen/Qwen3-32B@9216db5781bf21249d130ec9da846c4624c16137, vLLM (envs/serve) with --reasoning-parser qwen3
+    timeout_s: 900
+
+# max_tokens: 4096 (writer.yaml) fits a full unit of up to 8 messages. A session unit (up to 39
+# messages in LoCoMo dev) can hold up to the schema bound of 96 claims, so session arms allow
+# 12288. Thinking arms add room for the thinking (counted in output tokens) and need a server with
+# a reasoning parser; temperature stays 0 as in every arm (D006), although Qwen recommends sampling
+# with thinking: repetition loops in the thinking are reported as invalid output (cut at max_tokens).
+arms:
+  8b-message:   {model: qwen3-8b,  thinking: false, granularity: {unit: message}}
+  8b-segment8:  {model: qwen3-8b,  thinking: false, granularity: {unit: segment, size: 8}}
+  8b-session:   {model: qwen3-8b,  thinking: false, granularity: {unit: session},
+                 decoding: {max_tokens: 12288}}
+  32b-message:  {model: qwen3-32b, thinking: false, granularity: {unit: message}}
+  32b-segment8: {model: qwen3-32b, thinking: false, granularity: {unit: segment, size: 8}}
+  32b-session:  {model: qwen3-32b, thinking: false, granularity: {unit: session},
+                 decoding: {max_tokens: 12288}}
+  32b-segment8-think: {model: qwen3-32b, thinking: true, granularity: {unit: segment, size: 8},
+                       decoding: {max_tokens: 16384}}
+  8b-segment8-think:  {model: qwen3-8b, thinking: true, granularity: {unit: segment, size: 8},
+                       decoding: {max_tokens: 16384},
+                       note: needs a Qwen3-8B server with --reasoning-parser qwen3}
+
+targets:
+  # LoCoMo development histories conv-26 and conv-49 (plan 6.5), 928 messages.
+  locomo-dev:
+    kind: histories
+    benchmarks:
+      - slug: locomo
+        split: dev
+  # Controlled sequences: the model-rendered development set of T015 (run
+  # T015-devmodel-20261125T192037Z, as in E005; configs/benchmarks/change-seq.yaml is not bound
+  # yet), one density-10 sequence per family (5 x 200 messages).
+  changeseq-dev:
+    kind: histories
+    histories:
+      - train-travel-rho10-L200-000
+      - flight-travel-rho10-L200-000
+      - car-rental-rho10-L200-000
+      - hotel-stay-rho10-L200-000
+      - apartment-search-rho10-L200-000
+    benchmarks:
+      - slug: change-seq
+        split: dev
+        config:
+          benchmark: change-seq
+          version: dataset
+          data_root: runs/T015/artifacts/T015-devmodel-20261125T192037Z
+          manifest_sha256: 9b147185381de5982ad94560e27d8eb1b20e1d7c41347db6cc66a736355c515a
+          splits:
+            dev:
+              kind: development
+              rule: every sequence of the T015 model-rendered development set
+              counts: {histories: 25, messages: 5000, read_tasks: 1145, gold: 9422}
+              histories:
+                - train-travel-rho10-L200-000
+                - train-travel-rho10-L200-001
+                - flight-travel-rho10-L200-000
+                - flight-travel-rho10-L200-001
+                - car-rental-rho10-L200-000
+                - car-rental-rho10-L200-001
+                - hotel-stay-rho10-L200-000
+                - hotel-stay-rho10-L200-001
+                - apartment-search-rho10-L200-000
+                - apartment-search-rho10-L200-001
+                - train-travel-rho1-L200-000
+                - train-travel-rho3-L200-000
+                - train-travel-rho30-L200-000
+                - flight-travel-rho1-L200-000
+                - flight-travel-rho3-L200-000
+                - flight-travel-rho30-L200-000
+                - car-rental-rho1-L200-000
+                - car-rental-rho3-L200-000
+                - car-rental-rho30-L200-000
+                - hotel-stay-rho1-L200-000
+                - hotel-stay-rho3-L200-000
+                - hotel-stay-rho30-L200-000
+                - apartment-search-rho1-L200-000
+                - apartment-search-rho3-L200-000
+                - apartment-search-rho30-L200-000
+  # The 40 annotated segments of T024 (16 LoCoMo sessions, 24 LongMemEval-S windows; 578
+  # messages), each written from an empty graph, for E006's scorer. Session granularity on a
+  # segment is the whole segment: the full session for LoCoMo, the 8 to 14 message window of a
+  # session for LongMemEval-S. The sample is relative to the repository, the texts to PROJECT_ROOT.
+  t024-segments:
+    kind: segments
+    sample: docs/research/annotations/graph-quality/sample.json
+    segments: runs/T024/artifacts/sample/segments.jsonl
+    benchmarks:
+      - slug: locomo
+        split: dev
+      - slug: longmemeval-s
+        split: dev

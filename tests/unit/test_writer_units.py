@@ -119,14 +119,15 @@ class PatchTest(unittest.TestCase):
                 self.assertIn(reason, error)
 
     def test_array_bounds_end_repetition_loops(self):
-        """User decision of 2026-11-26: at most 32 claims, 16 stances and 8 same_as entries."""
+        """User decision of 2026-11-26, widened for session granularity in E007: at most 96 claims,
+        48 stances and 16 same_as entries."""
         import json
 
         item = {"message": 1, "subject": "A", "predicate": "p", "object": "o"}
         stance = {"message": 1, "claim": "k1", "function": "confirm"}
         alias = {"message": 1, "name": "A", "same_as": "B"}
-        for claims, stances, aliases, ok in ((32, 16, 8, True), (33, 0, 0, False),
-                                             (0, 17, 0, False), (0, 0, 9, False)):
+        for claims, stances, aliases, ok in ((96, 48, 16, True), (97, 0, 0, False),
+                                             (0, 49, 0, False), (0, 0, 17, False)):
             text = json.dumps({"claims": [item] * claims, "stances": [stance] * stances,
                                "same_as": [alias] * aliases})
             with self.subTest(claims=claims, stances=stances, aliases=aliases):
@@ -134,7 +135,7 @@ class PatchTest(unittest.TestCase):
                 self.assertEqual(patch is not None, ok, error)
         schema = self.validator.schema["properties"]
         self.assertEqual([schema[k]["maxItems"] for k in ("claims", "stances", "same_as")],
-                         [32, 16, 8])
+                         [96, 48, 16])
 
 
 class ValueTest(unittest.TestCase):

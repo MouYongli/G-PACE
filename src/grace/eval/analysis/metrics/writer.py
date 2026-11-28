@@ -6,7 +6,8 @@ history (`graphs/<history_id>/store/changesets.jsonl`). Nothing here imports eng
 
 - `unit_stats`: units by status (`ok`, `split`, `invalid_output`, `failed`, `failed_final`),
   how many messages ended in an empty change set because extraction gave up, entries committed,
-  dropped items by reason, conflicts, blocked removals and commit errors.
+  dropped items by reason, conflicts, blocked removals and commit errors; empty patches (`ok`
+  units whose patch is empty, E007) and the repair of invalid outputs by splitting.
 - `call_stats`: calls by status and attempt, the rates of invalid outputs and failed attempts, and
   token totals (input, output, cached input) overall and per status.
 - `graph_stats`: the shape of the committed graph (predicates, catch-all share, long string
@@ -56,6 +57,11 @@ def unit_stats(updates: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     given_up = sum(len(u["message_ids"]) for u in final
                    if u["status"] in ("invalid_output", "failed_final"))
     split_roots = sum(1 for u in updates if u["status"] == "split")
+    ok_final = [u for u in final if u["status"] == "ok"]
+    empty = sum(1 for u in ok_final if _empty_patch(u["raw_output"]))
+    # T022 counted units with nothing committed (an all-dropped patch included): 45 of 136 there
+    nothing = sum(1 for u in ok_final
+                  if not (u["entries"]["claims"] or u["entries"]["attributions"]))
     return {
         "records": len(updates),
         "by_status": {s: status.get(s, 0) for s in UNIT_STATUSES},
@@ -65,6 +71,11 @@ def unit_stats(updates: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "messages_given_up_rate": _rate(given_up, messages),
         "split_events": split_roots,
         "partial_units": sum(1 for u in updates if u["partial"]),
+        "empty_patches": empty,
+        "empty_patch_rate": _rate(empty, len(ok_final)),
+        "empty_commits": nothing,
+        "empty_commit_rate": _rate(nothing, len(ok_final)),
+        "repair": repair_stats(updates),
         "entries": {k: entries.get(k, 0) for k in ENTRY_KINDS},
         "dropped": dict(sorted(dropped.items())),
         "dropped_total": sum(dropped.values()),
@@ -73,6 +84,35 @@ def unit_stats(updates: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "blocked": sum(len(u["blocked"]) for u in updates),
         "commit_errors": sum(len(u["commit_errors"]) for u in updates),
     }
+
+
+def _empty_patch(raw: str | None) -> bool:
+    """An `ok` unit whose patch holds no claim, stance or same_as entry (E007: empty patch)."""
+    patch = json.loads(raw or "{}")
+    return not any(patch.get(k) for k in ("claims", "stances", "same_as"))
+
+
+def repair_stats(updates: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Recovery of invalid outputs by splitting (the writer's only repair).
+
+    A root is a `split` record not inside another split record of its history; it is repaired
+    when no message in its range ends in a final `invalid_output` or `failed_final` record. Units
+    that returned invalid output at a single message are given up without a split."""
+    splits = [u for u in updates if u["status"] == "split"]
+
+    def inside(u, v):
+        return (u is not v and u["history_id"] == v["history_id"]
+                and v["first_version"] <= u["first_version"]
+                and u["last_version"] <= v["last_version"])
+
+    roots = [u for u in splits if not any(inside(u, v) for v in splits)]
+    lost = [u for u in updates if u["status"] in ("invalid_output", "failed_final")]
+    repaired = sum(1 for r in roots if not any(inside(u, r) for u in lost))
+    single = sum(1 for u in lost if u["status"] == "invalid_output"
+                 and not any(inside(u, r) for r in roots))
+    return {"split_roots": len(roots), "repaired": repaired,
+            "repair_rate": _rate(repaired, len(roots)),
+            "invalid_single_units": single}
 
 
 def call_stats(calls: Sequence[Mapping[str, Any]], call_type: str = "extract") -> dict[str, Any]:

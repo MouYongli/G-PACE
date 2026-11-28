@@ -23,5 +23,7 @@ earlier_chars: 600                 # anchor in the full text)
 decoding:
   temperature: 0.0                 # D006: temperature 0, thinking disabled (model config)
   seed: 0                          # sent with every call (vLLM per-request seed)
-  max_tokens: 4096                 # user decision of 2026-11-26 (was 2048); with the schema's array
-                                   # bounds a full output (32 claims, 16 stances) fits
+  max_tokens: 4096                 # user decision of 2026-11-26 (was 2048); fits a full segment-8
+                                   # output (32 claims, 16 stances). The schema bounds were widened
+                                   # for session units in E007 (96, 48, 16); E007's session arms
+                                   # raise max_tokens (configs/experiments/E007-ablation-g-writer.yaml)
