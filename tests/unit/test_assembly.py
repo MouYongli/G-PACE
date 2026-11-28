@@ -160,6 +160,18 @@ class SelectTest(unittest.TestCase):
         fill = greedy(units, [], 20)  # no demand: greedy is the fill alone
         self.assertEqual([u.unit_id for u in fill], ["r1", "r2", "r4"])
 
+    def test_a_claim_citation_does_not_count_as_shown_raw_text(self):
+        # E013 diagnosis: a claim citing D1:3 used to keep the raw message D1:3 (and its date)
+        # out of the fill. Only raw text counts as shown; a claim whose cited messages are all
+        # shown raw adds nothing and is skipped.
+        claim = Item("q1", "claim", "event = picnic", ("D1:3",), rank=1)
+        raw = item("D1:3", "A: we had a picnic yesterday", rank=2, timestamp="2023-05-08")
+        other = item("D1:4", "B: nice", rank=3)
+        late_claim = Item("q2", "claim", "food = cake", ("D1:4",), rank=4)
+        units = self.units([claim, raw, other, late_claim], {})
+        for select in (lambda us: truncate(us, 100), lambda us: greedy(us, [], 100)):
+            self.assertEqual([u.unit_id for u in select(units)], ["q1", "D1:3", "D1:4"])
+
 
 class LayoutTest(unittest.TestCase):
     def test_sections_order_citations_and_fragments(self):
