@@ -11,6 +11,12 @@ synthetic fixture directory (`--records`, tests and CI only). Model calls go thr
 `--model-config`, embeddings from `--embed-url`), or through the deterministic fake
 (`--backend fake`, the default; no network, no score from it is real).
 
+Streaming and other interleaved schedules (`--schedule streaming` for LoCoMo, T031) run on the
+same loop. `--task` keeps only the reads of some questions (smoke runs), `--read-order reversed`
+answers the reads of one version in reverse schedule order, and `--state-probe` wraps the engine
+in `streaming.StateProbe`, which fails the run when answering or `end_read` changes the engine's
+resident state and writes one line per read (version, state and evidence digests) to `run.log`.
+
 An engine config MAY name a second model for the engine's own chat calls (`engine_llm`, T034:
 Graphiti's native-backbone row). With `--backend client` the engine is then built on an
 `EngineLLMModel`: its chat calls go to that endpoint, whose URL, deployment and key come from the
@@ -43,7 +49,7 @@ from grace.context import api
 from grace.eval.datasets.benchmarks.base import BenchmarkConfig
 from grace.eval.engines.baselines.base import message_time
 from grace.eval.engines.baselines.registry import ENGINES
-from grace.eval.runner.harness import rundir
+from grace.eval.runner.harness import rundir, streaming
 from grace.eval.runner.harness.answer import answer
 from grace.eval.runner.harness.inputs import Inputs, load_dev, load_fixture
 from grace.eval.runner.harness.models import (
@@ -263,6 +269,8 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
                on_model: Callable[[Any], None] | None = None,
                engine_wrapper: Callable[[api.ContextEngine], api.ContextEngine] | None = None,
                benchmark_config: BenchmarkConfig | None = None,
+               task_ids: list[str] | None = None, read_order: str = "schedule",
+               state_probe: bool = False,
                ) -> SystemRun:
     """One `system` stage run of one engine config on one benchmark split and budget.
 
@@ -276,6 +284,8 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
     inputs: Inputs = (load_fixture(records, schedule, history_ids) if records is not None
                       else load_dev(benchmark, split, schedule, history_ids,
                                     config=benchmark_config))
+    if task_ids is not None or read_order != "schedule":
+        inputs = streaming.select_reads(inputs, task_ids, read_order)
     code = code or rundir.code_state()
     max_tokens = int(budgets()["answer"]["output_reserve_tokens"])
     make_engine_model = None
@@ -300,6 +310,12 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
                                                              for h in inputs.histories],
                 "budget_tokens": budget, "seed": seed, "model": model_info,
                 "answer_max_tokens": max_tokens, "max_attempts": 2}
+    if task_ids is not None:
+        resolved["task_ids"] = sorted(task_ids)
+    if read_order != "schedule":
+        resolved["read_order"] = read_order
+    if state_probe:
+        resolved["state_probe"] = True
     if (settings := engine_settings(config, seed, client is None)) is not None:
         resolved["engine_settings"] = settings
     (run_dir / "resolved-config.yaml").write_text(
@@ -332,9 +348,20 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
             engine = build_engine(config, engine_model, allow_no_client=client is None)
             if engine_wrapper:
                 engine = engine_wrapper(engine)
+            probes: list[streaming.ProbeRecord] = []
+            if state_probe:
+                engine = streaming.StateProbe(engine, probes)
             answered += drive_history(engine, item, budget, model, writer, max_tokens)
             log.write(f"{item.history.history_id}: {len(item.messages)} messages, "
                       f"{len(item.reads)} reads\n")
+            for p in probes:
+                log.write(f"probe {p.read_id} version={p.version} state={p.state_sha256[:16]} "
+                          f"evidence={p.final_evidence_sha256[:16]} state_after_end_read="
+                          f"{'same' if p.unchanged else 'CHANGED'}"
+                          "\n")
+            if state_probe:
+                log.write(f"probe summary {item.history.history_id}: "
+                          f"{streaming.probe_summary(probes)}\n")
         if answered != inputs.n_reads or writer.counts["predictions.jsonl"] != inputs.n_reads:
             failure = f"record count: {answered} answered, {inputs.n_reads} read tasks"
     except Exception as exc:  # noqa: BLE001 - recorded as the run's failure, then re-raised
@@ -371,6 +398,12 @@ def main(argv: list[str] | None = None) -> int:
                                                          "http://127.0.0.1:8061/v1")
     parser.add_argument("--embed-url", default=None, help="embedding endpoint (dense, rrf)")
     parser.add_argument("--model-config", type=Path, default=DEFAULT_MODEL)
+    parser.add_argument("--task", action="append", default=None,
+                        help="keep only the reads of this task ID (repeatable)")
+    parser.add_argument("--read-order", choices=streaming.READ_ORDERS, default="schedule",
+                        help="order of the reads that share a version")
+    parser.add_argument("--state-probe", action="store_true",
+                        help="check that answering and end_read leave the engine state unchanged")
     args = parser.parse_args(argv)
     budget = None if args.budget == "full" else int(args.budget)
     run_root = args.run_root or shared_dir("runs_root") / "T003" / "artifacts" / "manager"
@@ -382,7 +415,9 @@ def main(argv: list[str] | None = None) -> int:
     result = run_system(engine_config=args.engine, records=args.records,
                         benchmark=args.benchmark, split=args.split, budget=budget,
                         experiment=args.experiment, run_root=run_root, schedule=args.schedule,
-                        seed=args.seed, history_ids=args.history, client=client)
+                        seed=args.seed, history_ids=args.history, client=client,
+                        task_ids=args.task, read_order=args.read_order,
+                        state_probe=args.state_probe)
     print(f"{result.run_id}: {result.status} ({result.n_reads} reads) -> {result.run_dir}")
     if result.failure:
         print(f"failure: {result.failure}")

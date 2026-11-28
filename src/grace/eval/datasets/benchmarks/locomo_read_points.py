@@ -411,3 +411,72 @@ def evaluate_threshold(summary: Mapping[str, Any], threshold: Threshold) -> dict
 def whitespace_tokens(text: str) -> int:
     """Fallback counter: whitespace-separated words (not model tokens)."""
     return len(text.split())
+
+
+# ---------------------------------------------------------------------------------------------
+# The streaming schedule (task T031)
+
+
+def streaming_tasks(records: Records, points: Sequence[ReadPoint]) -> list[dict[str, Any]]:
+    """Read tasks of the `streaming` schedule (contracts.md, Read task): every question with a
+    read point is asked at v(q) and at N; excluded questions are not in the schedule. A question
+    with v(q) = N has one read, at N."""
+    by_id = {t.task_id: t for t in records.read_tasks}
+    rows = []
+    for p in points:
+        if p.v is None:
+            continue
+        task = by_id[p.task_id].to_record()
+        for version in sorted({p.v, p.n_messages}):
+            rows.append({**task, "read_id": f"{p.task_id}@{version}", "version": version})
+    return rows
+
+
+def load_committed(path: Path) -> dict[str, Any]:
+    """The committed read-point list (`configs/benchmarks/read-points/locomo.yaml`)."""
+    import yaml
+
+    config = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(config, dict) or config.get("benchmark") != "locomo":
+        raise ReadPointError(f"{path}: not a LoCoMo read-point list")
+    return config
+
+
+def streaming_schedule(records: Records, committed: Mapping[str, Any],
+                       version: str | None = None) -> list[dict[str, Any]]:
+    """The `streaming` schedule of the histories in `records`, from the committed T007 list.
+
+    The read points are recomputed from the records and must equal the committed list for every
+    history of the split: the same N, the same v(q) for every question with a read point, the same
+    excluded questions with the same reason, and no question the records do not have. Only the
+    entries of the histories in `records` are read, so a development load never uses a held-out
+    entry. `version` is the data version the records were converted from."""
+    if version is not None and committed.get("version") != version:
+        raise ReadPointError(f"read-point list is for data version {committed.get('version')!r}, "
+                             f"the records are {version!r}")
+    points = compute_read_points(records, {})
+    listed = committed.get("histories") or {}
+    excluded = committed.get("excluded") or {}
+    problems: list[str] = []
+    for history in records.histories:
+        entry = listed.get(history.history_id)
+        if entry is None:
+            problems.append(f"{history.history_id}: not in the read-point list")
+            continue
+        if entry.get("n_messages") != history.n_messages:
+            problems.append(f"{history.history_id}: N {history.n_messages} != listed "
+                            f"{entry.get('n_messages')}")
+        mine = [p for p in points if p.history_id == history.history_id]
+        expected_v = {p.task_id: p.v for p in mine if p.v is not None}
+        if dict(entry.get("v") or {}) != expected_v:
+            diff = sorted(set((entry.get("v") or {}).items()) ^ set(expected_v.items()))
+            problems.append(f"{history.history_id}: v(q) differs from the list, e.g. {diff[:5]}")
+        expected_x = {p.task_id: p.reason for p in mine if p.v is None}
+        listed_x = {t: r for t, r in excluded.items()
+                    if t.rpartition(":")[0] == history.history_id}
+        if listed_x != expected_x:
+            problems.append(f"{history.history_id}: excluded questions differ from the list "
+                            f"({sorted(listed_x.items())} != {sorted(expected_x.items())})")
+    if problems:
+        raise ReadPointError("; ".join(problems))
+    return streaming_tasks(records, points)
