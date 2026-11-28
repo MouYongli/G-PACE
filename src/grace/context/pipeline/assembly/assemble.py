@@ -16,6 +16,14 @@ Its configuration (`configs/assembly/*.yaml`, `AssemblyConfig`) fixes:
 - `support_threshold`, `support_stem`: the lexical support rule (`demand.Support`); unfrozen
   placeholders until they are fixed on development data.
 - `min_budget`: the smallest budget accepted; it must hold the empty-context marker.
+- `state_items`: admit state items (query answers and view sentences, `items.STATE_KINDS`).
+  False drops them before the filter (reason `state_off`): the graph's structured state is not
+  shown, while the graph channel's evidence messages still are (ablation D, E012). Main
+  configuration: true.
+- `verification`: apply the attribution-and-time checks of the filter (`retired`, `valid`,
+  `scope`, `attribution`, `filter.reason`). False keeps only the version guarantee and the
+  duplicate and group rules (ablation D, E012). This is the deterministic read-time filter, not
+  the verification LLM call of plan 5.6, which is not implemented. Main configuration: true.
 
 Budget. `budget` is the memory budget of the read in tokens of the answering model's tokenizer
 (256, 512 or 1,024; `None` is the full history). Selection works on per-item estimates (the line
@@ -71,12 +79,12 @@ from grace.context.pipeline.assembly import layout
 from grace.context.pipeline.assembly.demand import Demand, Support, Variable
 from grace.context.pipeline.assembly.expand import Expansion, expand_summary, propose
 from grace.context.pipeline.assembly.filter import Constraints, filter_items
-from grace.context.pipeline.assembly.items import Item, recent_items
+from grace.context.pipeline.assembly.items import STATE_KINDS, Item, recent_items
 from grace.context.pipeline.assembly.select import MODES, Unit, greedy, truncate, units_of
 
 CONFIG_KEYS = {"version", "selection", "fill", "truncate_k", "recent_messages", "open_items",
                "max_expansions", "support_threshold", "support_stem", "min_budget",
-               "state_citations"}
+               "state_citations", "state_items", "verification"}
 
 
 @dataclass(frozen=True)
@@ -93,6 +101,8 @@ class AssemblyConfig:
     # Message IDs in front of state-section items (views, claims); False is the "without source
     # annotation" arm of ablation C (E010). Selection costs follow the shown lines.
     state_citations: bool = True
+    state_items: bool = True       # ablation D (E012), module docstring
+    verification: bool = True      # ablation D (E012), module docstring
 
     def __post_init__(self) -> None:
         if self.selection not in MODES:
@@ -110,7 +120,8 @@ class AssemblyConfig:
                 "truncate_k": self.truncate_k, "recent_messages": self.recent_messages,
                 "open_items": self.open_items, "max_expansions": self.max_expansions,
                 "support_threshold": self.support_threshold, "support_stem": self.support_stem,
-                "min_budget": self.min_budget, "state_citations": self.state_citations}
+                "min_budget": self.min_budget, "state_citations": self.state_citations,
+                "state_items": self.state_items, "verification": self.verification}
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> AssemblyConfig:
@@ -195,6 +206,8 @@ class Assembler:
         if c.version != task.version:
             raise ValueError(f"constraints bound to version {c.version}, read {task.read_id} "
                              f"to {task.version}")
+        if not self.config.verification:
+            c = Constraints(version=c.version, current_only=False)
         if budget is not None and budget < self.config.min_budget:
             raise ValueError(f"budget {budget} < min_budget {self.config.min_budget}")
         recent = (recent_items(self.log, task.version, self.config.recent_messages,
@@ -202,6 +215,10 @@ class Assembler:
                   if self.log is not None else [])
         recent_ids = {i.item_id for i in recent}
         pool = recent + [i for i in items if i.item_id not in recent_ids]
+        state_off: tuple[tuple[str, str], ...] = ()
+        if not self.config.state_items:
+            state_off = tuple((i.item_id, "state_off") for i in pool if i.kind in STATE_KINDS)
+            pool = [i for i in pool if i.kind not in STATE_KINDS]
         filtered = filter_items(pool, c)
         kept = list(filtered.kept)
         cache: dict[str, frozenset[str]] = {}
@@ -277,7 +294,7 @@ class Assembler:
         covered = tuple(n for n in demand.names if n not in {v.name for v in open_vars})
         coverage = {i.item_id: tuple(sorted(covers(i))) for i in serialised.items if covers(i)}
         return Assembly(context, demand, c, self.config.selection, covered, tuple(open_vars),
-                        len(pool), filtered.dropped,
+                        len(pool), state_off + filtered.dropped,
                         layout.ledger(serialised.text, frags, self.count, budget,
                                       self.counter_name),
                         expansion, done, expansions_used, retrieval_used, coverage)

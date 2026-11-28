@@ -1,0 +1,17 @@
+# Evidence-driven assembly, ablation D arm (no attribution-and-time checks in the filter; E012, plan 7.3). Identical to
+# default.yaml except the switches at the end (grace.context.pipeline.assembly.assemble).
+version: 1
+selection: greedy          # new demand coverage per added token, then the rank-order fill
+fill: true                 # fill the budget left after coverage in rank order
+truncate_k: null           # used only by selection: truncate
+recent_messages: 0         # last k visible messages in the "recent raw text" section
+open_items: true           # list uncovered variables in the context
+max_expansions: 1          # one assembler expansion per read (summary, or a query that uses the
+                           # read's one extra retrieval, plan 5.6)
+# UNFROZEN PLACEHOLDERS: the lexical stand-in for the verification call (plan 5.6). Not tuned;
+# to be fixed on development data before D012.
+support_threshold: 0.5     # share of a variable's content terms an item must contain
+support_stem: 5            # terms are compared on their first `support_stem` characters
+min_budget: 16             # smallest memory budget accepted (holds the empty-context marker)
+# Ablation D switches (main configuration: both true).
+verification: false
