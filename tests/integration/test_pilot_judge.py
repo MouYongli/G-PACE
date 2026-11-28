@@ -166,6 +166,41 @@ class JudgeStageTest(unittest.TestCase):
         self.assertIn("B", str(ctx.exception))
         self.assertNotIn("x", str(ctx.exception))
 
+    def local_judge(self, offset):
+        """A local judge run whose server reports the local count plus `offset` tokens."""
+        from grace.eval.analysis.judging.judge import blind_judge
+        from grace.llm.client import ChatClient, Endpoint
+        from grace.llm.prompts import load_pinned
+
+        counter = WordCounter()
+        post = ScriptedPost(lambda p: completion(
+            "INCORRECT", 1, prompt_tokens=counter.count_messages(p["messages"]) + offset))
+        usage = stage.UsageTransport(post)
+        tasks, gold, data = cli.judge_inputs("locomo", self.exp["benchmarks"]["locomo"],
+                                             fixture_records)
+        prompt = load_pinned("judge", cli.PROMPT_REGISTRY)
+        endpoint = Endpoint(base_url="http://127.0.0.1:1/v1", served_model="judge",
+                            model_label="org/judge@" + "0" * 40,
+                            chat_template_kwargs={"enable_thinking": False})
+        result = stage.run_judge(
+            self.system, run_root=self.tmp / "local", experiment="E001", judge_name="blind",
+            make_judge=lambda client: blind_judge("blind", client, prompt, {"temperature": 0}),
+            make_client=lambda ledger: ChatClient(endpoint, ledger, counter, transport=usage),
+            usage=usage, tasks=tasks, gold=gold, data=data, resolved={}, config_path="x",
+            workers=2, code=CODE, command="test", device="test", check_input_tokens=True)
+        return result, post
+
+    def test_local_judge_checks_input_tokens_against_the_server(self):
+        result, post = self.local_judge(0)
+        self.assertEqual(result.status, "completed", result.failure)
+        self.assertEqual(post.requests[0]["payload"]["chat_template_kwargs"],
+                         {"enable_thinking": False})
+        log = (result.run_dir / "run.log").read_text(encoding="utf-8")
+        self.assertIn(f"input-token check: {len(self.answers)} of {len(self.answers)}", log)
+        result, _ = self.local_judge(1)
+        self.assertEqual(result.status, "failed")
+        self.assertIn("input-token check", result.failure)
+
 
 class UsageTransportTest(unittest.TestCase):
     def test_rate_limit_waits_before_the_retry(self):

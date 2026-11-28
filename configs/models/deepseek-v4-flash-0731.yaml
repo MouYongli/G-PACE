@@ -1,0 +1,39 @@
+# Model pin of the primary blind judge chosen in decision D006 (configs/judges/blind.yaml `model`).
+# Not an evaluated model: no system or answering configuration may use it.
+# Checksums are SHA-256 of the files in the Hugging Face snapshot of `revision`.
+model: deepseek-v4-flash-0731
+status: selected                  # D006 accepted
+role: judge
+hf_repo: deepseek-ai/DeepSeek-V4-Flash-0731
+revision: 7872f01b1d1fe23eabc4c98b48bffcef5a386062
+served_name: deepseek-ai/DeepSeek-V4-Flash-0731
+licence: MIT
+thinking: false                   # chat mode: the judge answers with one word, no reasoning
+config_max_position_embeddings: 1048576   # from config.json
+tokenizer:
+  # The snapshot has no Jinja chat template. Prompts are rendered by the model's own encoder,
+  # encoding/encoding_dsv4.py (`encode_messages`, thinking_mode "chat"):
+  #   <｜begin▁of▁sentence｜>{system}<｜User｜>{user}<｜Assistant｜></think>
+  # The server renders with vLLM's copy of that encoder (--tokenizer-mode deepseek_v4). vLLM
+  # defaults to thinking mode when no template argument is sent, so `enable_thinking: false` is
+  # sent with every request (chat_template_kwargs). grace.llm.tokens.DSV4ChatCounter counts the
+  # same format locally (system and user messages only); the judge stage compares its count with
+  # the server's prompt_tokens on every call (judge-usage.jsonl).
+  backend: deepseek-v4-encoding
+  chat_template: encoding/encoding_dsv4.py
+  template_kwargs:
+    enable_thinking: false
+  files:
+    tokenizer.json: 8f9f37ca37fdc4f5fd36d5cf4d3b0e8392edb4e894fd10cc0d70b4957c8633cf
+    tokenizer_config.json: 6ac8c8dc065ed118161d02dd532749ae3f52c243deac27872134fae2f50d8547
+    encoding/encoding_dsv4.py: abc0d26120250dda0ae077dc64aa28836026e61e970854aaeb792445e6a0dde6
+# Weights: 48 safetensors shards, 166,898,661,074 bytes in the snapshot (FP8 attention and dense
+# layers, FP4 routed experts; 256 experts, 6 active).
+serve:
+  # vLLM 0.34.0 through scripts/serve-model.sh on two B200 GPUs (tensor parallel). NVLink SHARP
+  # multicast is unavailable on this machine (NCCL "Failed to bind NVLS multicast memory"), so the
+  # server is started with NCCL_NVLS_ENABLE=0. Judge prompts are short; 16,384 tokens of context.
+  env: {NCCL_NVLS_ENABLE: "0", HF_HUB_OFFLINE: "1"}
+  args: [--revision, 7872f01b1d1fe23eabc4c98b48bffcef5a386062, --tokenizer-mode, deepseek_v4,
+         --tensor-parallel-size, "2", --kv-cache-dtype, fp8, --block-size, "256",
+         --max-model-len, "16384", --gpu-memory-utilization, "0.80"]

@@ -10,9 +10,11 @@ from pathlib import Path
 import yaml
 
 from grace.llm.tokens import (
+    DSV4ChatCounter,
     HFTokenCounter,
     TokenizerPin,
     TokenizerPinError,
+    counter_for_model_config,
     locate_snapshot,
     read_chat_template,
     verify_snapshot,
@@ -122,6 +124,47 @@ class CachedModelTest(unittest.TestCase):
                         HFTokenCounter(pin, copy)
         if not found:
             self.skipTest("no pinned model in the local Hugging Face cache")
+
+
+class DSV4ChatCounterTest(unittest.TestCase):
+    """Chat-mode rendering of the DeepSeek-V4 judge. The expected strings are the output of the
+    snapshot's own `encoding_dsv4.encode_messages(messages, thinking_mode="chat")`."""
+
+    def test_render_matches_the_model_encoder(self):
+        bos, user, asst, eos = ("<｜begin▁of▁sentence｜>", "<｜User｜>", "<｜Assistant｜>",
+                                "<｜end▁of▁sentence｜>")
+        cases = [
+            ([{"role": "system", "content": "S"}, {"role": "user", "content": "Q"}],
+             f"{bos}S{user}Q{asst}</think>"),
+            ([{"role": "user", "content": "hi"}], f"{bos}{user}hi{asst}</think>"),
+            ([{"role": "system", "content": "s"}, {"role": "user", "content": "u1"},
+              {"role": "assistant", "content": "a1"}, {"role": "user", "content": "u2"}],
+             f"{bos}s{user}u1{asst}</think>a1{eos}{user}u2{asst}</think>"),
+        ]
+        for messages, expected in cases:
+            self.assertEqual(DSV4ChatCounter.render(messages), expected)
+
+    def test_unsupported_messages_are_refused(self):
+        with self.assertRaises(ValueError):
+            DSV4ChatCounter.render([{"role": "tool", "content": "x"}])
+        with self.assertRaises(ValueError):
+            DSV4ChatCounter.render([{"role": "user", "content": "x", "tools": []}])
+
+    def test_judge_pin_selects_the_counter_or_reports_the_missing_snapshot(self):
+        path = MODELS / "deepseek-v4-flash-0731.yaml"
+        pin = TokenizerPin.from_file(path)
+        self.assertFalse(pin.thinking)
+        self.assertEqual(pin.template_kwargs, {"enable_thinking": False})
+        try:
+            counter = counter_for_model_config(path)
+        except TokenizerPinError:
+            self.skipTest("DeepSeek-V4-Flash-0731 is not in the local Hugging Face cache")
+        self.assertIsInstance(counter, DSV4ChatCounter)
+        messages = [{"role": "system", "content": "Grade."},
+                    {"role": "user", "content": "Question: q"}]
+        self.assertEqual(counter.count_messages(messages),
+                         counter.count_text(DSV4ChatCounter.render(messages)))
+        self.assertEqual(counter.count_text(""), 0)
 
 
 if __name__ == "__main__":

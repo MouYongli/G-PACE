@@ -6,6 +6,16 @@ benchmark, judges every `answer` prediction of a question read with one judge
 and `invalid` predictions and state reads are scored by rule and are not judged. Every call goes
 through `grace.llm.client.ChatClient`.
 
+The local primary judge (decision D006, `model` of `configs/judges/blind.yaml`) is run from the
+command line, one judge run per upstream run, under the upstream run's experiment:
+
+    uv run python -m grace.cli.run.judge --base-url http://127.0.0.1:8254/v1 --gpus 5,7 \\
+        --run-root "$PROJECT_ROOT/runs/<NODE>/artifacts/<session>" <RUN_DIR>...
+
+Its input tokens are counted locally with the judge's pinned tokenizer and chat-mode rendering
+(`grace.llm.tokens.DSV4ChatCounter`), and each count is checked against the server's
+`prompt_tokens` (a difference fails the run).
+
 Remote judges (the Azure comparison judge of decision D006) have no local tokenizer, so
 `input_tokens` in `calls.jsonl` is the count of a local proxy counter (named in
 `resolved-config.yaml`), as the client requires; what the server reports (`usage`) is kept per
@@ -224,11 +234,14 @@ def run_judge(upstream_dir: Path, *, run_root: Path, experiment: str, judge_name
               seed: int = 0, workers: int = 4, guard: SpendGuard | None = None,
               limit: int | None = None, max_consecutive_failures: int = 5,
               code: rundir.CodeState | None = None, command: str | None = None,
-              device: str = "cpu (remote judge API)") -> JudgeRun | None:
+              device: str = "cpu (remote judge API)",
+              check_input_tokens: bool = False) -> JudgeRun | None:
     """One judge run over one completed upstream run; None when it has nothing to judge.
 
     `tasks` maps read_id to read-task records and `gold` maps task_id to the gold record of the
-    scored annotation; `make_client(ledger)` builds the client (with `usage` as its transport)."""
+    scored annotation; `make_client(ledger)` builds the client (with `usage` as its transport).
+    `check_input_tokens` (a local judge whose counter renders the server's prompt exactly) fails
+    the run when a locally counted `input_tokens` differs from the server's `prompt_tokens`."""
     from grace.llm.records import CallLedger
 
     upstream_dir = Path(upstream_dir)
@@ -324,6 +337,147 @@ def run_judge(upstream_dir: Path, *, run_root: Path, experiment: str, judge_name
                 for v in ("correct", "incorrect", "invalid")}
     log.write(f"{upstream['run_id']}: {len(ordered)} of {len(todo)} judged; {verdicts}; "
               f"{len(ledger.records)} call attempts\n")
+    if check_input_tokens:
+        local = {r.call_id: r.input_tokens for r in ledger.records}
+        pairs = [(local[row["call_id"]], row["prompt_tokens"]) for _, row in ordered
+                 if row.get("prompt_tokens") is not None and row["call_id"] in local]
+        differ = sum(1 for a, b in pairs if a != b)
+        log.write(f"input-token check: {len(pairs) - differ} of {len(pairs)} answered calls "
+                  f"count as many prompt tokens locally as the server reports\n")
+        if differ and failure is None:
+            failure = (f"input-token check: {differ} of {len(pairs)} local counts differ from "
+                       f"the server's prompt_tokens")
     log.close()
     run.finish(len(ordered), failure)
     return JudgeRun(run_dir, run_id, run.data["status"], run.data["failure"], len(ordered))
+
+
+# ---------------------------------------------------------------------------------------------
+# Command line: the local primary judge (decision D006)
+
+
+SCORERS = Path("configs") / "common" / "scorers.yaml"
+PROMPTS = Path("configs") / "common" / "prompts.yaml"
+
+
+def judged_annotation(benchmark: str, judge_name: str) -> str:
+    """The gold annotation of the registered metric(s) of `benchmark` judged by `judge_name`."""
+    from grace.config.paths import REPO_ROOT
+
+    registry = yaml.safe_load((REPO_ROOT / SCORERS).read_text(encoding="utf-8"))
+    annotations = {str(m["annotation"]) for m in registry["benchmarks"][benchmark]["metrics"]
+                   if m.get("judge") == judge_name}
+    if len(annotations) != 1:
+        raise ValueError(f"{benchmark}: {len(annotations)} annotations registered for judge "
+                         f"{judge_name!r}")
+    return annotations.pop()
+
+
+def upstream_inputs(upstream_dir: Path, annotation: str
+                    ) -> tuple[dict[str, dict], dict[str, dict], list[dict], str]:
+    """read_id -> read task and task_id -> gold of the histories of one upstream run, loaded
+    through `load_split` (manifest checks), its data entries and its benchmark."""
+    from grace.eval.analysis.metrics.align import gold_index
+    from grace.eval.datasets.benchmarks.base import load_config
+    from grace.eval.datasets.benchmarks.splits import load_split
+
+    run = json.loads((upstream_dir / "run.json").read_text(encoding="utf-8"))
+    resolved = yaml.safe_load((upstream_dir / "resolved-config.yaml").read_text(encoding="utf-8"))
+    slug, split = resolved["benchmark"], resolved["split"]
+    if load_config(slug).splits[split].kind != "development":
+        raise ValueError(f"{run['run_id']}: development splits only")
+    if resolved.get("read_tasks", "read_tasks.jsonl") != "read_tasks.jsonl":
+        raise ValueError(f"{run['run_id']}: native schedule only")
+    histories = set(resolved["histories"])
+    records = load_split(slug, split)
+    tasks = {t.read_id: t.to_record() for t in records.read_tasks if t.history_id in histories}
+    gold = gold_index([g.to_record() for g in records.gold if g.history_id in histories],
+                      annotation)
+    return tasks, gold, run["data"], slug
+
+
+def main(argv: list[str] | None = None) -> int:
+    """One `judge` run per upstream run with the local primary judge of a judge config."""
+    import argparse
+
+    from grace.config.paths import REPO_ROOT, shared_dir
+    from grace.eval.analysis.judging.judge import blind_judge
+    from grace.eval.runner.harness import drive
+    from grace.llm.prompts import load_pinned
+    from grace.llm.tokens import TokenizerPin, counter_for_model_config
+
+    parser = argparse.ArgumentParser(
+        description="Judge completed system or read runs with the local primary judge.")
+    parser.add_argument("upstream", nargs="+", type=Path, help="completed system or read RUN_DIRs")
+    parser.add_argument("--base-url", required=True, help="the judge server, e.g. "
+                        "http://127.0.0.1:8254/v1")
+    parser.add_argument("--gpus", required=True, help="GPUs of the judge server (recorded)")
+    parser.add_argument("--run-root", type=Path, required=True,
+                        help="parent of <experiment>/<run-id>/ under runs_root")
+    parser.add_argument("--experiment", default=None,
+                        help="experiment of the judge runs (default: each upstream run's)")
+    parser.add_argument("--judge-config", type=Path, default=REPO_ROOT / "configs" / "judges" /
+                        "blind.yaml")
+    parser.add_argument("--workers", type=int, default=16)
+    parser.add_argument("--limit", type=int, default=None)
+    args = parser.parse_args(argv)
+    if not str(args.run_root.resolve()).startswith(str(shared_dir("runs_root").resolve())):
+        parser.error("--run-root must be under runs_root")
+
+    jc = yaml.safe_load(args.judge_config.read_text(encoding="utf-8"))
+    spec = jc["model"]
+    if spec.get("provider") != "vllm":
+        parser.error("this command runs the local judge (`model`, provider vllm) only")
+    prompt = load_pinned(jc["prompt"], REPO_ROOT / PROMPTS)
+    if prompt.sha256 != jc["prompt_sha256"] or jc["parse"] != "one_word":
+        parser.error("judge prompt hash or parse rule differs from the judge config")
+    model_config = REPO_ROOT / spec["model_config"]
+    pin = TokenizerPin.from_file(model_config)
+    if (pin.hf_repo, pin.revision) != (spec["hf_repo"], spec["revision"]):
+        parser.error("the judge config and its model config pin different snapshots")
+    counter = LockedCounter(counter_for_model_config(model_config))
+    endpoint = Endpoint.for_model(pin, args.base_url, spec["served_name"], timeout_s=120.0)
+    decoding = dict(jc["decoding"])
+    attempts = int(drive.budgets()["pipeline"]["transport_attempts"])
+    usage = UsageTransport()
+    resolved_base = {"judge_config": drive.repo_relative(args.judge_config),
+                     "judge_config_sha256": rundir.file_sha256(args.judge_config),
+                     "judge_model": "model", "model": dict(spec),
+                     "model_config": spec["model_config"],
+                     "model_config_sha256": rundir.file_sha256(model_config),
+                     "chat_template_kwargs": dict(endpoint.chat_template_kwargs),
+                     "base_url": args.base_url, "prompt": jc["prompt"],
+                     "prompt_sha256": prompt.sha256, "parse": jc["parse"],
+                     "decoding": decoding, "max_attempts": attempts,
+                     "input_token_counter": counter.name}
+    status = 0
+    for upstream_dir in args.upstream:
+        upstream = json.loads((upstream_dir / "run.json").read_text(encoding="utf-8"))
+        resolved = yaml.safe_load((upstream_dir / "resolved-config.yaml")
+                                  .read_text(encoding="utf-8"))
+        annotation = judged_annotation(resolved["benchmark"], jc["judge"])
+        tasks, gold, data, slug = upstream_inputs(upstream_dir, annotation)
+        result = run_judge(
+            upstream_dir, run_root=args.run_root,
+            experiment=args.experiment or upstream["experiment"], judge_name=jc["judge"],
+            make_judge=lambda client: blind_judge(jc["judge"], client, prompt, decoding),
+            make_client=lambda ledger: ChatClient(endpoint, ledger, counter,
+                                                  max_attempts=attempts, transport=usage),
+            usage=usage, tasks=tasks, gold=gold, data=data,
+            resolved={**resolved_base, "benchmark": slug, "annotation": annotation},
+            config_path=drive.repo_relative(args.judge_config),
+            seed=int(decoding.get("seed", 0)), workers=args.workers, limit=args.limit,
+            device=f"local vLLM judge server on GPUs {args.gpus}", check_input_tokens=True)
+        if result is None:
+            print(f"{upstream['run_id']}: nothing to judge", flush=True)
+            continue
+        print(f"{result.run_id}: {result.status} ({result.n_judgements} judgements of "
+              f"{upstream['run_id']}) -> {result.run_dir}", flush=True)
+        if result.status != "completed":
+            status = 1
+            break
+    return status
+
+
+if __name__ == "__main__":
+    sys.exit(main())
