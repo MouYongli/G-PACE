@@ -53,42 +53,52 @@ class Expansion:
 
 
 def propose(open_variables: Sequence[Variable], candidates: Sequence[Item],
-            summary_covers: Callable[[Item], frozenset[str]] | None = None) -> Expansion | None:
-    """The one expansion for the open variables, or None when nothing is open.
+            covers: Callable[[Item], frozenset[str]], *,
+            summary_covers: Callable[[Item], frozenset[str]] | None = None,
+            summary_fits: Callable[[Item], bool] | None = None) -> Expansion | None:
+    """The one expansion for the open variables, or None.
 
-    `summary_covers(summary)` gives the variables the raw text of a summary supports; it is None
-    when summaries cannot be expanded (no message log). The summary whose raw text covers the most
-    open variables wins, then the better rank; without one, a further query is proposed.
+    - A summary is expanded only when its raw text supports an open variable
+      (`summary_covers`, None when there is no message log) and its raw replacement fits the
+      room left in the budget (`summary_fits`). The summary whose raw text covers the most open
+      variables wins, then the better rank.
+    - Otherwise a further query is proposed for the open variables that no candidate supports.
+      A variable that is open only because a supporting candidate did not fit gets no query: the
+      query could only find what the budget already excludes.
     """
     if not open_variables:
         return None
     names = {v.name for v in open_variables}
     if summary_covers is not None:
         scored = [(summary_covers(i) & names, i) for i in candidates
-                  if i.kind == "summary" and i.expands_to]
+                  if i.kind == "summary" and i.expands_to
+                  and (summary_fits is None or summary_fits(i))]
         scored = [(hit, i) for hit, i in scored if hit]
         if scored:
             hit, best = min(scored, key=lambda p: (-len(p[0]), p[1].rank if p[1].rank is not None
                                                    else float("inf")))
             return Expansion("summary", tuple(v for v in open_variables if v.name in hit),
                              item_id=best.item_id, message_ids=best.expands_to)
-    text = "; ".join(v.describes for v in open_variables)
-    return Expansion("query", tuple(open_variables), query=text)
+    supported = set().union(*(covers(i) for i in candidates)) if candidates else set()
+    unsupported = tuple(v for v in open_variables if v.name not in supported)
+    if not unsupported:
+        return None
+    return Expansion("query", unsupported, query="; ".join(v.describes for v in unsupported))
 
 
 def expand_summary(summary: Item, log: MessageLog, version: int,
                    history: api.HistoryInfo | None = None) -> list[Item]:
     """The raw messages of `summary` visible at `version`, ranked like the summary.
 
-    The messages inherit the summary's program coverage (they are the text it was made from);
-    lexical support is checked again on their own text by the assembler.
+    The messages get no program coverage from the summary: each message supports a variable
+    only through its own text (a cheap "ok, thanks" does not inherit the summary's coverage).
+    Repeated message IDs are expanded once.
     """
     out = []
-    for message_id in summary.expands_to:
+    for message_id in dict.fromkeys(summary.expands_to):
         try:
             message = log.by_id(message_id, version)
         except KeyError:
             continue
-        out.append(message_item(message, rank=summary.rank, covers=summary.covers,
-                                history=history))
+        out.append(message_item(message, rank=summary.rank, history=history))
     return out

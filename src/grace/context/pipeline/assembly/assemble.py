@@ -5,13 +5,15 @@ Its configuration (`configs/assembly/*.yaml`, `AssemblyConfig`) fixes:
 
 - `selection`: `greedy` (main configuration: new demand coverage per added token) or `truncate`
   (comparison mode: rank truncation, `truncate_k` optional).
-- `fill`: in greedy mode, fill the budget left after coverage in rank order.
+- `fill`: in greedy mode, fill the budget left after coverage in rank order. Rank truncation is
+  this fill rule alone (`select.truncate`), so the two modes differ only in the selection rule.
 - `recent_messages`: the last k visible messages, kept first in the "recent raw text" section
   (0 switches the section off).
 - `open_items`: list the still uncovered variables in the context.
-- `max_expansions`: expansions per read (plan 5.6: at most one extra retrieval per read; 0 or 1).
-  Rank truncation never expands.
-- `support_threshold`: lexical support threshold (`demand.Support`).
+- `max_expansions`: assembler expansions per read (0 or 1). Demand-driven expansion is part of
+  the greedy method; rank truncation never expands.
+- `support_threshold`, `support_stem`: the lexical support rule (`demand.Support`); unfrozen
+  placeholders until they are fixed on development data.
 - `min_budget`: the smallest budget accepted; it must hold the empty-context marker.
 
 Budget. `budget` is the memory budget of the read in tokens of the answering model's tokenizer
@@ -25,17 +27,28 @@ Full history (`budget=None`): every item that passes the filter is shown, withou
 expansion; the engine passes the visible log as items (`items.history_items`) plus anything else
 it wants shown.
 
+One extra retrieval per read (plan 5.6; `budgets.yaml` `further_retrieval_per_read: 1`). The
+assembler's query expansion and the answering LLM's `retrieve` output share one counter: the
+engine passes `retrieval_used=True` once either has happened, and the assembler then proposes no
+query. A pending query expansion sets `Assembly.retrieval_used`; at such a read the answering
+LLM's `retrieve` output is resolved as `unknown` (chosen over withholding the option so that the
+pinned answer prompt stays identical for every system; enforced where the answer is parsed, see
+the T026 log). A summary expansion reads the message log and is not a retrieval.
+
 The engine's read path, step by step:
 
 1. `demand = demand_of(request, plan.variables)`; `items` from retrieval, query answers, views.
 2. `a = assembler.assemble(task, demand, items, budget, constraints)`.
 3. If `a.pending` is a query expansion, run one restricted query for `a.pending.variables`, turn
-   the answers into items, and call `assemble(..., items + new, ..., expansions_used=1)`.
+   the answers into items, and call `assemble(..., items + new, ..., expansions_used=1,
+   retrieval_used=True)`. The trace records this as the read's further retrieval.
 4. `a.context` is the working context; `api.read_trace(a.context, ...)` gives the trace, whose
    included IDs and provenance are the evidence IDs shown to the answering LLM.
+   `a.utilisation` (tokens / budget) and `a.expansions_used` go into the assembly record.
 
-A further retrieval requested by the answering LLM is served the same way with the new
-candidates and `expansions_used=config.max_expansions` (no expansion on top of it).
+A further retrieval requested by the answering LLM (only when `a.retrieval_used` is False) is
+served the same way with the new candidates, `expansions_used=config.max_expansions` and
+`retrieval_used=True`.
 """
 
 from __future__ import annotations
@@ -57,7 +70,7 @@ from grace.context.pipeline.assembly.items import Item, recent_items
 from grace.context.pipeline.assembly.select import MODES, Unit, greedy, truncate, units_of
 
 CONFIG_KEYS = {"version", "selection", "fill", "truncate_k", "recent_messages", "open_items",
-               "max_expansions", "support_threshold", "min_budget"}
+               "max_expansions", "support_threshold", "support_stem", "min_budget"}
 
 
 @dataclass(frozen=True)
@@ -69,6 +82,7 @@ class AssemblyConfig:
     open_items: bool = True
     max_expansions: int = 1
     support_threshold: float = 0.5
+    support_stem: int = 5
     min_budget: int = 16
 
     def __post_init__(self) -> None:
@@ -80,13 +94,14 @@ class AssemblyConfig:
             raise ValueError("recent_messages must be >= 0")
         if self.truncate_k is not None and self.truncate_k < 1:
             raise ValueError("truncate_k must be >= 1")
-        Support(self.support_threshold)
+        Support(self.support_threshold, self.support_stem)
 
     def to_record(self) -> dict[str, Any]:
         return {"version": 1, "selection": self.selection, "fill": self.fill,
                 "truncate_k": self.truncate_k, "recent_messages": self.recent_messages,
                 "open_items": self.open_items, "max_expansions": self.max_expansions,
-                "support_threshold": self.support_threshold, "min_budget": self.min_budget}
+                "support_threshold": self.support_threshold, "support_stem": self.support_stem,
+                "min_budget": self.min_budget}
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> AssemblyConfig:
@@ -117,7 +132,14 @@ class Assembly:
     expansion: Expansion | None = None
     expansion_done: bool = False
     expansions_used: int = 0
+    retrieval_used: bool = False
     coverage: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+
+    @property
+    def utilisation(self) -> float | None:
+        """Tokens used / budget (None for the full history)."""
+        b = self.context.budget_tokens
+        return None if b is None else self.context.tokens / b
 
     @property
     def pending(self) -> Expansion | None:
@@ -133,7 +155,10 @@ class Assembly:
                 "coverage": {k: list(v) for k, v in self.coverage.items()},
                 "expansion": self.expansion.to_record() if self.expansion else None,
                 "expansion_done": self.expansion_done,
-                "expansions_used": self.expansions_used, "ledger": self.ledger.to_record()}
+                "expansions_used": self.expansions_used,
+                "retrieval_used": self.retrieval_used,
+                "tokens": self.context.tokens, "budget_tokens": self.context.budget_tokens,
+                "utilisation": self.utilisation, "ledger": self.ledger.to_record()}
 
 
 class Assembler:
@@ -150,12 +175,12 @@ class Assembler:
         self.count = count
         self.log = log
         self.counter_name = counter_name
-        self.support = Support(config.support_threshold)
+        self.support = Support(config.support_threshold, config.support_stem)
 
     # ------------------------------------------------------------------------------------------
     def assemble(self, task: api.ReadTask, demand: Demand, items: Sequence[Item],
                  budget: int | None, constraints: Constraints | None = None, *,
-                 expansions_used: int = 0) -> Assembly:
+                 expansions_used: int = 0, retrieval_used: bool = False) -> Assembly:
         c = constraints or Constraints(version=task.version)
         if c.version != task.version:
             raise ValueError(f"constraints bound to version {c.version}, read {task.read_id} "
@@ -187,24 +212,47 @@ class Assembler:
                 and expansions_used < self.config.max_expansions):
             open_now = self._open(selected, demand, covers)
             have = {i.item_id for i in kept}
+            raws: dict[str, list[Item]] = {}
 
             def raw_of(summary: Item) -> list[Item]:
-                return [i for i in filter_items(expand_summary(summary, self.log, task.version,
-                                                               self.history),
-                                                c).kept if i.item_id not in have]
+                if summary.item_id not in raws:
+                    out = expand_summary(summary, self.log, task.version, self.history)
+                    raws[summary.item_id] = [i for i in filter_items(out, c).kept
+                                             if i.item_id not in have]
+                return raws[summary.item_id]
 
             def summary_covers(summary: Item) -> frozenset[str]:
                 return frozenset().union(*(covers(i) for i in raw_of(summary)))
 
-            expansion = propose(open_now, kept,
-                                summary_covers if self.log is not None else None)
+            used_now = self.count(layout.serialise(selected, open_now if show_open else ()).text)
+            chosen_ids = {i.item_id for i in selected}
+
+            def summary_fits(summary: Item) -> bool:
+                room = budget - used_now
+                if summary.item_id in chosen_ids:
+                    room += self._cost(summary)
+                return sum(self._cost(i) for i in raw_of(summary)) <= room
+
+            expansion = propose(open_now, kept, covers,
+                                summary_covers=summary_covers if self.log is not None else None,
+                                summary_fits=summary_fits)
             if expansion is not None and expansion.kind == "summary":
                 summary = next(i for i in kept if i.item_id == expansion.item_id)
-                kept = [i for i in kept if i.item_id != summary.item_id] + raw_of(summary)
-                selected, show_open = self._fit(self._select(kept, demand, budget, covers),
-                                                demand, budget, covers)
-                done = True
+                trial = [i for i in kept if i.item_id != summary.item_id] + raw_of(summary)
+                t_selected, t_show = self._fit(self._select(trial, demand, budget, covers),
+                                               demand, budget, covers)
+                t_open = {v.name for v in self._open(t_selected, demand, covers)}
+                if t_open < {v.name for v in open_now}:  # strictly better, else keep the summary
+                    kept, selected, show_open = trial, t_selected, t_show
+                    done = True
+                    expansions_used += 1
+                else:
+                    expansion = None
+            elif expansion is not None and retrieval_used:
+                expansion = None  # the read's one extra retrieval is spent
+            elif expansion is not None:
                 expansions_used += 1
+                retrieval_used = True
         open_vars = self._open(selected, demand, covers)
         serialised = layout.serialise(selected, open_vars if show_open else ())
         frags = layout.fragments(serialised, self.count)
@@ -217,7 +265,7 @@ class Assembler:
                         len(pool), filtered.dropped,
                         layout.ledger(serialised.text, frags, self.count, budget,
                                       self.counter_name),
-                        expansion, done, expansions_used, coverage)
+                        expansion, done, expansions_used, retrieval_used, coverage)
 
     # ------------------------------------------------------------------------------------------
     def _cost(self, item: Item) -> int:

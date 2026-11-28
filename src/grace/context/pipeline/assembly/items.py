@@ -36,6 +36,8 @@ cites message IDs.
 
 from __future__ import annotations
 
+import datetime as _dt
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from grace.context import api
@@ -48,6 +50,19 @@ STATE_KINDS = frozenset({"view", "claim"})
 
 def _unique(items) -> tuple[str, ...]:
     return tuple(dict.fromkeys(items))
+
+
+def check_iso(value: str | None, where: str) -> None:
+    """Fail unless `value` is None or an ISO 8601 date or date-time (`2023-05-08`,
+    `2023-05-08T10:15:00`, with an optional offset or `Z`)."""
+    if value is None:
+        return
+    if not isinstance(value, str):
+        raise ValueError(f"{where}: expected an ISO date string, got {type(value).__name__}")
+    try:
+        _dt.datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"{where}: {value!r} is not an ISO 8601 date") from exc
 
 
 @dataclass(frozen=True)
@@ -82,9 +97,13 @@ class Item:
             raise ValueError(f"item {self.item_id}: section {self.section!r} not in {SECTIONS}")
         if self.rank is not None and self.rank < 1:
             raise ValueError(f"item {self.item_id}: rank starts at 1")
-        if self.retired is not None and self.retired <= self.version:
-            raise ValueError(f"item {self.item_id}: retired at {self.retired} but known only "
-                             f"from {self.version}")
+        if self.version < 0 or (self.retired is not None and self.retired < 1):
+            raise ValueError(f"item {self.item_id}: version must be >= 0 and retired >= 1")
+        if self.valid is not None:
+            if len(self.valid) != 2:
+                raise ValueError(f"item {self.item_id}: valid must be a (start, end) pair")
+            for value in self.valid:
+                check_iso(value, f"item {self.item_id}: valid")
         object.__setattr__(self, "evidence_ids", tuple(self.evidence_ids))
         object.__setattr__(self, "source_ids", tuple(self.source_ids))
         object.__setattr__(self, "attribution", tuple(self.attribution))
@@ -147,16 +166,30 @@ def _display(value) -> str:
     return str(value)
 
 
-def answer_items(result, *, prefix: str, variables: dict[str, str] | None = None,
-                 version_of=None, rank_start: int = 1) -> list[Item]:
+def answer_items(result, *, prefix: str, version_of: Callable[[str], int | None],
+                 stamp_of: Callable[[str], int | None],
+                 retired_of: Callable[[str], int | None],
+                 variables: dict[str, str] | None = None, rank_start: int = 1) -> list[Item]:
     """Items from a claim-graph query result, one per answer (duck-typed, see below).
 
-    `result` has `variables` (answer column names) and `answers`, each with `values` and
-    `evidence` (unified evidence IDs), as `pipeline/query/result.QueryResult` provides; this
-    module does not import `query/`. The text states the answer row ("?train = TR123; ...").
-    An answer binds every answer column, so it covers the demand variables named like its
-    columns; `variables` may map a column name to a demand variable name when they differ.
-    `version_of` maps a message ID to its version, to stamp the item's knowledge version.
+    `result` has `variables` (answer column names) and `answers`, each with `values`,
+    `witnesses` (each with `claims` and `attributions` IDs) and `evidence` (unified evidence
+    IDs), as `pipeline/query/result.QueryResult` provides; this module does not import `query/`.
+    The text states the answer row ("train = TR123; ..."). An answer binds every answer column,
+    so it covers the demand variables named like its columns; `variables` may map a column name
+    to a demand variable name when they differ.
+
+    The engine passes the stamps from the message log and the claim store:
+
+    - `version_of(message_id)`: the version of an evidence message;
+    - `stamp_of(entry_id)`: the knowledge version of a witness claim or attribution;
+    - `retired_of(claim_id)`: the version from which a claim is superseded, or None.
+
+    The item's knowledge version is the maximum of every witness stamp and every evidence
+    message's version. An answer is retired once each of its witnesses contains a superseded
+    claim (the latest such witness retirement); one witness without a superseded claim keeps it
+    current. An unknown evidence message or entry (a lookup returning None) is an error, since a
+    missing stamp would let the item pass the version filter.
     """
     out: list[Item] = []
     names = tuple(getattr(result, "variables", ()))
@@ -164,10 +197,24 @@ def answer_items(result, *, prefix: str, variables: dict[str, str] | None = None
         pairs = [f"{n} = {_display(v)}" for n, v in zip(names, answer.values, strict=False)]
         evidence = _unique(answer.evidence)
         covers = frozenset((variables or {}).get(n, n) for n in names)
-        version = 0
-        if version_of is not None:
-            known = [version_of(message_of(e)) for e in evidence]
-            version = max((v for v in known if v is not None), default=0)
+        stamps = []
+        for e in evidence:
+            v = version_of(message_of(e))
+            if v is None:
+                raise ValueError(f"answer {i + 1} of {prefix}: unknown evidence message {e!r}")
+            stamps.append(v)
+        witness_retired: list[int | None] = []
+        for w in getattr(answer, "witnesses", ()):
+            for entry in (*w.claims, *w.attributions):
+                v = stamp_of(entry)
+                if v is None:
+                    raise ValueError(f"answer {i + 1} of {prefix}: unknown entry {entry!r}")
+                stamps.append(v)
+            ends = [r for r in (retired_of(c) for c in w.claims) if r is not None]
+            witness_retired.append(min(ends) if ends else None)
+        retired = (max(witness_retired) if witness_retired and None not in witness_retired
+                   else None)
         out.append(Item(f"{prefix}{i + 1}", "claim", "; ".join(pairs) or "(match)", evidence,
-                        (), version=version, rank=rank_start + i, covers=covers))
+                        (), version=max(stamps, default=0), retired=retired,
+                        rank=rank_start + i, covers=covers))
     return out

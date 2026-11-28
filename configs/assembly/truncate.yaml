@@ -1,11 +1,15 @@
-# Rank truncation, the comparison mode of plan 5.5 (T026): the same candidates, filter and layout,
-# taken in fused rank order until the first that does not fit. No expansion.
+# Rank truncation, the comparison mode of plan 5.5 (T026): the same candidates, filter, fill rule
+# and layout as the main configuration; units are taken in fused rank order, skipping those that
+# do not fit or add no new message. No assembler expansion (demand-driven expansion belongs to the
+# greedy method); the answering LLM's one `retrieve` option is the same as in the main mode.
 version: 1
 selection: truncate
-fill: false
+fill: true                 # the fill rule is the whole selection in this mode
 truncate_k: null
 recent_messages: 0
 open_items: true           # same layout as the main configuration
 max_expansions: 0
+# UNFROZEN PLACEHOLDERS (used here only to list open items); same values as default.yaml.
 support_threshold: 0.5
+support_stem: 5
 min_budget: 16

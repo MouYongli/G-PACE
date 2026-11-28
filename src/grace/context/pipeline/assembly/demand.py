@@ -13,9 +13,11 @@ Support is decided in two ways:
   it in `Item.covers`.
 - **Lexically.** Otherwise an item supports a variable when its text contains at least
   `threshold` of the content terms of the variable's description (at least one term). Terms are
-  lower-cased words of three or more characters outside a small stop list, compared on their first
-  `STEM` characters. This is a deterministic stand-in for the verification call of plan 5.6, which
-  is not implemented (T026 log); the threshold is a placeholder frozen on development data.
+  lower-cased words of three or more characters outside a small stop list, compared on their
+  first `stem` characters (default `STEM`). This is a deterministic stand-in for the
+  verification call of plan 5.6, which is not implemented (T026 log); the threshold and the stem
+  length are unfrozen placeholders (`configs/assembly/*.yaml`), to be fixed on development data
+  before the configuration lock.
 """
 
 from __future__ import annotations
@@ -90,9 +92,9 @@ def demand_of(request: str, variables: Iterable[tuple[str, str]] = ()) -> Demand
     return Demand(request, listed or (Variable(ANSWER, request),))
 
 
-def terms(text: str) -> frozenset[str]:
-    """Content terms of `text`, stemmed to their first `STEM` characters."""
-    return frozenset(w[:STEM] for w in _WORD.findall(text.lower())
+def terms(text: str, stem: int = STEM) -> frozenset[str]:
+    """Content terms of `text`, stemmed to their first `stem` characters."""
+    return frozenset(w[:stem] for w in _WORD.findall(text.lower())
                      if len(w) >= 3 and w not in STOP)
 
 
@@ -101,19 +103,22 @@ class Support:
     """Decides which demand variables an item supports."""
 
     threshold: float = 0.5
+    stem: int = STEM
 
     def __post_init__(self) -> None:
         if not 0 < self.threshold <= 1:
             raise ValueError("threshold must be in (0, 1]")
+        if self.stem < 1:
+            raise ValueError("stem must be >= 1")
 
     def covers(self, item: Item, variables: Sequence[Variable]) -> frozenset[str]:
         names = {v.name for v in variables}
         out = set(item.covers & names)
-        have = terms(item.text)
+        have = terms(item.text, self.stem)
         for v in variables:
             if v.name in out:
                 continue
-            need = terms(v.describes)
+            need = terms(v.describes, self.stem)
             if need and len(need & have) >= max(1, math.ceil(self.threshold * len(need))):
                 out.add(v.name)
         return frozenset(out)

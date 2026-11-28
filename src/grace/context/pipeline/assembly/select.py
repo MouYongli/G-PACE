@@ -10,9 +10,10 @@ rank is the best rank of its items.
   newly covered variables per added token; ties go to the better rank, then the cheaper unit.
   When no fitting unit covers a new variable, the remaining budget is filled in rank order with
   units that add a message not yet shown (`fill`; skipped units do not stop the fill).
-- `truncate` (comparison mode). Take units in rank order and stop at the first that does not fit,
-  or after `k` units: the fixed top-k truncation of a retrieval system, with the same candidates,
-  filter and layout.
+- `truncate` (comparison mode). Only the fill: units in rank order, skipping a unit that does not
+  fit or adds no message not yet shown, and continuing with the next (at most `k` units). This is
+  rank truncation under the same conditions as greedy (same candidates, filter, fill rule and
+  layout); only the coverage-driven first phase differs (decision of s00-super, 2026-11-28).
 
 Both return the units in the order they were taken, which is the order in which the assembler
 drops them again if the exact token count of the serialised context exceeds the budget.
@@ -96,26 +97,31 @@ def greedy(units: Sequence[Unit], demand: Iterable[str], budget: int, *, fill: b
         used += best.tokens
         covered |= best.covers
     if fill:
-        shown = set().union(*(u.sources for u in chosen)) if chosen else set()
-        for u in by_rank(rest):
-            if used + u.tokens > budget or (u.sources and u.sources <= shown):
-                continue
-            chosen.append(u)
-            used += u.tokens
-            shown |= u.sources
+        chosen = fill_by_rank(rest, budget, taken=chosen)
+    return chosen
+
+
+def fill_by_rank(units: Sequence[Unit], budget: int, *, taken: Sequence[Unit] = (),
+                 k: int | None = None) -> list[Unit]:
+    """Add units in rank order while they fit, skipping a unit that does not fit or whose
+    messages are all shown already; at most `k` units are added."""
+    chosen = list(taken)
+    used = sum(u.tokens for u in chosen)
+    shown = set().union(*(u.sources for u in chosen)) if chosen else set()
+    added = 0
+    for u in by_rank([u for u in units if u not in chosen]):
+        if k is not None and added >= k:
+            break
+        if used + u.tokens > budget or (u.sources and u.sources <= shown):
+            continue
+        chosen.append(u)
+        used += u.tokens
+        shown |= u.sources
+        added += 1
     return chosen
 
 
 def truncate(units: Sequence[Unit], budget: int, *, k: int | None = None,
              taken: Sequence[Unit] = ()) -> list[Unit]:
-    """Rank truncation: the longest rank-order prefix that fits (at most `k` units)."""
-    chosen = list(taken)
-    used = sum(u.tokens for u in chosen)
-    count = 0
-    for u in by_rank([u for u in units if u not in chosen]):
-        if (k is not None and count >= k) or used + u.tokens > budget:
-            break
-        chosen.append(u)
-        used += u.tokens
-        count += 1
-    return chosen
+    """Rank truncation: the fill rule alone, in rank order (at most `k` units)."""
+    return fill_by_rank(units, budget, taken=taken, k=k)

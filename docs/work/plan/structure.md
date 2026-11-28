@@ -368,11 +368,13 @@ retrieval/                  (T025)
 └── fuse.py                 RRF and weighted fusion
 
 assembly/                   (T026)
+├── items.py                the candidate type the engine builds from retrieval, query answers, views and summaries
 ├── demand.py               the variables an answer needs
 ├── filter.py               filter by version, valid time, scope and attribution; verification call on ambiguity
-├── select.py               greedy selection by new requirements covered per added token; fixed top-k truncation as the contrast
+├── select.py               greedy selection by new requirements covered per added token; rank truncation (same fill rule) as the contrast
 ├── expand.py               when variables stay uncovered, produce one request for expansion or a further query, executed by the engine
-└── layout.py               serialisation into the fixed layout; citations; token cost per fragment
+├── layout.py               serialisation into the fixed layout; citations; token cost per fragment
+└── assemble.py             the assembler: runs the steps within the budget; one extra retrieval per read
 ```
 
 `retrieval/graph.py` and `assembly/expand.py` never call `query/`. The first receives results from the engine; the second hands a request back to the engine. This is how "the packages under `pipeline/` do not call each other" is kept.

@@ -78,11 +78,13 @@ GRACE/
 │   │   │   │   ├── fuse.py             fusion
 │   │   │   │   └── retrieve.py         retrieval config and retriever
 │   │   │   └── assembly/
+│   │   │       ├── items.py            the candidate type built by the engine
 │   │   │       ├── demand.py           variables an answer needs
 │   │   │       ├── filter.py           filtering and verification
 │   │   │       ├── select.py           greedy selection within the budget
 │   │   │       ├── expand.py           expansion request when variables stay uncovered
-│   │   │       └── layout.py           serialisation into the fixed layout
+│   │   │       ├── layout.py           serialisation into the fixed layout
+│   │   │       └── assemble.py         the assembler within the budget
 │   │   └── views/
 │   │       ├── view.py                 view and row binding
 │   │       ├── template_families.py    the six template families

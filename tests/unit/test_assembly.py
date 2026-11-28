@@ -13,7 +13,7 @@ from grace.context.memory.history.log import MessageLog
 from grace.context.pipeline.assembly import layout
 from grace.context.pipeline.assembly.assemble import Assembler, AssemblyConfig
 from grace.context.pipeline.assembly.demand import ANSWER, Support, Variable, demand_of, terms
-from grace.context.pipeline.assembly.expand import Expansion
+from grace.context.pipeline.assembly.expand import Expansion, expand_summary
 from grace.context.pipeline.assembly.filter import Constraints, filter_items, overlaps
 from grace.context.pipeline.assembly.items import (
     Item,
@@ -101,6 +101,21 @@ class FilterTest(unittest.TestCase):
         earlier = filter_items(items, Constraints(version=5, current_only=False))
         self.assertIn("old", [i.item_id for i in earlier.kept])
 
+    def test_a_group_with_a_dropped_member_is_dropped_whole(self):
+        items = [item("a", "first hop", version=2, group="p"),
+                 item("b", "second hop", version=7, group="p"), item("c", "alone")]
+        out = filter_items(items, Constraints(version=5))
+        self.assertEqual([i.item_id for i in out.kept], ["c"])
+        self.assertEqual(dict(out.dropped), {"b": "version", "a": "group"})
+
+    def test_valid_time_must_be_iso(self):
+        for bad in (("May 2023", None), ("2023-13-01", None), (None, 20230501)):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                item("x", "t", valid=bad)
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                Constraints(version=1, valid=bad)
+        item("x", "t", valid=("2023-05-01", "2023-05-02T10:15:00Z"))
+
     def test_overlaps(self):
         self.assertTrue(overlaps(("2023-05-01", "2023-05-02"), ("2023-05-02T10:00", None)))
         self.assertFalse(overlaps(("2023-05-01", "2023-05-02"), ("2023-05-03", None)))
@@ -131,12 +146,17 @@ class SelectTest(unittest.TestCase):
         big = greedy(units, ["train", "arrival"], 40)
         self.assertEqual([i.item_id for u in big for i in u.items], ["a", "b", "c"])
 
-    def test_truncate_stops_at_the_first_unit_that_does_not_fit(self):
+    def test_truncate_skips_what_does_not_fit_and_keeps_filling_in_rank_order(self):
         items = [item("r2", "two", rank=2), item("r1", "one", rank=1),
-                 item("r3", "w " * 50, rank=3), item("r4", "four", rank=4)]
+                 item("r3", "w " * 50, rank=3), item("r4", "four", rank=4),
+                 Item("r5", "retrieved", "chunk of one and two", ("r1", "r2"), ("r1", "r2"),
+                      rank=5)]
         units = self.units(items, {})
-        self.assertEqual([u.unit_id for u in truncate(units, 20)], ["r1", "r2"])
+        # same fill rule as greedy: r3 does not fit, r5 shows nothing new
+        self.assertEqual([u.unit_id for u in truncate(units, 20)], ["r1", "r2", "r4"])
         self.assertEqual([u.unit_id for u in truncate(units, 200, k=1)], ["r1"])
+        fill = greedy(units, [], 20)  # no demand: greedy is the fill alone
+        self.assertEqual([u.unit_id for u in fill], ["r1", "r2", "r4"])
 
 
 class LayoutTest(unittest.TestCase):
@@ -250,13 +270,50 @@ class AssemblerTest(unittest.TestCase):
         self.assertIn("Open items (not found in memory):", first.context.text)
         self.assertEqual(first.pending, Expansion("query", (DEMAND.variable("arrival"),),
                                                   query="arrival time of the train"))
+        self.assertTrue(first.retrieval_used)
+        self.assertEqual(first.expansions_used, 1)
         found = answer_items(_Result(("arrival",), [_Answer(("10:15",), ("D1:7",))]),
-                             prefix="q", version_of=lambda m: 7)
-        second = a.assemble(task(9), DEMAND, pool + found, 256, expansions_used=1)
+                             prefix="q", version_of=lambda m: 7, stamp_of=STAMPS.get,
+                             retired_of=lambda c: None)
+        second = a.assemble(task(9), DEMAND, pool + found, 256, expansions_used=1,
+                            retrieval_used=True)
         self.assertEqual(second.open, ())
         self.assertIsNone(second.expansion)
+        self.assertTrue(second.retrieval_used)
         self.assertIn("[D1:7] arrival = 10:15", second.context.text)
         self.assertIn("q1", [f.fragment_id for f in second.context.fragments])
+
+    def test_no_query_once_the_reads_retrieval_is_spent(self):
+        pool = [item("t", "We accepted train TR123.", rank=1)]
+        result = assembler().assemble(task(9), DEMAND, pool, 256, retrieval_used=True)
+        self.assertEqual([v.name for v in result.open], ["arrival"])
+        self.assertIsNone(result.expansion)
+        self.assertEqual(result.expansions_used, 0)
+
+    def test_no_query_when_a_supporting_candidate_only_did_not_fit(self):
+        pool = [item("t", "We accepted train TR123.", rank=1),
+                item("r", "arrival time " + "of the train " * 60, rank=2)]
+        result = assembler().assemble(task(9), DEMAND, pool, 64)
+        self.assertEqual([v.name for v in result.open], ["arrival"])
+        self.assertIsNone(result.expansion)
+        self.assertFalse(result.retrieval_used)
+
+    def test_truncation_never_expands(self):
+        pool = [item("t", "We accepted train TR123.", rank=1)]
+        result = assembler(AssemblyConfig.load(CONFIGS / "truncate.yaml")).assemble(
+            task(9), DEMAND, pool, 256)
+        self.assertEqual([v.name for v in result.open], ["arrival"])
+        self.assertIsNone(result.expansion)
+        self.assertFalse(result.retrieval_used)
+
+    def test_utilisation_and_expansions_are_recorded(self):
+        result = assembler().assemble(task(9), DEMAND, self.pool(2), 512)
+        record = result.to_record()
+        self.assertEqual(record["utilisation"], result.context.tokens / 512)
+        self.assertIn("expansions_used", record)
+        self.assertIn("retrieval_used", record)
+        full = assembler().assemble(task(9), DEMAND, self.pool(2), None)
+        self.assertIsNone(full.utilisation)
 
     def test_summary_expands_into_raw_messages_from_the_log(self):
         log = MessageLog("h")
@@ -264,14 +321,54 @@ class AssemblerTest(unittest.TestCase):
         log.append(msg(2, "TR123 arrival time is 10:15."))
         summary = Item("s1", "summary", "Travel plans were discussed.",
                        ("D1:1", "D1:2"), (), version=2, rank=1,
-                       expands_to=("D1:1", "D1:2"))
+                       expands_to=("D1:1", "D1:2", "D1:1"))
         result = assembler(log=log).assemble(task(2), DEMAND, [summary], 256)
         self.assertTrue(result.expansion_done)
         self.assertEqual(result.expansion.kind, "summary")
         self.assertEqual(result.expansions_used, 1)
+        self.assertFalse(result.retrieval_used)
         self.assertEqual(result.context.context_ids, ["D1:1", "D1:2"])
         self.assertNotIn("s1", [f.fragment_id for f in result.context.fragments])
         self.assertEqual(result.open, ())
+
+    def test_summary_is_kept_when_its_raw_text_does_not_fit(self):
+        """Regression (review of f5fbe64): budget 100, the summary covers ?train, ?arrival is
+        only in ~300 words of raw text. Expanding would lose ?train and spend the expansion."""
+        log = MessageLog("h")
+        log.append(msg(1, "We talked a lot. " + "blah " * 150))
+        log.append(msg(2, "Arrival time of the train is 10:15. " + "more " * 150))
+        summary = Item("s1", "summary", "The accepted train is TR123.", ("D1:1", "D1:2"), (),
+                       version=2, rank=1, covers={"train"}, expands_to=("D1:1", "D1:2"))
+        result = assembler(log=log).assemble(task(2), DEMAND, [summary], 100)
+        self.assertLessEqual(result.context.tokens, 100)
+        self.assertIn("s1", [f.fragment_id for f in result.context.fragments])
+        self.assertEqual(result.covered, ("train",))
+        self.assertFalse(result.expansion_done)
+        self.assertNotEqual(getattr(result.expansion, "kind", None), "summary")
+
+    def test_expanded_messages_do_not_inherit_the_summarys_coverage(self):
+        log = MessageLog("h")
+        log.append(msg(1, "ok, thanks"))
+        summary = Item("s1", "summary", "Plans.", ("D1:1",), (), version=1, rank=1,
+                       covers={"train"}, expands_to=("D1:1",))
+        raw = expand_summary(summary, log, 1)
+        self.assertEqual([i.covers for i in raw], [frozenset()])
+        self.assertEqual(Support().covers(raw[0], DEMAND.variables), frozenset())
+
+    def test_answer_items_stamp_versions_and_retirement(self):
+        result = _Result(("train",), [
+            _Answer(("TR1",), ("D1:2#char=0,5",), [_Witness(("c1",), ("a1",))]),
+            _Answer(("TR2",), ("D1:1",), [_Witness(("c2",)), _Witness(("c3",))])])
+        items = answer_items(result, prefix="q", version_of={"D1:1": 1, "D1:2": 2}.get,
+                             stamp_of=STAMPS.get, retired_of={"c1": 8, "c2": 6}.get)
+        self.assertEqual([(i.version, i.retired) for i in items], [(4, 8), (3, None)])
+        self.assertEqual(items[0].covers, {"train"})
+        with self.assertRaises(ValueError):
+            answer_items(result, prefix="q", version_of={"D1:1": 1}.get, stamp_of=STAMPS.get,
+                         retired_of=lambda c: None)
+        with self.assertRaises(ValueError):
+            answer_items(result, prefix="q", version_of={"D1:1": 1, "D1:2": 2}.get,
+                         stamp_of={"c1": 1}.get, retired_of=lambda c: None)
 
     def test_recent_messages_come_first_and_are_not_repeated(self):
         log = MessageLog("h")
@@ -312,9 +409,17 @@ class AssemblerTest(unittest.TestCase):
         self.assertEqual(record["ledger"]["total"], result.context.tokens)
 
 
+STAMPS = {"c1": 2, "a1": 4, "c2": 3, "c3": 1}
+
+
+class _Witness:
+    def __init__(self, claims, attributions=()):
+        self.claims, self.attributions = claims, attributions
+
+
 class _Answer:
-    def __init__(self, values, evidence):
-        self.values, self.evidence = values, evidence
+    def __init__(self, values, evidence, witnesses=()):
+        self.values, self.evidence, self.witnesses = values, evidence, witnesses
 
 
 class _Result:

@@ -18,7 +18,10 @@ Drop reasons, in the order they are checked:
 - `attribution`: none of the item's attributions is among the read's.
 
 A duplicate `item_id` keeps the first occurrence with the best rank; later ones are dropped with
-reason `duplicate`.
+reason `duplicate`. The filter applies to two-hop groups as a whole: when any member of a group
+is dropped, the remaining members are dropped with reason `group` (a path with one end missing
+is not evidence for the hop). Valid-time values must be ISO 8601 dates or date-times; anything
+else fails when the item or the constraints are built.
 """
 
 from __future__ import annotations
@@ -26,9 +29,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from grace.context.pipeline.assembly.items import Item
+from grace.context.pipeline.assembly.items import Item, check_iso
 
-REASONS = ("version", "retired", "valid", "scope", "attribution", "duplicate")
+REASONS = ("version", "retired", "valid", "scope", "attribution", "duplicate", "group")
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,13 @@ class Constraints:
     scopes: frozenset[str] | None = None
     attribution: frozenset[str] | None = None
     current_only: bool = True
+
+    def __post_init__(self) -> None:
+        if self.valid is not None:
+            if len(self.valid) != 2:
+                raise ValueError("Constraints.valid must be a (start, end) pair")
+            for value in self.valid:
+                check_iso(value, "Constraints.valid")
 
     def to_record(self) -> dict:
         return {"version": self.version, "valid": list(self.valid) if self.valid else None,
@@ -98,6 +108,11 @@ def filter_items(items: Iterable[Item], c: Constraints) -> Filtered:
             dropped.append((item.item_id, why))
         else:
             kept.append(item)
+    have = {i.item_id for i in kept}
+    broken = {i.group for i in items if i.group is not None and i.item_id not in have}
+    if broken:
+        dropped += [(i.item_id, "group") for i in kept if i.group in broken]
+        kept = [i for i in kept if i.group not in broken]
     return Filtered(tuple(kept), tuple(dropped))
 
 

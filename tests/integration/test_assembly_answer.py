@@ -77,15 +77,17 @@ class AssemblyTextEngine(api.ContextEngine):
             items, candidates = history_items(self.log, task.version, self.history), []
         else:
             items, candidates = self._items(task.question or "", task.version)
-        used = 0
+        used, spent = 0, False
         if request is not None:
             extra, more = self._items(request, task.version, len(items) + 1)
-            items, candidates, used = extra + items, more + candidates, \
-                self.config.max_expansions
-        result = assembler.assemble(task, demand, items, budget, expansions_used=used)
+            items, candidates = extra + items, more + candidates
+            used, spent = self.config.max_expansions, True
+        result = assembler.assemble(task, demand, items, budget, expansions_used=used,
+                                    retrieval_used=spent)
         if result.pending is not None:
             extra, more = self._items(result.pending.query, task.version, len(items) + 1)
-            result = assembler.assemble(task, demand, items + extra, budget, expansions_used=1)
+            result = assembler.assemble(task, demand, items + extra, budget, expansions_used=1,
+                                        retrieval_used=True)
             candidates += more
         self.assemblies.append(result)
         return api.ReadResult(result.context,
@@ -166,7 +168,7 @@ class AnswerPathTest(unittest.TestCase):
             self.assertTrue(result.trace.further_retrieval)
             self.assertEqual(result.cited_ids, [])
         further = engine.assemblies[1::2]
-        self.assertTrue(all(a.expansions_used == 1 and a.pending is None for a in further))
+        self.assertTrue(all(a.retrieval_used and a.pending is None for a in further))
         answers = [r for r in self.ledger.records if r.call_type == "answer"]
         self.assertEqual(len(answers), 2 * len(results))
 
