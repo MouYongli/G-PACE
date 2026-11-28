@@ -201,6 +201,46 @@ class GuardThroughWriterTest(RigTest):
         sup = rig.store.changeset(3).supersessions
         self.assertEqual([(s.replacing_claim_id, s.valid_end) for s in sup], [(None, "2023-06-01")])
 
+    def test_ending_stance_after_negative_claim_still_ends(self):
+        """E007 final round (2026-11-28): the writer emits the ended claim again as a negative
+        claim and also an ending stance on its handle. The claim is applied first (a repeated
+        mention with a negative attribution); the stance carries the same key and used to be
+        dropped as `duplicate_in_message`, so the old claim stayed current."""
+        rig, results = self.run_guard(
+            [lina(1, "I play the violin."),
+             lina(2, "I don't play the violin any more.")],
+            [{"claims": [claim(1, "Lina", "playsInstrument", "violin")], "stances": []},
+             lambda p: {"claims": [claim(1, "Lina", "playsInstrument", "violin",
+                                         polarity="negative", quote="I don't play the violin")],
+                        "stances": [
+                 {"message": 1, "claim": _handle(p, "violin"), "function": "inform",
+                  "polarity": "negative", "ends": "change",
+                  "quote": "I don't play the violin any more"}]}])
+        sup = rig.store.changeset(2).supersessions
+        self.assertEqual([(s.kind, s.replacing_claim_id) for s in sup],
+                         [(SupersessionKind.CHANGE, None)])
+        self.assertEqual(results[1].notes["duplicate_in_message"], 0)
+        self.assertEqual(results[1].notes["ending_after_claim"], 1)
+        # one negative attribution only: the stance reuses the claim's attribution
+        attributions = rig.store.changeset(2).attributions
+        self.assertEqual(len(attributions), 1)
+        self.assertEqual(sup[0].attribution_id, attributions[0].attribution_id)
+
+    def test_negative_claim_and_ending_stance_keep_the_evidence_filter(self):
+        """The reuse of the claim's attribution does not bypass `validate.ending_evidence`: an
+        ending stance whose quote does not name the old value is still dropped."""
+        rig, results = self.run_guard(
+            [lina(1, "I play the violin."),
+             lina(2, "I don't play the violin. Not any more.")],
+            [{"claims": [claim(1, "Lina", "playsInstrument", "violin")], "stances": []},
+             lambda p: {"claims": [claim(1, "Lina", "playsInstrument", "violin",
+                                         polarity="negative", quote="I don't play the violin")],
+                        "stances": [
+                 {"message": 1, "claim": _handle(p, "violin"), "function": "inform",
+                  "polarity": "negative", "ends": "change", "quote": "Not any more"}]}])
+        self.assertEqual(rig.store.changeset(2).supersessions, ())
+        self.assertEqual([d.reason for d in results[1].dropped], ["ended_without_evidence"])
+
     def test_ending_needs_a_quote_that_mentions_the_claim(self):
         """User decision of 2026-11-26 (D010 evidence): G2(ii) alone let one message end ten
         unrelated claims of its speaker; the writer now drops an ending stance whose quote does

@@ -468,7 +468,7 @@ class Updater:
         builder = ChangeSetBuilder(self.history.history_id, version, label)
         self._notes = []
         claims, stances, aliases = resolution.for_message(version)
-        attributed: set[tuple] = set()
+        attributed: dict[tuple, Attribution] = {}
         new_here: set[str] = set()
 
         reps = self._aliases(aliases, state, builder, result)
@@ -480,9 +480,9 @@ class Updater:
                 if key in attributed:
                     result.notes["duplicate_in_message"] += 1
                 else:
-                    attributed.add(key)
                     a = builder.attribution(existing.claim_id, rc.speaker, rc.stance,
                                             message.message_id)
+                    attributed[key] = a
                     pending.add_attribution(a)
                     builder.evidence_link(existing.claim_id, message.message_id, rc.span)
                     if existing.claim_id not in new_here:
@@ -493,7 +493,7 @@ class Updater:
             claim = builder.claim(rc.subject, rc.predicate, rc.object, rc.scope, rc.valid_time)
             a = builder.attribution(claim.claim_id, rc.speaker, rc.stance, message.message_id)
             builder.evidence_link(claim.claim_id, message.message_id, rc.span)
-            attributed.add((claim.claim_id, rc.speaker, rc.stance))
+            attributed[(claim.claim_id, rc.speaker, rc.stance)] = a
             decision = self.guard.replacement(state, claim, a, exclusive=rc.exclusive,
                                               correction=rc.correction, pending=pending)
             if self.deferred is not None:
@@ -575,8 +575,8 @@ class Updater:
         return {x: find(x) for x in merged}
 
     def _stance(self, rs: ResolvedStance, state: GraphState, pending: Pending,
-                builder: ChangeSetBuilder, local_ids: Mapping[str, str], attributed: set,
-                result: UnitResult) -> None:
+                builder: ChangeSetBuilder, local_ids: Mapping[str, str],
+                attributed: dict[tuple, Attribution], result: UnitResult) -> None:
         claim_id = local_ids.get(rs.claim) if rs.local else rs.claim
         if claim_id is None:
             result.dropped.append(Dropped("stance", "unresolved_local_id", rs.claim))
@@ -597,13 +597,20 @@ class Updater:
                 result.notes["ending_dropped"] += 1
                 return
         key = (claim_id, rs.speaker, rs.stance)
-        if key in attributed:
+        earlier = attributed.get(key)
+        if earlier is not None and (rs.ends is None or claim_id in pending.superseded):
             result.notes["duplicate_in_message"] += 1
             return
-        attributed.add(key)
-        a: Attribution = builder.attribution(claim_id, rs.speaker, rs.stance,
-                                             rs.message.message_id)
-        builder.evidence_link(claim_id, rs.message.message_id, rs.span)
+        if earlier is not None:
+            # The same message already attributed this stance to the claim (typically the writer
+            # also emitted the ended claim as a negative claim). The attribution is not written
+            # twice, but the ending still takes effect through it (E007 final round, 2026-11-28).
+            a = earlier
+            result.notes["ending_after_claim"] += 1
+        else:
+            a = builder.attribution(claim_id, rs.speaker, rs.stance, rs.message.message_id)
+            attributed[key] = a
+            builder.evidence_link(claim_id, rs.message.message_id, rs.span)
         if rs.ends is not None and self.deferred is not None:
             self._notes.append(("ending", a.attribution_id, rs.ends, rs.valid_end))
         if rs.ends is not None:
@@ -623,5 +630,6 @@ class Updater:
                         builder.supersession(s.claim_id, s.kind, s.valid_end, None,
                                              a.attribution_id)
                     pending.superseded.add(s.claim_id)
-        pending.add_attribution(a)
+        if earlier is None:
+            pending.add_attribution(a)
         result.notes["stances"] += 1
