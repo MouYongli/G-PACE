@@ -104,6 +104,62 @@ benchmarks:
         deviation: >-
           Mean of per-turn slot F1 (D002 micro over reads). Tomiinek/MultiWOZ_Evaluation reports
           one F1 over all (slot, value) pairs pooled across turns, with fuzzy value matching.
+      # Offer-turn metrics (T028, plan 6.5). Registered 2026-11-28 with the user's written approval
+      # (T004 is done; drafts from PR #149). Items come from the derived annotation
+      # 2.4-current-choice (grace.eval.datasets.benchmarks.multiwoz_derived); the unit is the
+      # item, clustered by dialogue. The predicted current choice is read by
+      # grace.eval.analysis.metrics.dst:current_choice: `metadata.current_choice[domain]` of the
+      # prediction when present (also null), else the domain's `-name` slot (contracts.md,
+      # "Prediction"). Primary values compare with the T006 rule
+      # grace.eval.datasets.benchmarks.multiwoz_offers:values_match (offered entity names are
+      # spelled differently across versions); exact match after normalise_state is reported as a
+      # sensitivity analysis (s00-super decision 2026-11-28, T028 log).
+      - name: retained
+        code: grace.eval.analysis.metrics.dst:retained
+        direction: higher
+        annotation: 2.4-current-choice
+        population: {}   # every retention item of every offer turn (accept, reject, none)
+        strata: [response, conflict]
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        deviation: Own definition (plan 6.5); no upstream scorer.
+        note: >-
+          Retention of original constraints: the predicted state still holds the user's 2.4 value
+          from before the offer. Stratum conflict=true: the original differs from the offer.
+      - name: choice_correct
+        code: grace.eval.analysis.metrics.dst:choice_correct
+        direction: higher
+        annotation: 2.4-current-choice
+        population: {}   # every paired item
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        deviation: Own definition (plan 6.5); no upstream scorer.
+        note: >-
+          Current choice alone: the offered entity after an acceptance; anything else (also no
+          choice) after a rejection. Diagnostic component of paired_correct.
+      - name: paired_correct
+        code: grace.eval.analysis.metrics.dst:paired_correct
+        direction: higher
+        annotation: 2.4-current-choice
+        population: {}   # every paired item: accept/reject domain with an offered entity
+        strata: [domain, response]
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        deviation: Own definition (plan 6.5); no upstream scorer.
+        note: >-
+          Primary paired correctness (plan 6.5 wording; s00-super decision 2026-11-28): every
+          original constraint of the domain kept and the current choice right.
+      - name: paired_correct_conflict
+        code: grace.eval.analysis.metrics.dst:paired_correct
+        direction: higher
+        annotation: 2.4-current-choice
+        population: {}   # paired items with a conflicting constraint, scored on those only
+        strata: []
+        invalid_policy: count_as_wrong
+        upstream: {repo: null, file: null, revision: null, verified: false}
+        deviation: Own definition (plan 6.5); no upstream scorer.
+        note: Descriptive diagnostic stratum of paired_correct; no test and no claim.
   change-seq:
     cluster_unit: scenario family   # plan 6.9
     # Registered 2026-11-26 with the user's approval (E005; T004 is done). Primary scorer of the

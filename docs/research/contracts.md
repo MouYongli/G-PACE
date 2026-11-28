@@ -143,7 +143,7 @@ Per-turn reading (MultiWOZ) and end-of-history reading (LoCoMo) differ only in t
 
 > Replaces the sample-level "Prediction output" record of v0.1 (task T001).
 
-Owner: T001 manager (`m01-T001`) · Version: 0.2 · Producer: harness (`eval/runner/harness/outputs.py`) · Consumers: judging, metrics
+Owner: T001 manager (`m01-T001`) · Version: 0.2.1 (`metadata.current_choice` for MultiWOZ, approved in writing by the user on 2026-11-28; T001 is done) · Producer: harness (`eval/runner/harness/outputs.py`) · Consumers: judging, metrics
 
 One record per read task of the schedule the run used.
 
@@ -158,12 +158,13 @@ One record per read task of the schedule the run used.
 | `context_ids` | list of strings | yes | `message_id`s whose source text is in the working context: the set $R$ of plan 3.1, used for strict evidence recall. Lenient recall uses the provenance in the read trace. |
 | `further_retrieval` | boolean | yes | Whether the one permitted further retrieval was used. |
 | `raw_output` | string or `null` | yes | Unparsed final output of the answering LLM; `null` only for systems that make no answering call. |
-| `metadata` | object | no | Ignored by the evaluator. |
+| `metadata` | object | no | Ignored by the evaluator, with one exception: `current_choice` on MultiWOZ state reads (below). |
 
 Evaluator obligations:
 
 - Align by `read_id` against the read-task file the run used; accept any line order.
 - Abort scoring on duplicate keys, missing keys, extra keys, more than one benchmark or split in a file, or a snapshot mismatch: `history_id`, `task_id` or `version` differs from the read task, a `cited_ids` or `context_ids` entry names a message after `version` or no message at all, or a gold evidence message lies after `version`. The error reports the count per category and up to five example keys each.
+- MultiWOZ state reads MAY carry `metadata.current_choice`, an object mapping domain → chosen entity (string) or `null`, because the current choice of plan 6.5 is not always an official slot (train IDs). The offer-turn metrics read it through `grace.eval.analysis.metrics.dst:current_choice`: the stated value when the domain is present (also `null`, meaning no choice), else the domain's `-name` slot of `prediction`. No other metric reads `metadata`. Results invalidated by this change: none (additive; no earlier metric reads `metadata`).
 - `unknown` is scored by the abstention rule on the card. `invalid` is not missing; it is handled by the invalid-output policy in [Evaluation](#evaluation).
 
 ## Cost ledger
