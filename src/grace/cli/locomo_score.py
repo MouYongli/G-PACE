@@ -1,4 +1,4 @@
-"""Score stage of a LoCoMo system run with the registered scorer (configs/common/scorers.yaml).
+"""Score stage of a LoCoMo system or read run with the registered scorer (scorers.yaml).
 
     uv run python -m grace.cli.locomo_score --run <system RUN_DIR> --experiment E007 \\
         --run-root "$PROJECT_ROOT/runs/E007/artifacts/<worker>"
@@ -73,8 +73,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     system = json.loads((args.run / "run.json").read_text(encoding="utf-8"))
-    if system["status"] != "completed" or system["stage"] != "system":
-        parser.error(f"{system['run_id']}: not a completed system run")
+    if system["status"] != "completed" or system["stage"] not in ("system", "read"):
+        parser.error(f"{system['run_id']}: not a completed system or read run")
     resolved = yaml.safe_load((args.run / "resolved-config.yaml").read_text(encoding="utf-8"))
     if resolved["benchmark"] != SLUG:
         parser.error(f"{system['run_id']}: benchmark {resolved['benchmark']!r}, not {SLUG}")
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     code = rundir.code_state()
     run = rundir.RunJson(run_dir, {
         "run_id": run_dir.name, "experiment": args.experiment, "stage": "score",
-        "upstream": [{"run_id": system["run_id"], "stage": "system",
+        "upstream": [{"run_id": system["run_id"], "stage": system["stage"],
                       "path": args.run.resolve().as_posix(),
                       "run_json_sha256": rundir.file_sha256(args.run / "run.json")}],
         "code_sha": code.sha, "code_dirty": code.dirty,

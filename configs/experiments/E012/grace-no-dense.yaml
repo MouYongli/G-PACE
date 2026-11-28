@@ -1,0 +1,22 @@
+# GRACE, ablation D arm `no-dense` (E012, plan 7.3): dense channel removed.
+# Same as configs/engines/grace.yaml except: retrieval -> configs/retrieval/no-dense.yaml.
+# Read-side only, so a read run restores the shared main-configuration ingest snapshot.
+engine: grace
+description: GRACE, ablation D arm no-dense (dense channel removed)
+prefix_caching: false
+# GRACE's writer model (user decision 2026-11-28, D006 amendment): Qwen3-32B, reached at the run's
+# --writer-url; the planner, view rendering and answering stay on the run's model (Qwen3-8B).
+writer_model: configs/models/qwen3-32b.yaml
+params:
+  writer: configs/common/writer.yaml          # T022 writer, session units (E007 main configuration)
+  planner: configs/common/planner.yaml        # T023 planner (rules, LLM, one repair)
+  retrieval: configs/retrieval/no-dense.yaml   # ablation D arm (E012)
+  assembly: configs/assembly/default.yaml     # T026 greedy assembly; truncate.yaml = rank truncation
+  views: configs/views/default.yaml           # T018 resident views; null = no views
+  staleness: {strategy: push_confirm, local_filters: true}   # T019 strategy (ablation A arms)
+  fragment: {max_predicates: 30, max_entities: 30}           # planner vocabulary fragment
+# Embedding model of the dense channel (plan 7.1), reached at the run's --embed-url.
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
