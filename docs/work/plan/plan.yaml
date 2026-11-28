@@ -327,12 +327,12 @@ nodes:
     type: decision
     title: "Phase 1 gate: evidence placement"
     milestone: M1
-    status: proposed
+    status: accepted
     depends_on: [T006, T007, T012, T013, E001, E002]
     issue: null
     owner: null
     start: 2026-11-23
-    finish: null
+    finish: 2026-11-28
     file: ../decisions/D007-gate-evidence-placement.md
   # ---- M2 · Core mechanism on gold graphs
   - id: T014
@@ -494,33 +494,33 @@ nodes:
     type: task
     title: Graph-quality annotation
     milestone: M3
-    status: planned
+    status: done
     depends_on: [T022]
-    issue: null
-    owner: null
-    start: null
-    finish: null
+    issue: 136
+    owner: m01-T024
+    start: 2026-11-28
+    finish: 2026-11-28
     file: ../tasks/T024-graph-quality-annotation.md
   - id: E006
     type: experiment
     title: Graph quality
     milestone: M3
-    status: planned
+    status: active
     depends_on: [T022, T024]
-    issue: null
-    owner: null
-    start: null
+    issue: 142
+    owner: w01-E006
+    start: 2026-11-28
     finish: null
     file: ../experiments/E006-graph-quality.md
   - id: E007
     type: experiment
     title: "Ablation G: writer scale, thinking, granularity"
     milestone: M3
-    status: planned
+    status: active
     depends_on: [T022, T024, D006]
-    issue: null
-    owner: null
-    start: null
+    issue: 141
+    owner: w01-E007
+    start: 2026-11-28
     finish: null
     file: ../experiments/E007-ablation-g-writer.md
   - id: E008
@@ -583,33 +583,33 @@ nodes:
     type: task
     title: Evidence-demand assembly
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T025, T018]
-    issue: null
-    owner: null
-    start: null
+    issue: 138
+    owner: w01-T026
+    start: 2026-11-28
     finish: null
     file: ../tasks/T026-context-assembly.md
   - id: T027
     type: task
     title: Structured and tagged baselines
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T003, T022]
-    issue: null
-    owner: null
-    start: null
+    issue: 139
+    owner: w01-T027
+    start: 2026-11-28
     finish: null
     file: ../tasks/T027-structured-baselines.md
   - id: T028
     type: task
     title: MultiWOZ state prediction and baselines
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T006, T022, T003]
-    issue: null
-    owner: null
-    start: null
+    issue: 140
+    owner: w01-T028
+    start: 2026-11-28
     finish: null
     file: ../tasks/T028-multiwoz-state.md
   - id: T029
