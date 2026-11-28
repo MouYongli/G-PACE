@@ -505,12 +505,12 @@ nodes:
     type: experiment
     title: Graph quality
     milestone: M3
-    status: active
+    status: done
     depends_on: [T022, T024]
     issue: 142
     owner: w01-E006
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E006-graph-quality.md
   - id: E007
     type: experiment
