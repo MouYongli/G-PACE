@@ -1,0 +1,85 @@
+{
+  "a": "labels-agent-A.jsonl",
+  "b": "labels-agent-B.jsonl",
+  "segments": "runs/T024/artifacts/sample/segments.jsonl (PROJECT_ROOT-relative)",
+  "agreement": {
+    "all": {
+      "segments": 40,
+      "claims_a": 526,
+      "claims_b": 575,
+      "matched_anchor": 426,
+      "matched_strict": 294,
+      "dice_anchor": 0.7738,
+      "dice_strict": 0.5341,
+      "field_agreement_on_anchor_pairs": {
+        "predicate": 0.6901,
+        "object_type": 0.9413,
+        "function": 0.9883,
+        "report_mode": 0.9953,
+        "polarity": 1.0,
+        "certainty": 0.9671,
+        "derived": 1.0,
+        "correction": 1.0,
+        "time_expression": 0.9577,
+        "valid_from": 0.9836,
+        "valid_until": 1.0
+      },
+      "stances_a": 80,
+      "stances_b": 87,
+      "segments_empty_both": 2,
+      "segments_empty_one": 0
+    },
+    "locomo": {
+      "segments": 16,
+      "claims_a": 223,
+      "claims_b": 221,
+      "matched_anchor": 182,
+      "matched_strict": 142,
+      "dice_anchor": 0.8198,
+      "dice_strict": 0.6396,
+      "field_agreement_on_anchor_pairs": {
+        "predicate": 0.7802,
+        "object_type": 0.956,
+        "function": 1.0,
+        "report_mode": 0.989,
+        "polarity": 1.0,
+        "certainty": 0.989,
+        "derived": 1.0,
+        "correction": 1.0,
+        "time_expression": 0.956,
+        "valid_from": 0.989,
+        "valid_until": 1.0
+      },
+      "stances_a": 32,
+      "stances_b": 33,
+      "segments_empty_both": 0,
+      "segments_empty_one": 0
+    },
+    "longmemeval-s": {
+      "segments": 24,
+      "claims_a": 303,
+      "claims_b": 354,
+      "matched_anchor": 244,
+      "matched_strict": 152,
+      "dice_anchor": 0.7428,
+      "dice_strict": 0.4627,
+      "field_agreement_on_anchor_pairs": {
+        "predicate": 0.623,
+        "object_type": 0.9303,
+        "function": 0.9795,
+        "report_mode": 1.0,
+        "polarity": 1.0,
+        "certainty": 0.9508,
+        "derived": 1.0,
+        "correction": 1.0,
+        "time_expression": 0.959,
+        "valid_from": 0.9795,
+        "valid_until": 1.0
+      },
+      "stances_a": 48,
+      "stances_b": 54,
+      "segments_empty_both": 2,
+      "segments_empty_one": 0
+    }
+  }
+}
