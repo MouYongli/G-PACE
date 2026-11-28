@@ -660,12 +660,12 @@ nodes:
     type: experiment
     title: "Ablation D: retrieval channels"
     milestone: M4
-    status: active
+    status: done
     depends_on: [T026]
     issue: 171
     owner: w01-E012
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E012-ablation-d-channels.md
   - id: E013
     type: experiment
