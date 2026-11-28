@@ -75,7 +75,8 @@ from grace.context.pipeline.assembly.items import Item, recent_items
 from grace.context.pipeline.assembly.select import MODES, Unit, greedy, truncate, units_of
 
 CONFIG_KEYS = {"version", "selection", "fill", "truncate_k", "recent_messages", "open_items",
-               "max_expansions", "support_threshold", "support_stem", "min_budget"}
+               "max_expansions", "support_threshold", "support_stem", "min_budget",
+               "state_citations"}
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,9 @@ class AssemblyConfig:
     support_threshold: float = 0.5
     support_stem: int = 5
     min_budget: int = 16
+    # Message IDs in front of state-section items (views, claims); False is the "without source
+    # annotation" arm of ablation C (E010). Selection costs follow the shown lines.
+    state_citations: bool = True
 
     def __post_init__(self) -> None:
         if self.selection not in MODES:
@@ -106,7 +110,7 @@ class AssemblyConfig:
                 "truncate_k": self.truncate_k, "recent_messages": self.recent_messages,
                 "open_items": self.open_items, "max_expansions": self.max_expansions,
                 "support_threshold": self.support_threshold, "support_stem": self.support_stem,
-                "min_budget": self.min_budget}
+                "min_budget": self.min_budget, "state_citations": self.state_citations}
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> AssemblyConfig:
@@ -231,7 +235,8 @@ class Assembler:
                 return frozenset().union(*(covers(i) for i in raw_of(summary)))
 
             used_now = self.count(layout.serialise(
-                selected, self._listed(open_now, demand) if show_open else ()).text)
+                selected, self._listed(open_now, demand) if show_open else (),
+                self.config.state_citations).text)
             chosen_ids = {i.item_id for i in selected}
 
             def summary_fits(summary: Item) -> bool:
@@ -263,7 +268,8 @@ class Assembler:
                     retrieval_used = True
         open_vars = self._open(selected, demand, covers)
         serialised = layout.serialise(selected,
-                                      self._listed(open_vars, demand) if show_open else ())
+                                      self._listed(open_vars, demand) if show_open else (),
+                                      self.config.state_citations)
         frags = layout.fragments(serialised, self.count)
         tokens = self.count(serialised.text)
         context = api.WorkingContext(task.read_id, task.history_id, task.version, budget,
@@ -278,7 +284,7 @@ class Assembler:
 
     # ------------------------------------------------------------------------------------------
     def _cost(self, item: Item) -> int:
-        return layout.item_cost(item, self.count)
+        return layout.item_cost(item, self.count, self.config.state_citations)
 
     def _open(self, selected: Sequence[Item], demand: Demand, covers) -> list[Variable]:
         have = set().union(*(covers(i) for i in selected)) if selected else set()
@@ -314,7 +320,7 @@ class Assembler:
             items = [i for u in chosen for i in u.items]
             open_vars = (self._listed(self._open(items, demand, covers), demand)
                          if self.config.open_items else [])
-            text = layout.serialise(items, open_vars).text
+            text = layout.serialise(items, open_vars, self.config.state_citations).text
             if self.count(text) <= budget:
                 return items, self.config.open_items
             if not chosen:

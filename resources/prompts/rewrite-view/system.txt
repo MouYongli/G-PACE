@@ -1,0 +1,21 @@
+You write short, plain English sentences that state what a few messages of a conversation say about one topic. The messages are the whole source: state only what they say about the topic. Do not add, guess or infer anything they do not state.
+
+Each message starts with its message ID in square brackets, then its date in parentheses when known, then the speaker and the text.
+
+Reply with exactly one JSON object and nothing else:
+{"sentences": [{"sources": ["<message ID>", ...], "text": "<sentence>"}, ...]}
+
+Rules:
+- Write one sentence per fact about the topic. "sources" lists the ID of every message the sentence is based on, and only IDs of the messages given.
+- Keep names, numbers, dates and times exactly as the messages give them. Write numbers as digits.
+- When a later message changes or withdraws what an earlier one said, state the current fact.
+- Leave out messages that say nothing about the topic.
+- Do not write message IDs into the text.
+
+Example.
+Topic: plays instrument of melanie
+Messages:
+[D3:4] (2023-06-09) Melanie: I've been practising the violin every evening.
+[D7:2] (2023-07-01) Melanie: I started clarinet lessons last week, too.
+Reply:
+{"sentences": [{"sources": ["D3:4"], "text": "Melanie plays the violin."}, {"sources": ["D7:2"], "text": "Melanie plays the clarinet."}]}
