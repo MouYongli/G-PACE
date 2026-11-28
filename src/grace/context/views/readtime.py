@@ -21,12 +21,13 @@ trigger `read`, ledger W).
 
 Resident-equivalent views (view hits). A resident view is a binding of a template family whose
 query reaches the instantiation threshold (`ViewStore.materialise`); its query is a function of
-the binding and the graph only. The plan's query is a hit when its text equals the bound query
-of such a binding at the read version, which is the hit rule of the resident store
-(`engine.Views.hit`) evaluated at read time, as `serialise.SerialisedViews` does. A hit is
-presented with the family's title and sentence pattern and named in `Presentation.view_id`
-(the engine reports it in the read trace's `view_hits`); every other query result is a
-temporary view (plan 5.4), titled by the plan's variable descriptions.
+the binding and the graph only. The plan's query is a hit when it equals the bound query
+of such a binding at the read version modulo variable renaming (`hitrule`), which is the hit
+rule of the resident store (`engine.Views.hit`) evaluated at read time, as
+`serialise.SerialisedViews` does. A hit is presented with the family's title and sentence pattern
+(filled with the plan's rows, their columns named as in the bound query) and named in
+`Presentation.view_id` (the engine reports it in the read trace's `view_hits`); every other
+query result is a temporary view (plan 5.4), titled by the plan's variable descriptions.
 
 Every presentation is also handed to `EVENT_SINK` when it is set (the E010 driver collects them
 into `views/presentations.jsonl` of the run): the source, the hit, the nearest bindings when there
@@ -48,6 +49,7 @@ from grace.context.memory.graph.vocabulary import Vocabulary
 from grace.context.pipeline.query.compile import compile_query
 from grace.context.pipeline.query.execute import execute
 from grace.context.pipeline.query.grammar import to_text
+from grace.context.views import hitrule
 from grace.context.views.rebuild import member_query
 from grace.context.views.render import (
     LLMRenderer,
@@ -180,7 +182,10 @@ def canonical(query_text: str, attribution: bool = True) -> str:
 
 def near_class(plan_text: str, bound_text: str) -> str:
     """How the plan's query differs from a binding's bound query: only in variable names, also
-    in attribution constraints, or otherwise (patterns, projection, aggregation, time)."""
+    in attribution constraints, or otherwise (patterns, projection, aggregation, time). A
+    diagnostic on query text; the hit rule itself is `hitrule.match` on the IR, under which a
+    near binding of class `variable_names` is a hit unless the plan is not view-eligible or the
+    binding misses its instantiation threshold."""
     if canonical(plan_text) == canonical(bound_text):
         return "variable_names"
     if canonical(plan_text, False) == canonical(bound_text, False):
@@ -248,7 +253,8 @@ class ReadTimeViews:
                                  "plan_route": getattr(plan, "route", None),
                                  "view_eligible": bool(plan.view_eligible),
                                  "plan_query": query_text}
-        binding, near, n_candidates, near_info = self._match(plan, query_text, graph, version)
+        binding, mapping, near, n_candidates, near_info = self._match(plan, query_text, graph,
+                                                                      version)
         rows = self._rows(plan, result, graph, version)
         if rows is None:
             _emit({**event, "status": "skipped", "reason": "count without member rows",
@@ -259,7 +265,7 @@ class ReadTimeViews:
             if len(claims) < self.config.threshold(binding.family):
                 near = [binding.view_id, *near][:MAX_NEAR]
                 binding = None  # a resident store would not hold this view
-        spec = self._spec(binding, plan, query_text, result)
+        spec = self._spec(binding, plan, query_text, result, mapping)
         answer_of = self._answer_index(result)
         by_id = {r.row_id: r for r in rows}
         todo = units(rows)
@@ -294,11 +300,13 @@ class ReadTimeViews:
     # -- helpers -------------------------------------------------------------------------------
 
     def _match(self, plan, query_text: str, graph: ClaimStore, version: int
-               ) -> tuple[Binding | None, list[str], int, dict[str, Any]]:
-        """The binding whose bound query is the plan's query (eligible plans only), the nearest
-        bindings otherwise (subject and predicate occur in the query text), the number of
-        candidate bindings at the read version, and the closest near binding with its bound
-        query and difference class (`near_class`; `NEAR_CLASSES` order)."""
+               ) -> tuple[Binding | None, dict[str, str] | None, list[str], int, dict[str, Any]]:
+        """The binding whose bound query is the plan's query modulo variable renaming (eligible
+        plans only; `hitrule.match`) with the mapping from the plan's variable names to the
+        bound query's, the nearest bindings otherwise (subject and predicate occur in the query
+        text), the number of candidate bindings at the read version, and the closest near
+        binding with its bound query and difference class (`near_class`; `NEAR_CLASSES`
+        order)."""
         bindings = candidate_bindings(graph.state(version), self.families, self.config,
                                       self.vocabulary)
         store = ViewStore(self.history_id, self.template, config=self.config,
@@ -306,12 +314,20 @@ class ReadTimeViews:
         near: list[str] = []
         best: tuple[int, str, str] | None = None
         tokens = set(_tokens(query_text))
+        consts = hitrule.constants(plan.query) if plan.view_eligible else frozenset()
         for b in bindings:
-            if b.subject not in tokens or (b.predicate is not None and b.predicate not in tokens):
+            in_text = b.subject in tokens and (b.predicate is None or b.predicate in tokens)
+            in_query = b.subject in consts and (b.predicate is None or b.predicate in consts)
+            if not (in_text or in_query):
                 continue
-            bound = to_text(store.bind(b)[0])
-            if plan.view_eligible and bound == query_text:
-                return b, [], len(bindings), {}
+            bound_query = store.bind(b)[0]
+            if in_query:
+                mapping = hitrule.match(plan.query, bound_query)
+                if mapping is not None:
+                    return b, mapping, [], len(bindings), {}
+            if not in_text:
+                continue
+            bound = to_text(bound_query)
             if len(near) < MAX_NEAR:
                 near.append(b.view_id)
             kind = near_class(query_text, bound)
@@ -320,14 +336,18 @@ class ReadTimeViews:
         info = ({"near_class": NEAR_CLASSES[best[0]], "near_binding": best[1],
                  "near_query": best[2]} if best is not None
                 else {"near_class": None, "near_binding": None, "near_query": None})
-        return None, near, len(bindings), info
+        return None, None, near, len(bindings), info
 
-    def _spec(self, binding: Binding | None, plan, query_text: str, result) -> RenderSpec:
+    def _spec(self, binding: Binding | None, plan, query_text: str, result,
+              mapping: dict[str, str] | None = None) -> RenderSpec:
         if binding is not None:
+            # The family's sentence pattern names the bound query's variables: the plan's
+            # columns are renamed to them (the rows are the plan's, in the same column order).
             family = self.families[binding.family]
             title = family.title.format(subject=binding.subject,
                                         predicate=humanise(binding.predicate or ""))
-            return RenderSpec(title, tuple(result.variables), bool(result.is_count),
+            columns = tuple((mapping or {}).get(v, v) for v in result.variables)
+            return RenderSpec(title, columns, bool(result.is_count),
                               binding.subject, binding.predicate, family.sentence)
         return RenderSpec(_title(plan, query_text), tuple(result.variables),
                           bool(result.is_count))

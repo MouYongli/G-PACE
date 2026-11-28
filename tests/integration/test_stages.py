@@ -167,7 +167,10 @@ class StagesTest(unittest.TestCase):
                                          "traces/read.jsonl"})
                 a = read_jsonl(system.run_dir / "contexts.jsonl")
                 b = read_jsonl(read.run_dir / "contexts.jsonl")
-                self.assertTrue(any(f["kind"] == "claim" for c in a for f in c["fragments"]),
+                # The fixed plan is the `list` family's query modulo variable names, so its
+                # answers reach the context as a resident view hit.
+                self.assertTrue(any(f["kind"] in ("claim", "view")
+                                    for c in a for f in c["fragments"]),
                                 "the fixture graph should reach the context")
                 self.assertEqual(a, b)
                 self.assertEqual(comparable(system.run_dir), comparable(read.run_dir))
