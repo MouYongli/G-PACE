@@ -168,7 +168,7 @@ metrics:
   tokens_at_similar_quality:
     reference: grace@1024          # cheapest budget of each system whose F1 is within the margin
     margins: [0.01, 0.03]
-  cumulative_over_reads: {order: run, seed: 0}   # measured order and one fixed-seed draw
+  cumulative_over_reads: {order: run, seed: 0, budgets: [1024, full]}   # measured order and one fixed-seed draw
   cost_per_success:
     success: f1 >= 0.5             # rule-based, no judge (local judge scheduled for T035)
   break_even:                      # GRACE and its variants against full-history-cached
