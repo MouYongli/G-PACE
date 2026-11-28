@@ -327,12 +327,12 @@ nodes:
     type: decision
     title: "Phase 1 gate: evidence placement"
     milestone: M1
-    status: proposed
+    status: accepted
     depends_on: [T006, T007, T012, T013, E001, E002]
     issue: null
     owner: null
     start: 2026-11-23
-    finish: null
+    finish: 2026-11-28
     file: ../decisions/D007-gate-evidence-placement.md
   # ---- M2 · Core mechanism on gold graphs
   - id: T014
