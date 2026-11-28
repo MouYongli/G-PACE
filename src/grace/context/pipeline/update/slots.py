@@ -56,6 +56,7 @@ class SlotExtraction:
     dropped: Mapping[str, int] = field(default_factory=dict)
     error: str | None = None
     call_ids: tuple[str, ...] = ()
+    statuses: tuple[str, ...] = ()   # status of every call record, in order
 
     def by_version(self) -> list[list[SlotRow]]:
         """Rows grouped per version in version order, as `SlotTable.append` takes them."""
@@ -163,13 +164,17 @@ class SlotWriter:
                                       validate=lambda text: parse(text, self.validator).error)
         except LLMCallFailed as exc:
             return SlotExtraction("failed", error=str(exc),
-                                  call_ids=tuple(r.call_id for r in exc.records))
+                                  call_ids=tuple(r.call_id for r in exc.records),
+                                  statuses=tuple(r.status for r in exc.records))
         call_ids = tuple(r.call_id for r in result.records)
+        statuses = tuple(r.status for r in result.records)
         parsed = parse(result.text, self.validator)
         if not parsed.ok:
-            return SlotExtraction("invalid_output", error=parsed.error, call_ids=call_ids)
+            return SlotExtraction("invalid_output", error=parsed.error, call_ids=call_ids,
+                                  statuses=statuses)
         rows, dropped = rows_from_entries(parsed.value["entries"], unit, self.inventory)
-        return SlotExtraction("ok", tuple(rows), dict(dropped), call_ids=call_ids)
+        return SlotExtraction("ok", tuple(rows), dict(dropped), call_ids=call_ids,
+                              statuses=statuses)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -189,6 +194,7 @@ class SlotFact:
     evidence_ids: tuple[str, ...]
     version: int
     valid: tuple[str | None, str | None] | None
+    retired: int | None = None   # version of the superseding row (a changed value)
 
 
 class SlotExtractorAdapter(Extractor):
@@ -207,11 +213,12 @@ class SlotExtractorAdapter(Extractor):
         result = self.writer.extract(request.history_id, request.messages, request.earlier,
                                      trigger=request.trigger, read_id=request.read_id)
         if result.status != "ok":
-            return Extraction(result.status, error=result.error, call_ids=result.call_ids)
+            return Extraction(result.status, error=result.error, call_ids=result.call_ids,
+                              statuses=result.statuses)
         for rows in result.by_version():
             self.table.append(rows)
         return Extraction("ok", ClaimPatch(), call_ids=result.call_ids,
-                          statuses=("ok",) * len(result.call_ids))
+                          statuses=result.statuses)
 
 
 class SlotMemory:
@@ -234,8 +241,17 @@ class SlotMemory:
         return store
 
     def state_facts(self, task, request: str) -> list[SlotFact]:
+        """Bitemporal: the current values, and the values ended by a change with `retired` and
+        their valid interval, so that the assembler's filter keeps a past value exactly when the
+        read asks about an earlier state or a window it overlaps (as the main configuration does
+        with retired claims); corrected values are never offered. Single time: current values
+        only, without valid time (no time travel)."""
         words = set(_WORD.findall(request.lower()))
-        values = self.table.state(task.version).current()
+        state = self.table.state(task.version)
+        if self.table.time == "bitemporal":
+            values = [v for v in state.values if v.current or v.kind == "change"]
+        else:
+            values = state.current()
 
         def score(v):
             text = f"{v.first.subject} {v.first.slot} {v.value}".lower()
@@ -251,7 +267,7 @@ class SlotMemory:
             text = f"{first.subject} | {first.slot} = {v.value}{when} [{speakers}]"
             valid = (v.valid_from, v.valid_until) if (v.valid_from or v.valid_until) else None
             out.append(SlotFact(f"{task.read_id}:slot{i}", text, v.evidence_ids,
-                                max(r.version for r in v.rows), valid))
+                                max(r.version for r in v.rows), valid, v.superseded_at))
         return out
 
     def save(self, directory: Path) -> list[Path]:
@@ -259,7 +275,8 @@ class SlotMemory:
         return self.table.save(directory)
 
     def restore(self, directory: Path) -> None:
-        self.table = SlotTable.restore(directory, self.table.inventory)
+        self.table = SlotTable.restore(directory, self.table.inventory, guard=self.table.guard,
+                                       time=self.table.time)
 
 
 def slot_table(*, writer, client=None, view_config=None, guard: bool = True,

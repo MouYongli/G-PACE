@@ -257,7 +257,8 @@ class Extension:
         return store
 
     def state_facts(self, task: api.ReadTask, request: str) -> list:
-        """Extra state items: objects with `item_id`, `text`, `evidence_ids`, `version`, `valid`."""
+        """Extra state items: objects with `item_id`, `text`, `evidence_ids`, `version`, `valid`
+        and optionally `retired` (the version from which the fact is superseded)."""
         return []
 
     def save(self, directory: Path) -> list[Path]:
@@ -655,7 +656,7 @@ class GraceEngine(api.ContextEngine):
     def _facts(self, task: api.ReadTask, request: str, rank_start: int) -> list[Item]:
         """State facts of the extension (e.g. slot values) as state items."""
         return [Item(f.item_id, "claim", f.text, tuple(f.evidence_ids), version=f.version,
-                     valid=f.valid, rank=rank_start + i)
+                     retired=getattr(f, "retired", None), valid=f.valid, rank=rank_start + i)
                 for i, f in enumerate(self.extension.state_facts(task, request))]
 
     def _state_items(self, task, plan: Plan, result, graph: ClaimStore, prefix: str = "q"

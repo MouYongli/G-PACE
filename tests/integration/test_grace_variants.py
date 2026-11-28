@@ -62,7 +62,8 @@ class Rig:
         self.writer = WriterConfig()
         self.planner = ScriptedPlanner()
 
-    def components(self, *, views=None, extension=None) -> Components:
+    def components(self, *, views=None, extension=None,
+                   channels=("bm25", "graph")) -> Components:
         writer, client = self.writer, self.client
 
         def default_views(h, v):
@@ -72,7 +73,7 @@ class Rig:
         return Components(count=lambda t: len(t.split()),
                           extractor=lambda h: llm_writer(writer, client, h),
                           planner=self.planner,
-                          retrieval=RetrievalConfig(channels=("bm25", "graph")),
+                          retrieval=RetrievalConfig(channels=channels),
                           assembly=AssemblyConfig(), writer=writer,
                           views=views or default_views, **extra)
 
@@ -179,11 +180,155 @@ class QueryTimeResolutionTest(unittest.TestCase):
         self.assertEqual(again.read(rig.task(4), 256).context.text, before.context.text)
 
 
+MOVE = "t027-move"
+MOVE_SCRIPT = [{"claims": [
+    {"id": "n1", "message": 1, "subject": "user", "predicate": "playsInstrument",
+     "object": "piano", "object_type": "entity", "function": "inform", "exclusive": False,
+     "quote": "I play the piano"},
+    {"message": 1, "subject": "user", "predicate": "livesIn", "object": "Lisbon",
+     "object_type": "entity", "function": "inform", "exclusive": True,
+     "quote": "I live in Lisbon"},
+    {"message": 2, "subject": "user", "predicate": "livesIn", "object": "Porto",
+     "object_type": "entity", "function": "offer", "exclusive": True,
+     "quote": "you live in Porto"},
+    {"message": 3, "subject": "user", "predicate": "livesIn", "object": "Madrid",
+     "object_type": "entity", "function": "inform", "exclusive": True,
+     "valid_from": "2023-03-01", "quote": "I moved to Madrid"},
+    {"message": 4, "subject": "user", "predicate": "livesIn", "object": "Madrid",
+     "object_type": "entity", "function": "inform", "exclusive": True,
+     "valid_from": "2023-03-01", "quote": "I still live in Madrid"},
+    {"message": 4, "subject": "user", "predicate": "likes", "object": "tapas",
+     "object_type": "entity", "function": "inform", "exclusive": False,
+     "quote": "I like tapas"}],
+    "stances": [{"message": 4, "claim": "n1", "function": "inform", "polarity": "negative",
+                 "ends": "change", "valid_until": "2023-06-01",
+                 "quote": "stopped playing the piano"}]}]
+
+
+def move_messages():
+    from tests.integration.writer_fixture import message
+    return [message(MOVE, 1, "user", "I live in Lisbon and I play the piano.",
+                    timestamp="2023-01-01T10:00:00"),
+            message(MOVE, 2, "assistant", "So you live in Porto?",
+                    timestamp="2023-01-01T10:01:00"),
+            message(MOVE, 3, "user", "No. I moved to Madrid in March.",
+                    timestamp="2023-04-01T10:00:00"),
+            message(MOVE, 4, "user", "I stopped playing the piano in June. I still live in "
+                    "Madrid, and I like tapas.", timestamp="2023-07-01T10:00:00")]
+
+
+class WriteTimeEquivalenceTest(unittest.TestCase):
+    """Main config (supersessions committed at write) and append-only (derived at read) give the
+    same supersessions at every version: exclusive replacement without correction, an offer
+    against a statement (conflict under the guard), an ending stance with a valid end, several
+    attributions in one version, a correction (city script), guard on and off."""
+
+    @staticmethod
+    def key(s):
+        return (s.claim_id, str(s.kind), s.valid_end, s.replacing_claim_id, s.version)
+
+    def run_pair(self, script, messages, guard: bool, flush_first: bool = False):
+        out = []
+        for append_only in (False, True):
+            rig = Rig(self, json.loads(json.dumps(script)))
+            rig.messages, rig.info = messages, history_info(messages[0].history_id, messages)
+            rig.writer = WriterConfig(guard=guard)
+            extension = (registry.load_component("query-time-resolution")(writer=rig.writer)
+                         if append_only else None)
+            engine = GraceEngine(rig.components(views=lambda h, v: NoViews(),
+                                                extension=extension))
+            engine.open(rig.info)
+            for m in messages:
+                engine.write(m)
+                if flush_first and m.version == 1:
+                    engine.updater.flush(1)  # the city script's first unit is message 1
+            engine.updater.finish()
+            self.assertFalse(rig.transport.script)
+            per_version = {}
+            for v in range(1, engine.version + 1):
+                graph = engine.extension.read_graph(engine.store, v)
+                per_version[v] = sorted(self.key(s)
+                                        for s in graph.state(v).supersessions.values())
+            out.append((per_version, sorted(engine.store.state(engine.version).claims)))
+        return out
+
+    def test_same_supersessions_per_version(self):
+        cases = [(MOVE_SCRIPT, move_messages(), False), (WRITER_SCRIPT, city_messages(), True)]
+        for (script, messages, flush), guard in [(c, g) for c in cases for g in (True, False)]:
+            with self.subTest(history=messages[0].history_id, guard=guard):
+                (main, main_claims), (deferred, deferred_claims) = self.run_pair(
+                    script, messages, guard, flush)
+                self.assertEqual(main_claims, deferred_claims)
+                self.assertEqual(main, deferred)
+        (main, _), _ = self.run_pair(MOVE_SCRIPT, move_messages(), True)
+        kinds = {(k[1], k[2] is not None, k[3] is None) for k in main[4]}
+        self.assertIn(("change", True, False), kinds)   # Lisbon -> Madrid, valid end 2023-03-01
+        self.assertIn(("change", True, True), kinds)    # piano ended, valid end 2023-06-01
+        (loose, _), _ = self.run_pair(MOVE_SCRIPT, move_messages(), False)
+        self.assertGreater(len(loose[4]), len(main[4]))  # guard off: the offer supersedes too
+
+
+class DeferredNotesTest(unittest.TestCase):
+    def test_a_rejected_change_set_leaves_no_hint(self):
+        from unittest import mock
+
+        from grace.context.pipeline.update import updater as updater_module
+        real = updater_module.commit_version
+
+        def reject_version_3(store, builder, *, validate):
+            if builder.version == 3:
+                builder.claims.clear()
+                builder.attributions.clear()
+                builder.evidence.clear()
+                cs, _ = real(store, builder, validate=validate)
+                return cs, "CommitError: rejected for the test"
+            return real(store, builder, validate=validate)
+
+        rig = Rig(self, json.loads(json.dumps(MOVE_SCRIPT)))
+        rig.messages, rig.info = move_messages(), history_info(MOVE, move_messages())
+        factory = registry.load_component("query-time-resolution")(writer=rig.writer)
+        engine = GraceEngine(rig.components(views=lambda h, v: NoViews(), extension=factory))
+        with mock.patch.object(updater_module, "commit_version", reject_version_3):
+            engine.open(rig.info)
+            for m in rig.messages:
+                engine.write(m)
+            engine.updater.finish()
+        stored = set(engine.store.state(engine.version).claims)
+        self.assertTrue(set(engine.extension.deferred.claims) <= stored)
+        self.assertFalse(any(c.startswith("c3.") for c in engine.extension.deferred.claims))
+        log = engine.extension.deferred
+        log.note_claim("c1.1", exclusive=False)          # the same inputs again: accepted
+        with self.assertRaises(ValueError):
+            log.note_claim("c1.1", exclusive=True)       # other inputs: refused
+
+
+HISTORY_SCRIPT = [
+    {"entries": [{"message": 1, "slot": "person.location", "subject": "user", "value": "Lisbon",
+                  "function": "inform", "valid_from": "2019-01-01"},
+                 {"message": 2, "slot": "person.location", "subject": "user", "value": "Porto",
+                  "function": "inform", "valid_from": "2022-03-01"}]}]
+
+
+class WindowPlanner:
+    """A historical plan with the window "in 2021" ("where did I live in 2021?")."""
+
+    def plan(self, ctx):
+        from grace.context.pipeline.query.compile import compile_query
+        from grace.context.pipeline.query.grammar import parse
+        from grace.context.pipeline.query.planner import Plan
+        from grace.context.pipeline.query.timeexpr import Window
+        q = parse("SELECT ?x WHERE { (user, livesIn, ?x) } AT(known=r, state=historical)")
+        return Plan(ctx.read_id, "llm", query=q, compiled=compile_query(q, "rdf11"),
+                    window=Window("in 2021", "2021-01-01", "2022-01-01", False),
+                    variables=(("?x", "where the user lived in 2021"),))
+
+
 class SlotTableTest(unittest.TestCase):
-    def build(self, rig, **options):
+    def build(self, rig, channels=("bm25", "graph"), **options):
         factory = registry.load_component("slot-table")(writer=rig.writer, client=rig.client,
                                                         **options)
-        return rig.components(views=lambda h, v: NoViews(), extension=factory)
+        return rig.components(views=lambda h, v: NoViews(), extension=factory,
+                              channels=channels)
 
     def read_text(self, **options) -> tuple[GraceEngine, str]:
         rig = Rig(self, json.loads(json.dumps(SLOT_SCRIPT)))
@@ -204,6 +349,49 @@ class SlotTableTest(unittest.TestCase):
         _, text = self.read_text(guard=False)
         self.assertIn("person.location = Hamburg", text)
         self.assertNotIn("person.location = Berlin", text)
+
+    def test_time_factor_where_did_i_live_in_2021(self):
+        from tests.integration.writer_fixture import message
+        messages = [message("t027-hist", 1, "user", "I have lived in Lisbon since 2019.",
+                            timestamp="2021-06-01T10:00:00"),
+                    message("t027-hist", 2, "user", "I moved to Porto in March 2022.",
+                            timestamp="2022-04-01T10:00:00")]
+        texts = {}
+        for time in ("bitemporal", "single"):
+            rig = Rig(self, json.loads(json.dumps(HISTORY_SCRIPT)))
+            rig.messages, rig.info = messages, history_info("t027-hist", messages)
+            rig.planner = WindowPlanner()
+            # Graph channel only: the raw messages would otherwise cover the same evidence and
+            # the assembler skips an item that adds no new message.
+            engine = GraceEngine(self.build(rig, channels=("graph",), time=time))
+            engine.open(rig.info)
+            for m in messages:
+                engine.write(m)
+            task = api.ReadTask("fixture", "dev", "t027-hist", "q@2", "q", 2, "question",
+                                "Where did I live in 2021?", None, None, None)
+            texts[time] = engine.read(task, 1024).context.text
+        self.assertIn("person.location = Lisbon", texts["bitemporal"])
+        self.assertNotIn("person.location = Porto", texts["bitemporal"])  # outside the window
+        self.assertNotIn("person.location = Lisbon", texts["single"])     # no past state
+        self.assertIn("person.location = Porto", texts["single"])
+
+    def test_adapter_records_real_statuses_and_restore_checks_the_arm(self):
+        rig = Rig(self, ["not json"])
+        memory = registry.load_component("slot-table")(writer=rig.writer,
+                                                       client=rig.client)(rig.info)
+        from grace.context.pipeline.update.candidates import Candidates
+        from grace.context.pipeline.update.extract import WriterInput
+        request = WriterInput(CITY, (rig.messages[0],), (), Candidates((), (), ()), ("user",))
+        extraction = memory.extractor(None).extract(request)
+        self.assertEqual((extraction.status, extraction.statuses),
+                         ("invalid_output", ("invalid_output",)))
+        directory = rig.tmp / "slots"
+        memory.save(directory)
+        memory.restore(directory)  # same arm
+        other = registry.load_component("slot-table")(writer=rig.writer, client=rig.client,
+                                                      guard=False)(rig.info)
+        with self.assertRaises(ValueError):
+            other.restore(directory)
 
     def test_no_look_ahead_and_save_restore(self):
         rig = Rig(self, json.loads(json.dumps(SLOT_SCRIPT)))

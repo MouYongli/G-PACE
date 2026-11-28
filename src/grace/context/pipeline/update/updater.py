@@ -283,6 +283,7 @@ class Updater:
                                           self.config.unknown_predicates)
         self.guard = Guard(enabled=self.config.guard)
         self.deferred = deferred  # None: supersessions are committed at write (main config)
+        self._notes: list[tuple] = []  # guard inputs of the change set being built (deferred)
         self.segmenter = Segmenter(self.config.granularity, history)
         self.failures: Counter = Counter()      # first version of a unit -> failed extractions
         self.entity_labels: dict[str, str] = {}  # entity ID -> surface name it was made from
@@ -465,6 +466,7 @@ class Updater:
         version = message.version
         state = self._state()
         builder = ChangeSetBuilder(self.history.history_id, version, label)
+        self._notes = []
         claims, stances, aliases = resolution.for_message(version)
         attributed: set[tuple] = set()
         new_here: set[str] = set()
@@ -495,8 +497,7 @@ class Updater:
             decision = self.guard.replacement(state, claim, a, exclusive=rc.exclusive,
                                               correction=rc.correction, pending=pending)
             if self.deferred is not None:
-                self.deferred.note_claim(claim.claim_id, exclusive=rc.exclusive,
-                                         correction=rc.correction)
+                self._notes.append(("claim", claim.claim_id, rc.exclusive, rc.correction))
             for s in decision.supersede:
                 if self.deferred is None:
                     builder.supersession(s.claim_id, s.kind, s.valid_end, s.replacing_claim_id,
@@ -520,12 +521,27 @@ class Updater:
                 builder.label(entity, self.entity_labels[entity])
         cs, error = commit_version(self.store, builder, validate=self.config.shacl)
         result.changesets.append(cs)
+        self._record_notes(cs)
         if error is not None:
             result.commit_errors.append({"version": version, "error": error})
             lost = {c.claim_id for c in builder.claims}
             for local, cid in list(local_ids.items()):
                 if cid in lost:
                     del local_ids[local]
+
+    def _record_notes(self, cs: ChangeSet | None) -> None:
+        """Deferred mode: log the guard inputs of the entries the store actually committed, so
+        that a rejected change set leaves no hint behind (and a retry cannot meet one)."""
+        notes, self._notes = self._notes, []
+        if self.deferred is None or cs is None:
+            return
+        claims = {c.claim_id for c in cs.claims}
+        attributions = {a.attribution_id for a in cs.attributions}
+        for kind, entry, x, y in notes:
+            if kind == "claim" and entry in claims:
+                self.deferred.note_claim(entry, exclusive=x, correction=y)
+            elif kind == "ending" and entry in attributions:
+                self.deferred.note_ending(entry, x, y)
 
     def _find_current(self, rc: ResolvedClaim, state: GraphState, pending: Pending,
                       reps: Mapping[str, str]) -> Claim | None:
@@ -589,7 +605,7 @@ class Updater:
                                              rs.message.message_id)
         builder.evidence_link(claim_id, rs.message.message_id, rs.span)
         if rs.ends is not None and self.deferred is not None:
-            self.deferred.note_ending(a.attribution_id, rs.ends, rs.valid_end)
+            self._notes.append(("ending", a.attribution_id, rs.ends, rs.valid_end))
         if rs.ends is not None:
             current = claim_id not in pending.superseded and (
                 claim_id not in state.claims or state.is_current(claim_id))
