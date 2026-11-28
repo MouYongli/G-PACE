@@ -21,7 +21,9 @@ The five requirements of structure.md, "What the interface must support":
    same path.
 4. Under segment extraction, when a read falls inside a segment, the engine first extracts the part
    that has arrived. This happens inside `read`; its calls are write cost (`W`, trigger `read`).
-5. Every write and read returns a trace (`WriteTrace`, `ReadTrace`).
+5. Every write and read returns a trace (`WriteTrace`, `ReadTrace`). Write-side work done
+   inside a read (requirement 4) or at the end of the history (`finish`) returns write results
+   too, so every committed version reaches the change-set and write-trace files.
 
 This module imports nothing else from `context/` (structure.md, "Inside context/").
 """
@@ -42,6 +44,7 @@ FRAGMENT_KINDS = frozenset({"message", "view", "claim", "summary", "retrieved", 
 STALE_LEVELS = frozenset({"answer", "citation", "unknown"})
 STALENESS_DECISIONS = frozenset({"fresh", "answer_stale", "citation_stale"})
 STALENESS_ACTIONS = frozenset({"reuse", "patch", "rebuild"})
+WRITE_TRIGGERS = frozenset({"write", "read", "finish"})
 
 
 class RecordError(ValueError):
@@ -340,7 +343,10 @@ class StalenessDecision:
 
 @dataclass(frozen=True)
 class WriteTrace:
-    """What one committed write (a message, or a segment flushed by it) did."""
+    """What one write-side step did: a message written (`trigger` write), a unit flushed before
+    a read (`read`), or the units extracted at the end of the history (`finish`). `version` is
+    the version written or the last version the step committed; `message_ids` the messages it
+    covered."""
 
     history_id: str
     version: int
@@ -348,12 +354,18 @@ class WriteTrace:
     call_ids: tuple[str, ...] = ()
     stale_marks: tuple[StaleMark, ...] = ()
     timings_ms: Mapping[str, float] = field(default_factory=dict)
+    trigger: str = "write"
+
+    def __post_init__(self) -> None:
+        if self.trigger not in WRITE_TRIGGERS:
+            raise RecordError(f"WriteTrace.trigger: {self.trigger!r} not in "
+                              f"{sorted(WRITE_TRIGGERS)}")
 
     def to_record(self) -> dict[str, Any]:
         return {"history_id": self.history_id, "version": self.version,
                 "message_ids": list(self.message_ids), "call_ids": list(self.call_ids),
                 "stale_marks": [m.to_record() for m in self.stale_marks],
-                "timings_ms": dict(self.timings_ms)}
+                "timings_ms": dict(self.timings_ms), "trigger": self.trigger}
 
 
 @dataclass(frozen=True)
@@ -395,19 +407,39 @@ class ReadTrace:
 
 @dataclass(frozen=True)
 class WriteResult:
-    """Return value of `write`. `changeset` is the serialised change set of the committed version
-    (format owned by `context/memory/graph/changeset.py`), or None for engines without a graph."""
+    """Return value of `write` and `finish`, and of the flush inside `read` (`ReadResult.writes`).
+
+    `changesets` are the serialised change sets of every version this step committed, in version
+    order (format owned by `context/memory/graph/changeset.py`; several when a unit of several
+    messages is committed at once); empty for engines without a graph. `changeset`, the old single
+    field, is the last of them; passing only `changeset` sets `changesets` to it.
+    """
 
     trace: WriteTrace
     changeset: Mapping[str, Any] | None = None
+    changesets: tuple[Mapping[str, Any], ...] = ()
+
+    def __post_init__(self) -> None:
+        changesets = tuple(self.changesets)
+        if not changesets and self.changeset is not None:
+            changesets = (self.changeset,)
+        object.__setattr__(self, "changesets", changesets)
+        if changesets and self.changeset is None:
+            object.__setattr__(self, "changeset", changesets[-1])
+        elif changesets and self.changeset is not changesets[-1] \
+                and self.changeset != changesets[-1]:
+            raise RecordError("WriteResult.changeset must be the last of `changesets`")
 
 
 @dataclass(frozen=True)
 class ReadResult:
-    """Return value of `read` and `further_retrieval`."""
+    """Return value of `read` and `further_retrieval`. `writes` are the write-side steps the read
+    ran first (a unit flushed before the read, trigger `read`); the harness records them like
+    writes (their change sets and write traces), booked to write cost W."""
 
     context: WorkingContext
     trace: ReadTrace
+    writes: tuple[WriteResult, ...] = ()
 
 
 def read_trace(context: WorkingContext, *, candidates: Sequence[Candidate] = (),
@@ -443,7 +475,8 @@ class ContextEngine(abc.ABC):
     2. `write(message)` for versions 1, 2, ... in order; each call commits one version.
     3. Between writes, any number of reads at the current version: `read(task, budget)`,
        optionally one `further_retrieval(task, request, budget)`, then `end_read(task)`.
-    4. `save(directory)` at any point between operations.
+    4. `finish()` once after the last message (end of the history); its steps are writes.
+    5. `save(directory)` at any point between operations.
 
     Engines that call a model receive their client when they are constructed and tag each call
     with its ledger category (contracts.md, "Cost ledger"); the call IDs go into the traces.
@@ -478,6 +511,12 @@ class ContextEngine(abc.ABC):
 
     def end_read(self, task: ReadTask) -> None:  # noqa: B027 (optional hook, empty by default)
         """Discard the temporary artefacts of `task`. Resident state is kept."""
+
+    def finish(self) -> tuple[WriteResult, ...]:
+        """End of the history: called by the harness once after the last message (and the reads
+        at its version). An engine with pending write-side work (an open extraction unit)
+        completes it here and returns its steps (trigger `finish`); the default does nothing."""
+        return ()
 
     @abc.abstractmethod
     def save(self, directory: Path) -> list[Path]:

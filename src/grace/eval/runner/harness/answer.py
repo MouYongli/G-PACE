@@ -101,6 +101,7 @@ class Answered:
     trace: api.ReadTrace
     dropped_citations: list[str]
     retrieve_refused: bool = False
+    writes: tuple[api.WriteResult, ...] = ()  # write-side steps the read ran first (flush)
 
 
 def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
@@ -111,7 +112,7 @@ def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
     `asked_at` is the current date when the task has none (the time of the last visible message);
     `max_tokens` caps each answering call (budgets.yaml, `answer.output_reserve_tokens`)."""
     result = engine.read(task, budget)
-    context, trace = result.context, result.trace
+    context, trace, writes = result.context, result.trace, tuple(result.writes)
     tag = CallTag("answer", "read", task.history_id, task.version, task.read_id)
     call_ids = list(trace.call_ids)
 
@@ -133,15 +134,16 @@ def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
         reply = ask(final_context_text(first_context, context), final=True)
     trace = api.ReadTrace(**{**trace.__dict__, "call_ids": tuple(dict.fromkeys(call_ids))})
     if not reply.ok:
-        return Answered("invalid", None, [], reply.text, context, trace, [])
+        return Answered("invalid", None, [], reply.text, context, trace, [], writes=writes)
     if refused:
-        return Answered("unknown", None, [], reply.text, context, trace, [], True)
+        return Answered("unknown", None, [], reply.text, context, trace, [], True,
+                        writes=writes)
     parsed: Reply = reply.parsed
     cited = [c for c in dict.fromkeys(parsed.cited_ids) if c in visible_ids]
     dropped = [c for c in parsed.cited_ids if c not in visible_ids]
     value = parsed.value if parsed.output in ("answer", "state") else None
     return Answered(parsed.output, value, cited if value is not None else [], reply.text,
-                    context, trace, dropped)
+                    context, trace, dropped, writes=writes)
 
 
 def is_answer_call(messages) -> bool:

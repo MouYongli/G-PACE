@@ -64,9 +64,11 @@ class RunWriter:
         self.counts[name] += 1
 
     def write(self, result: api.WriteResult) -> None:
+        """One write-side step: its write trace and the change set of every version it
+        committed (a write, a flush inside a read, or the end of the history)."""
         self._append("traces/write.jsonl", result.trace.to_record())
-        if result.changeset is not None:
-            self._append("changesets.jsonl", dict(result.changeset))
+        for changeset in result.changesets:
+            self._append("changesets.jsonl", dict(changeset))
 
     def read(self, prediction: Prediction, context: api.WorkingContext,
              trace: api.ReadTrace) -> None:
