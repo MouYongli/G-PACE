@@ -119,6 +119,8 @@ def cs_config(config: Mapping[str, Any]) -> BenchmarkConfig:
 
 
 def shard(items: Sequence[str], spec: str | None) -> list[str]:
+    """Every n-th item from the i-th; `items` must be in a fixed order (sorted) in every process,
+    or shards of one arm overlap."""
     if not spec:
         return list(items)
     i, n = (int(x) for x in spec.split("/"))
@@ -150,7 +152,7 @@ def cmd_system(args, config: Mapping[str, Any], command: str) -> int:
                                   **common)
     else:
         bc = cs_config(config)
-        histories = shard(list(bc.splits[spec["split"]].histories), args.shard)
+        histories = shard(sorted(bc.splits[spec["split"]].histories), args.shard)
         result = drive.run_system(benchmark="change-seq", schedule=spec.get("schedule"),
                                   history_ids=histories, benchmark_config=bc, **common)
     print(f"{result.run_id}: {result.status} ({result.n_reads} reads, arm {args.arm}"
