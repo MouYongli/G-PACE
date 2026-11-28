@@ -58,6 +58,9 @@ class ClientModel:
         if max_attempts < 1:
             raise ValueError("max_attempts >= 1")
         self.client, self.counter, self.embedder = client, counter, embedder
+        # GRACE's writer client when the engine config names its own writer model
+        # (`writer_model`, E007 main configuration); None: the writer uses `client`.
+        self.writer_client: ChatClient | None = None
         self.decoding = dict(decoding or {})
         self.max_attempts = max_attempts
         self.observed: list[str] = []  # every text sent to a model (inputs seen by models)
@@ -144,6 +147,10 @@ class EngineLLMModel:
     @property
     def decoding(self):
         return self.llm.decoding
+
+    @property
+    def writer_client(self):
+        return getattr(self.base, "writer_client", None)
 
     def observe(self, texts) -> None:
         self.llm.observe(texts)

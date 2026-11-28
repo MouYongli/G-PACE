@@ -5,6 +5,8 @@
 engine: grace
 description: GRACE backbone, append-only, conflicts resolved at query time, no views
 prefix_caching: false
+# Same writer as the main configuration (configs/engines/grace.yaml): Qwen3-32B at --writer-url.
+writer_model: configs/models/qwen3-32b.yaml
 params:
   writer: configs/common/writer.yaml
   planner: configs/common/planner.yaml
