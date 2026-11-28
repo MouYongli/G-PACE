@@ -649,11 +649,11 @@ nodes:
     type: experiment
     title: "Ablation B: attribution guard, representation, time"
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T026, T027, T028, T015]
-    issue: null
-    owner: null
-    start: null
+    issue: 166
+    owner: w01-E011
+    start: 2026-11-28
     finish: null
     file: ../experiments/E011-ablation-b-attribution-guard.md
   - id: E012
