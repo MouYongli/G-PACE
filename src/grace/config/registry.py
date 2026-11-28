@@ -18,6 +18,21 @@ ENGINES: dict[str, str] = {
 }
 
 
+# Replacement components of GRACE variants (T027), named in an engine config's `components`
+# param and built by `GraceEngine.from_port`; each value is a factory (see context/engine.py).
+COMPONENTS: dict[str, str] = {
+    "serialised-views": "grace.context.views.serialise:serialised_views",
+    "query-time-resolution": "grace.context.pipeline.update.deferred:query_time_resolution",
+    "slot-table": "grace.context.pipeline.update.slots:slot_table",
+}
+
+
+def load_component(name: str) -> Any:
+    """The component factory registered under `name`; KeyError for an unknown name."""
+    module, _, attr = COMPONENTS[name].partition(":")
+    return getattr(importlib.import_module(module), attr)
+
+
 def load_engine(kind: str) -> Any:
     """The class registered for `kind`; KeyError for an unknown kind."""
     module, _, name = ENGINES[kind].partition(":")

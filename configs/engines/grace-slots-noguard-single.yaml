@@ -1,0 +1,24 @@
+# Ablation B, representation arm "fixed slot table" inside the GRACE assembly (plan 7.3, B; T027):
+# guard off, time single. The slot writer (pipeline/update/slots.py, prompt
+# extract-slots-attributed) fills the slot table (memory/graph/slots.py) at the writer's
+# granularity; the claim graph stays empty, so the planner and the graph channel find nothing and
+# the current slot values are offered to the assembler as state items, next to BM25 and dense
+# retrieval. Inventory and functions: configs/engines/slot-table.yaml (shared with the pilot slot
+# table); exclusive slots: the development placeholder DEFAULT_EXCLUSIVE of memory/graph/slots.py.
+engine: grace
+description: GRACE assembly over the fixed slot table (guard false, time single)
+prefix_caching: false
+params:
+  writer: configs/common/writer.yaml
+  planner: configs/common/planner.yaml
+  retrieval: configs/retrieval/default.yaml
+  assembly: configs/assembly/default.yaml
+  views: null
+  staleness: {strategy: push_confirm, local_filters: true}   # unused: no views
+  fragment: {max_predicates: 30, max_entities: 30}
+  components:
+    extension: {factory: slot-table, guard: false, time: single}
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B

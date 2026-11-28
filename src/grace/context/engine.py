@@ -47,6 +47,15 @@ Config params (`configs/engines/grace.yaml`): `writer`, `planner`, `retrieval`, 
 view component), `staleness` (strategy name and options of `views/staleness/`), `fragment`
 (sizes of the vocabulary fragment shown to the planner).
 
+Variants (T027). A config may replace components by name through `components` (resolved
+lazily by `config/registry.py`, so this module imports no variant): `views` replaces the view
+component factory (`views/serialise.py`, template serialisation), `extension` adds a per-history
+extension (`Extension` below gives the interface and the defaults that change nothing): the
+updater's `deferred` resolution log (`pipeline/update/deferred.py`, query-time resolution), the
+extractor (`pipeline/update/slots.py`, the slot table of ablation B), the graph a read queries,
+extra state facts for the assembler, and its own save and restore. Each factory is called with
+the writer config, the chat client and the view config, plus its options from the config.
+
 Traces. Every read returns `ReadTrace` with the fused candidates, the evidence shown, view hits,
 staleness decisions, every call ID (flush, planner, view maintenance, embeddings), `utilisation`,
 `expansions_used` and `retrieval_used`; `last_assembly` keeps the full assembly record of the
@@ -65,6 +74,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from grace.config import registry
 from grace.config.paths import REPO_ROOT
 from grace.context import api
 from grace.context.memory.graph.entries import Entity
@@ -233,6 +243,34 @@ class NoViews:
         pass
 
 
+class Extension:
+    """Per-history hooks of a variant; these defaults leave GRACE unchanged. A variant's
+    extension (registered in `config/registry.py`) provides the same attributes."""
+
+    deferred = None  # a `deferred.ResolutionLog`: the updater commits no supersession
+
+    def extractor(self, default: Extractor) -> Extractor:
+        return default
+
+    def read_graph(self, store: ClaimStore, version: int) -> ClaimStore:
+        """The graph the read path queries at `version` (default: the stored graph)."""
+        return store
+
+    def state_facts(self, task: api.ReadTask, request: str) -> list:
+        """Extra state items: objects with `item_id`, `text`, `evidence_ids`, `version`, `valid`."""
+        return []
+
+    def save(self, directory: Path) -> list[Path]:
+        return []
+
+    def restore(self, directory: Path) -> None:
+        pass
+
+
+def _no_extension(history: api.HistoryInfo) -> Extension:
+    return Extension()
+
+
 @dataclass
 class Components:
     """Everything GraceEngine composes; `views(history, vocabulary)` builds the view component
@@ -249,6 +287,7 @@ class Components:
     embed: Embed | None = None
     counter_name: str = "unnamed"
     no_client: bool = False  # built without a chat client (dry run; see `from_port`)
+    extension: Callable[[api.HistoryInfo], Any] = _no_extension
 
 
 # ---------------------------------------------------------------------------------------------
@@ -265,6 +304,7 @@ class _ReadState:
     hits: list[str]
     constraints: Constraints
     assembly: Assembly
+    graph: ClaimStore
 
 
 class GraceEngine(api.ContextEngine):
@@ -282,6 +322,7 @@ class GraceEngine(api.ContextEngine):
                               components.retrieval.bm25.get("b", 0.75))
         self.dense = DenseIndex() if self._dense_on() else None
         self.views: Views | NoViews | None = None
+        self.extension: Any = None
         self._reads: dict[str, _ReadState] = {}
         self.last_assembly: Assembly | None = None
 
@@ -329,6 +370,7 @@ class GraceEngine(api.ContextEngine):
                   views: str | None = "configs/views/default.yaml",
                   staleness: Mapping[str, Any] | None = None,
                   fragment: Mapping[str, int] | None = None,
+                  components: Mapping[str, Mapping[str, Any]] | None = None,
                   allow_no_client: bool = False) -> GraceEngine:
         """Build from the harness's model port and the params of an engine config.
 
@@ -361,6 +403,19 @@ class GraceEngine(api.ContextEngine):
                 return NullExtractor()
             return llm_writer(writer_config, client, history)
 
+        extension = _no_extension
+        for slot, spec in (components or {}).items():
+            spec = dict(spec)
+            factory = registry.load_component(spec.pop("factory"))
+            built = factory(writer=writer_config, client=client, view_config=view_config,
+                            **spec)
+            if slot == "views":
+                make_views = built
+            elif slot == "extension":
+                extension = built
+            else:
+                raise ValueError(f"unknown component slot {slot!r}; expected views or extension")
+
         embed = None
         if hasattr(model, "embed"):
             def embed(texts, trigger, history_id, version, read_id):
@@ -374,7 +429,7 @@ class GraceEngine(api.ContextEngine):
             assembly=AssemblyConfig.load(REPO_ROOT / assembly), views=make_views,
             writer=writer_config, fragment=VocabularyFragment(**dict(fragment or {})),
             embed=embed, counter_name=getattr(model, "model", "model port"),
-            no_client=no_client))
+            no_client=no_client, extension=extension))
 
     # -- life cycle ----------------------------------------------------------------------------
 
@@ -384,9 +439,15 @@ class GraceEngine(api.ContextEngine):
         self.history = history
         self.log = MessageLog(history.history_id)
         self.store = ClaimStore(history.history_id)
-        self.updater = Updater(history, self.log, self.store, self.c.extractor(history),
-                               self.c.writer, vocabulary=load_vocabulary())
+        self.extension = self.c.extension(history)
+        self._make_updater(history)
         self.views = self.c.views(history, self.updater.vocabulary.current)
+
+    def _make_updater(self, history: api.HistoryInfo) -> None:
+        self.updater = Updater(history, self.log, self.store,
+                               self.extension.extractor(self.c.extractor(history)),
+                               self.c.writer, vocabulary=load_vocabulary(),
+                               deferred=self.extension.deferred)
 
     @property
     def version(self) -> int:
@@ -425,15 +486,17 @@ class GraceEngine(api.ContextEngine):
         timings["flush"] = (time.perf_counter() - start) * 1000
 
         t = time.perf_counter()
+        graph = self.extension.read_graph(self.store, task.version)
         request = _request(task)
-        plan, result = self._plan(task, request)
+        plan, result = self._plan(task, request, graph)
         call_ids += list(plan.call_ids)
         timings["query"] = (time.perf_counter() - t) * 1000
 
         t = time.perf_counter()
-        decisions, view_calls = self.views.on_read(self.store, task.version, task.read_id)
+        decisions, view_calls = self.views.on_read(graph, task.version, task.read_id)
         call_ids += view_calls
-        state_items, hits = self._state_items(task, plan, result)
+        state_items, hits = self._state_items(task, plan, result, graph)
+        state_items += self._facts(task, request, len(state_items) + 1)
         timings["views"] = (time.perf_counter() - t) * 1000
 
         t = time.perf_counter()
@@ -449,9 +512,9 @@ class GraceEngine(api.ContextEngine):
         assembler = self._assembler()
         assembly = assembler.assemble(task, demand, items, budget_tokens, constraints)
         if assembly.pending is not None:
-            extra_plan, extra_result = self._plan(task, assembly.pending.query)
+            extra_plan, extra_result = self._plan(task, assembly.pending.query, graph)
             call_ids += list(extra_plan.call_ids)
-            more_state, _ = self._state_items(task, extra_plan, extra_result, prefix="x")
+            more_state, _ = self._state_items(task, extra_plan, extra_result, graph, prefix="x")
             more_text, more_cands, more_calls = self._retrieve(
                 task, assembly.pending.query, extra_result, len(items) + len(more_state) + 1)
             call_ids += more_calls
@@ -462,7 +525,7 @@ class GraceEngine(api.ContextEngine):
                                           retrieval_used=True)
         timings["assembly"] = (time.perf_counter() - t) * 1000
         self._reads[task.read_id] = _ReadState(plan, items, candidates, call_ids, decisions,
-                                               hits, constraints, assembly)
+                                               hits, constraints, assembly, graph)
         return self._result(task, assembly, candidates, call_ids, decisions, hits, timings,
                             further=False)
 
@@ -479,9 +542,10 @@ class GraceEngine(api.ContextEngine):
                                 state.decisions, state.hits, {}, further=True)
         start = time.perf_counter()
         call_ids: list[str] = []  # only the calls of this step; the read's are in its trace
-        extra_plan, extra_result = self._plan(task, request)
+        extra_plan, extra_result = self._plan(task, request, state.graph)
         call_ids += list(extra_plan.call_ids)
-        more_state, _ = self._state_items(task, extra_plan, extra_result, prefix="r")
+        more_state, _ = self._state_items(task, extra_plan, extra_result, state.graph,
+                                          prefix="r")
         more_text, more_cands, more_calls = self._retrieve(task, request, extra_result, 1)
         call_ids += more_calls
         items = more_state + more_text + [i for i in state.items if i.item_id not in
@@ -502,6 +566,7 @@ class GraceEngine(api.ContextEngine):
         files = [self.log.save(directory / "log"), *self.store.save(directory / "store"),
                  self.updater.save(directory / "writer")]
         files += self.views.save(directory / "views")
+        files += self.extension.save(directory / "extension")
         if self.dense is not None:
             path = directory / "dense.json"
             path.write_text(json.dumps({"chunks": [c.chunk_id for c in self.dense.chunks],
@@ -523,8 +588,10 @@ class GraceEngine(api.ContextEngine):
         self.history = history
         self.log = MessageLog.restore(directory / "log", history.history_id)
         self.store = ClaimStore.restore(directory / "store")
-        self.updater = Updater(history, self.log, self.store, self.c.extractor(history),
-                               self.c.writer, vocabulary=load_vocabulary())
+        self.extension = self.c.extension(history)
+        if (directory / "extension").exists():
+            self.extension.restore(directory / "extension")
+        self._make_updater(history)
         self.updater.restore_state(directory / "writer")
         self.views = self.c.views(history, self.updater.vocabulary.current)
         if (directory / "views").exists():
@@ -570,7 +637,7 @@ class GraceEngine(api.ContextEngine):
                 last = changeset
         return marks, calls, (last.to_record() if last is not None else None)
 
-    def _plan(self, task: api.ReadTask, request: str):
+    def _plan(self, task: api.ReadTask, request: str, graph: ClaimStore):
         last = None
         for m in reversed(self.log.messages(task.version)):
             when = _message_time(m, self.history)
@@ -578,14 +645,20 @@ class GraceEngine(api.ContextEngine):
                 last = when[:10]
                 break
         predicates, entities, speakers = self.c.fragment.select(
-            request, self.store, task.version, self._exclusive)
+            request, graph, task.version, self._exclusive)
         ctx = PlanningContext(task.history_id, task.read_id, task.version, request,
                               task.asked_at[:10] if task.asked_at else last, predicates,
                               entities, speakers, task.kind)
         plan = self.c.planner.plan(ctx)
-        return run_plan(plan, self.store, task.version, self._version_date)
+        return run_plan(plan, graph, task.version, self._version_date)
 
-    def _state_items(self, task, plan: Plan, result, prefix: str = "q"
+    def _facts(self, task: api.ReadTask, request: str, rank_start: int) -> list[Item]:
+        """State facts of the extension (e.g. slot values) as state items."""
+        return [Item(f.item_id, "claim", f.text, tuple(f.evidence_ids), version=f.version,
+                     valid=f.valid, rank=rank_start + i)
+                for i, f in enumerate(self.extension.state_facts(task, request))]
+
+    def _state_items(self, task, plan: Plan, result, graph: ClaimStore, prefix: str = "q"
                      ) -> tuple[list[Item], list[str]]:
         view = self.views.hit(plan)
         if view is not None:
@@ -596,7 +669,7 @@ class GraceEngine(api.ContextEngine):
             return items, [view.view_id]
         if result is None:
             return [], []
-        state = self.store.state(task.version)
+        state = graph.state(task.version)
         versions = {m.message_id: m.version for m in self.log.messages(task.version)}
 
         def stamp(entry: str) -> int | None:
@@ -735,4 +808,4 @@ def _constraints(task: api.ReadTask, plan: Plan) -> Constraints:
     return Constraints(version=task.version, valid=window, current_only=current)
 
 
-__all__ = ["Components", "GraceEngine", "NoViews", "Views", "VocabularyFragment"]
+__all__ = ["Components", "Extension", "GraceEngine", "NoViews", "Views", "VocabularyFragment"]

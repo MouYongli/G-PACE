@@ -1,0 +1,21 @@
+# GRACE's template-serialisation variant (plan 7.2; ablation C template arm; T027): the plan's
+# query re-run at every read, its result filled into the fixed sentence patterns of the template
+# families, no LLM rendering, no stored views, no staleness maintenance. Same as grace.yaml except
+# the view component (components.views: views/serialise.py, through config/registry.py).
+engine: grace
+description: GRACE, template serialisation at every read (no rendering, no caching)
+prefix_caching: false
+params:
+  writer: configs/common/writer.yaml
+  planner: configs/common/planner.yaml
+  retrieval: configs/retrieval/default.yaml
+  assembly: configs/assembly/default.yaml
+  views: configs/views/default.yaml           # families, thresholds and speakers of the templates
+  staleness: {strategy: push_confirm, local_filters: true}   # unused: no resident views
+  fragment: {max_predicates: 30, max_entities: 30}
+  components:
+    views: {factory: serialised-views}
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B
