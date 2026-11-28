@@ -516,12 +516,12 @@ nodes:
     type: experiment
     title: "Ablation G: writer scale, thinking, granularity"
     milestone: M3
-    status: active
+    status: done
     depends_on: [T022, T024, D006]
     issue: 141
     owner: w01-E007
     start: 2026-11-28
-    finish: null
+    finish: 2026-11-28
     file: ../experiments/E007-ablation-g-writer.md
   - id: E008
     type: experiment
@@ -671,11 +671,11 @@ nodes:
     type: experiment
     title: "Ablation E: assembly"
     milestone: M4
-    status: planned
+    status: active
     depends_on: [T026]
-    issue: null
-    owner: null
-    start: null
+    issue: 160
+    owner: w01-E013
+    start: 2026-11-28
     finish: null
     file: ../experiments/E013-ablation-e-assembly.md
   - id: E014
