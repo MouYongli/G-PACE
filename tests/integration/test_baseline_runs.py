@@ -83,7 +83,7 @@ class BaselineRunsTest(unittest.TestCase):
             self.assertTrue(set(w["call_ids"]) <= call_ids)
 
     def test_every_baseline_on_every_fixture(self):
-        self.assertEqual(len(ALL_ENGINES), 14)  # with graphiti-native, rrf-tagged, grace
+        self.assertEqual(len(ALL_ENGINES), 20)  # + graphiti-native, rrf-tagged, grace, variants
         for config in ENGINES:
             for benchmark in sorted(p.name for p in BENCHMARKS.iterdir()):
                 for budget in (None, 24):
