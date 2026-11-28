@@ -94,6 +94,9 @@ class SerialisedViews:
             return view
         return None
 
+    def present(self, plan, result, graph, version, read_id, message):
+        return None  # query answers keep the engine's default lines
+
     def save(self, directory: Path) -> list[Path]:
         return []
 

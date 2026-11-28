@@ -39,16 +39,20 @@ HEADINGS = {"recent": "Recent messages:", "state": "Verified state:", "evidence"
 SEPARATOR = "\n"
 
 
-def line(item: Item) -> str:
-    """The serialised line of one item: citation, optional time, text."""
-    cite = "[" + ", ".join(item.citations) + "]" if item.citations else f"[{item.item_id}]"
+def line(item: Item, state_citations: bool = True) -> str:
+    """The serialised line of one item: citation, optional time, text. With `state_citations`
+    False (ablation C, no source annotation) an item of the state section is shown as its text
+    alone, without the message IDs it cites; its fragment still records them."""
     stamp = f" ({item.timestamp})" if item.timestamp else ""
+    if not state_citations and item.layout_section == "state":
+        return f"{stamp.strip()} {item.text}".strip()
+    cite = "[" + ", ".join(item.citations) + "]" if item.citations else f"[{item.item_id}]"
     return f"{cite}{stamp} {item.text}"
 
 
-def item_cost(item: Item, count: Callable[[str], int]) -> int:
+def item_cost(item: Item, count: Callable[[str], int], state_citations: bool = True) -> int:
     """Token estimate of one item inside a context: its line plus the line break."""
-    return count(line(item) + SEPARATOR)
+    return count(line(item, state_citations) + SEPARATOR)
 
 
 def open_line(variable: Variable) -> str:
@@ -69,7 +73,8 @@ class Serialised:
     lines: tuple[str, ...]   # the line of each item in `items`
 
 
-def serialise(items: Sequence[Item], open_variables: Sequence[Variable] = ()) -> Serialised:
+def serialise(items: Sequence[Item], open_variables: Sequence[Variable] = (),
+              state_citations: bool = True) -> Serialised:
     """The context text of the selected `items` and the still open variables."""
     parts: list[str] = []
     shown: list[Item] = []
@@ -80,7 +85,7 @@ def serialise(items: Sequence[Item], open_variables: Sequence[Variable] = ()) ->
             continue
         parts.append(HEADINGS[section])
         for item in members:
-            text = line(item)
+            text = line(item, state_citations)
             parts.append(text)
             shown.append(item)
             lines.append(text)

@@ -1,0 +1,146 @@
+# E010 · Ablation C on extracted graphs (plan 4.2 RQ3, 5.4, 7.3 ablation C; experiment file
+# docs/work/experiments/E010-ablation-c-extracted.md). Driver: `uv run python -m
+# grace.cli.ablation_c_extracted` (subcommands `read`, `system`, `score`, `compare`).
+# Written before the first formal run; later changes are logged in the experiment file.
+# Development data only (no held-out split before the T033 preregistration tag).
+experiment: E010
+seed: 0                       # decoding seed of every model call (temperature 0)
+
+# Main configuration (E007 + E013 decisions): writer Qwen3-32B (session units) at --writer-url;
+# planner, view rendering, view rewriting and answering Qwen3-8B at --base-url; dense embeddings
+# Qwen3-Embedding-0.6B at --embed-url. All three servers are shared (reserved by s00-super).
+models:
+  answer: configs/models/qwen3-8b.yaml
+  writer: configs/models/qwen3-32b.yaml
+
+# One changed factor per arm: the content source of the state lines (the plan's query answers,
+# from a resident-equivalent view hit or a temporary view) x their source annotation. Every view
+# arm is GRACE's main configuration with the view slot replaced by a read-time content source
+# (src/grace/context/views/readtime.py), so the arms share one write side: on LoCoMo they read
+# the snapshot of one shared ingest run; on the controlled sequences each arm is a system run
+# (per-turn reading interleaves writes and reads; contracts.md, "Stages and upstream runs").
+# Resident views maintained at write time with LLM rendering are not an arm: they would need
+# their own ingest per arm, and at read time they hold the same rows as the read-time view of the
+# same binding (the hit rule is identical, see readtime.py).
+arms:
+  template-src: {engine: configs/experiments/E010/template-src.yaml}    # template serialisation
+  template-nosrc: {engine: configs/experiments/E010/template-nosrc.yaml}
+  llm-src: {engine: configs/experiments/E010/llm-src.yaml}              # LLM rendering of rows
+  llm-nosrc: {engine: configs/experiments/E010/llm-nosrc.yaml}
+  rewrite-src: {engine: configs/experiments/E010/rewrite-src.yaml}      # LLM rewriting, raw text
+  rewrite-nosrc: {engine: configs/experiments/E010/rewrite-nosrc.yaml}
+  raw: {engine: configs/engines/full-history.yaml}   # reference: newest messages that fit
+
+# Equal display budget (answering model's tokenizer; configs/common/budgets.yaml memory_levels).
+# 1024 is the level of the E013 reference on LoCoMo and the primary level of E005.
+budgets: [1024]
+primary_budget: 1024
+
+targets:
+  locomo:
+    benchmark: locomo
+    split: dev                # conv-26, conv-49; 308 end-of-history reads
+    schedule: null            # native schedule (end of history)
+    # Shared ingest run of the main configuration (state brief of 2026-11-28): every view arm is
+    # a read run on its snapshot; `raw` is a system run (a baseline has no GRACE read side).
+    ingest_run: runs/E006/artifacts/w02-E006/E006/E006-20261128T082608Z-21cb
+    # Main configuration read on the same snapshot at 1024 (E006), scored as a reference row.
+    reference_read_run: runs/E006/artifacts/w02-E006/E006/E006-20261128T083248Z-24b4
+    scorer: grace.cli.locomo_score   # registered f1 (categories 1-4) and f1-adversarial
+  change-seq:
+    benchmark: change-seq
+    split: dev
+    # Per-turn reading (system stage) with the main configuration's writer on the model-rendered
+    # development set of T015 (as E005), one sequence per family at density 10 (the primary
+    # schedule A20d1): 5 sequences, 334 reads. The 32B writer runs once per arm and sequence (about
+    # 30 extraction units per sequence), which bounds the set; writer output differs slightly
+    # between runs at temperature 0 (server batching), measured as graph agreement between arms.
+    histories:
+      - train-travel-rho10-L200-000
+      - flight-travel-rho10-L200-000
+      - car-rental-rho10-L200-000
+      - hotel-stay-rho10-L200-000
+      - apartment-search-rho10-L200-000
+    config:
+      benchmark: change-seq
+      version: dataset
+      data_root: runs/T015/artifacts/T015-devmodel-20261125T192037Z
+      manifest_sha256: 9b147185381de5982ad94560e27d8eb1b20e1d7c41347db6cc66a736355c515a
+      splits:
+        dev:
+          kind: development
+          rule: every sequence of the T015 model-rendered development set
+          counts: {histories: 25, messages: 5000, read_tasks: 1145, gold: 9422}
+          histories:
+            - train-travel-rho10-L200-000
+            - train-travel-rho10-L200-001
+            - flight-travel-rho10-L200-000
+            - flight-travel-rho10-L200-001
+            - car-rental-rho10-L200-000
+            - car-rental-rho10-L200-001
+            - hotel-stay-rho10-L200-000
+            - hotel-stay-rho10-L200-001
+            - apartment-search-rho10-L200-000
+            - apartment-search-rho10-L200-001
+            - train-travel-rho1-L200-000
+            - train-travel-rho3-L200-000
+            - train-travel-rho30-L200-000
+            - flight-travel-rho1-L200-000
+            - flight-travel-rho3-L200-000
+            - flight-travel-rho30-L200-000
+            - car-rental-rho1-L200-000
+            - car-rental-rho3-L200-000
+            - car-rental-rho30-L200-000
+            - hotel-stay-rho1-L200-000
+            - hotel-stay-rho3-L200-000
+            - hotel-stay-rho30-L200-000
+            - apartment-search-rho1-L200-000
+            - apartment-search-rho3-L200-000
+            - apartment-search-rho30-L200-000
+    population:               # as E005: state at the read version; historical descriptive
+      include_types: [changed, uniform, presupposition, abstention]
+      descriptive_types: [known_then, seen_from_now]
+    scoring:                  # configs/common/scorers.yaml change-seq set-match
+      metric: set-match
+      code: grace.eval.analysis.metrics.changeseq:set_match
+      direction: higher
+      annotation: generator
+      invalid_policy: count_as_wrong
+      strata: [question_type, template, change_type]
+
+metrics:
+  accuracy: {locomo: f1 (registered), change-seq: set-match}
+  # Accuracy on reads whose state changed since the previous read (change-seq question type
+  # `changed`): a read-time view is rebuilt at every read, so this is the correctness after
+  # rebuild of these arms.
+  after_rebuild: change-seq question_type changed
+  render_check: failed LLM sentences / checked, fallback units / units (views/presentations.jsonl)
+  wrong_citations:
+    - rewrite sources outside the messages given / sources named (views/presentations.jsonl)
+    - answer citations of messages not in the working context / answer citations (predictions)
+  rendering_cost: render calls, input and output tokens of the read's render calls (calls.jsonl)
+  view_hit_rate:
+    # plan 5.4: share of reads in which a resident(-equivalent) view supplied at least one piece
+    # of evidence that was used (a view hit shown in the context, read trace view_hits), and the
+    # share of reads served entirely by views (every fragment of the context is a view line).
+    - hit_any
+    - hit_only
+  state_lines: reads with at least one presented state line in the context
+
+comparison:
+  primary: [llm-src, template-src]          # the RQ3 premise on extracted graphs
+  secondary:
+    - [rewrite-src, template-src]
+    - [rewrite-src, llm-src]
+    - [template-src, template-nosrc]        # provenance, per source
+    - [llm-src, llm-nosrc]
+    - [rewrite-src, rewrite-nosrc]
+    - [template-src, raw]
+  bootstrap:
+    resamples: 10000
+    seed: 20261128
+    # D002 / configs/common/scorers.yaml: LoCoMo conversation, change-seq scenario family. Two
+    # LoCoMo conversations and five families make the cluster intervals coarse; the read-level
+    # interval is reported beside them as a sensitivity analysis.
+    cluster_unit: {locomo: conversation, change-seq: family}
+    sensitivity_units: {locomo: read, change-seq: read}

@@ -101,7 +101,7 @@ def load_experiment(path: Path) -> dict[str, Any]:
 def benchmark_config(config: Mapping[str, Any]) -> BenchmarkConfig:
     bc = BenchmarkConfig.from_dict(config["benchmark"]["config"])
     if bc.splits[config["benchmark"]["split"]].kind != "development":
-        raise ValueError("E005 reads development splits only")
+        raise ValueError("ablation C reads development splits only")
     return bc
 
 
@@ -453,22 +453,24 @@ def _completed(run_dir: Path, stage: str) -> dict[str, Any]:
 
 def run_score(config: Mapping[str, Any], config_path: Path, system_dir: Path, *,
               command: str | None = None, data_root: Path | None = None,
-              out_root: Path | None = None) -> Path:
+              out_root: Path | None = None, experiment: str = EXPERIMENT) -> Path:
+    """Set-match score run of one change-seq system run. `config` needs `benchmark` (`config`,
+    `split`), `scoring` and `population` as in E005's config (E010 passes its target's)."""
     system_dir = Path(system_dir).resolve()
     upstream = _completed(system_dir, "system")
     bc = benchmark_config(config)
     split = config["benchmark"]["split"]
     scoring, population = config["scoring"], config["population"]
     code = rundir.code_state()
-    run_dir = rundir.create(out_root or run_root(), EXPERIMENT)
-    resolved = {"stage": "score", "experiment": EXPERIMENT, "scoring": scoring,
+    run_dir = rundir.create(out_root or run_root(), experiment)
+    resolved = {"stage": "score", "experiment": experiment, "scoring": scoring,
                 "population": population, "upstream_system": upstream["run_id"],
                 "experiment_config": repo_relative(config_path)}
     (run_dir / "resolved-config.yaml").write_text(
         yaml.safe_dump(resolved, sort_keys=True, allow_unicode=True), encoding="utf-8")
     source = bc.source_dir(data_root or project_root())
     run = rundir.RunJson(run_dir, {
-        "run_id": run_dir.name, "experiment": EXPERIMENT, "stage": "score",
+        "run_id": run_dir.name, "experiment": experiment, "stage": "score",
         "upstream": [{"run_id": upstream["run_id"], "stage": "system",
                       "path": system_dir.as_posix(),
                       "run_json_sha256": rundir.file_sha256(system_dir / "run.json")}],
