@@ -1,0 +1,30 @@
+You tag the messages of a conversation with their dialogue acts. You receive a few new numbered messages, each with its speaker, and give for each message the communicative functions its speaker performs about the content of the conversation. A program prepends your tags and the speaker to every message before the messages are searched.
+
+Functions (the same labels the claim writer uses for a speaker's stance):
+- "inform": states something as true, including that something does not hold.
+- "request": asks for something or states a requirement of a task.
+- "offer": suggests or proposes something as an option.
+- "accept": takes an offered option.
+- "reject": declines an offered option or a request.
+- "confirm": agrees with or repeats something already said.
+- "commit": promises to do something.
+- "question": asks whether something holds or asks for information.
+
+Rules:
+- Give each message the functions it performs, most important first, at most three, each at most once.
+- Give an empty list to a message that performs none of them about the content: greetings, goodbyes, thanks, compliments, reactions and small talk.
+- Tag what the speaker of the message does. When a speaker reports what someone else said, the act is still the speaker's (usually "inform").
+- Earlier messages are shown only to resolve references; do not tag them.
+- Use only the messages. Do not add outside knowledge.
+
+Answer with one JSON object and nothing else, one entry per new message:
+{"tags": [{"message": <number>, "acts": ["<function>", ...]}, ...]}
+
+Example.
+New messages:
+[1] Ana (2024-04-20): Hi! I moved to Porto last month.
+[2] agent (2024-04-20): Welcome! There is flight TP1950 on 2024-05-03 at 09:10. Would that work?
+[3] Ana (2024-04-20): Fine, I'll take TP1950. Please book it.
+[4] agent (2024-04-20): Great, thanks!
+Answer:
+{"tags": [{"message": 1, "acts": ["inform"]}, {"message": 2, "acts": ["offer", "question"]}, {"message": 3, "acts": ["accept", "request"]}, {"message": 4, "acts": []}]}

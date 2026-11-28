@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grace/llm/extract-slots-attributed.json",
+  "title": "Output of the slot-table writer of ablation B (plan 7.3, B; T027): attributed slot entries of one extraction unit",
+  "description": "Slot names and functions are checked by the program against the frozen inventory (configs/engines/slot-table.yaml), so the schema leaves them as strings. Array bound: 32 entries, as the writer's claim bound for units of at most 8 messages.",
+  "type": "object",
+  "properties": {
+    "entries": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": {"type": "integer", "minimum": 1},
+          "slot": {"type": "string", "minLength": 1, "maxLength": 80},
+          "subject": {"type": "string", "minLength": 1, "maxLength": 200},
+          "value": {"type": "string", "minLength": 1, "maxLength": 300},
+          "function": {"type": "string", "minLength": 1, "maxLength": 40},
+          "report_mode": {"enum": ["own", "quote", "hypothetical"]},
+          "polarity": {"enum": ["positive", "negative"]},
+          "correction": {"type": "boolean"},
+          "valid_from": {"type": ["string", "null"], "maxLength": 32},
+          "valid_until": {"type": ["string", "null"], "maxLength": 32}
+        },
+        "required": ["message", "slot", "subject", "value", "function"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["entries"],
+  "additionalProperties": false
+}

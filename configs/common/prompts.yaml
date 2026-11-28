@@ -30,6 +30,27 @@ prompts:
       Fixed-schema slot-table baseline of the pilot (T003, plan 7.2), one call per message. Added by
       T003. Variables: slots and functions (from configs/engines/slot-table.yaml, stable, first),
       earlier (preceding messages for reference resolution), message (the new message, last).
+  extract-slots-attributed:
+    call_type: extract
+    sha256: f6f30d080342b6d0a5f76280c84e51f868b8a4016c69b46b31d6b0aab882fa80
+    schema: llm/extract-slots-attributed  # resources/schemas/llm/extract-slots-attributed.json
+    schema_sha256: f07799611ca5de2423dd422897d4f40ae49015b92c39a31172583c26971c2a08
+    note: >-
+      Slot-table writer of ablation B inside the GRACE assembly (T027,
+      context/pipeline/update/slots.py), one call per unit of the writer's granularity. Added by
+      T027. Same inventory as extract-slots (configs/engines/slot-table.yaml), plus subject, report
+      mode, polarity, correction and valid time for the guard and the bitemporal arm. Variables:
+      slots and functions (stable, first), earlier (context only), messages (the numbered unit).
+  tag-dialogue-acts:
+    call_type: extract
+    sha256: 6a86f26274511ff8e4953391f86740b7b2ae39a50537b48a4a7e0359a2636089
+    schema: llm/tag-dialogue-acts  # resources/schemas/llm/tag-dialogue-acts.json
+    schema_sha256: 83b93e8ccf0f16d0ad5f2eede810929e8d45c77b2089ab860c05aa414e0dc6d2
+    note: >-
+      Tagged-retrieval baseline (T027, plan 7.2): dialogue-act tags per message, predicted by the
+      writer model with the writer's function labels, one call per unit of the writer's
+      granularity; its tokens are charged to W. Added by T027. Variables: earlier (preceding
+      messages, context only), messages (the numbered unit, last).
   judge:
     call_type: judge
     sha256: a5407e110159d2dbe91efc3c7e60a73534de7ec04c65f423c3a226f9376bc4e2
