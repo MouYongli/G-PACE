@@ -57,10 +57,14 @@ All runs under `runs/E012/artifacts/w01-E012/E012/<run-id>/` (report in `report.
 | E012-20261128T094305Z-5859 | 2026-11-28 | failed | 8201795 | LongMemEval (6288) read no-dense, stopped by the session |
 | E012-20261128T094342Z-cbf5, -094404Z-02fa | 2026-11-28 | failed | 8201795 | LongMemEval (6288) reads full, no-bm25: four more histories do not restore (QueryTypeError) |
 | E012-20261128T094427Z-0854 | 2026-11-28 | failed | 8201795 | LongMemEval (6288) read no-dense, stopped by the session |
-| E012-20261128T094451Z-a006 .. -095154Z-3eac (9 runs) | 2026-11-28 | completed | 8201795 | LongMemEval main-text strata reads, 61 of 67 histories, one per arm (-a006 full, -08ce no-bm25, -bdc5 no-dense, -6ff6 no-graph-channel, -b112 no-graph-state, -01ec no-graph, -03a2 no-verification, -4f5e no-graph-no-verification, -3eac rules) |
-| E012-20261128T095245Z-3c53 .. -095615Z-1bb9 (9 runs) | 2026-11-28 | completed | 8201795 | LongMemEval other strata reads, 30 of 31 histories (-3c53 full, -833e no-bm25, -6e7e no-dense, -29e5 no-graph-channel, -a493 no-graph-state, -e73c no-graph, -c15f no-verification, -db93 no-graph-no-verification, -1bb9 rules) |
-| E012-20261128T095643Z-68a2 | 2026-11-28 | completed | 8201795 | LongMemEval main-text strata per-arm metrics |
-| E012-20261128T095654Z-a8a7 | 2026-11-28 | completed | 8201795 | LongMemEval other strata per-arm metrics |
+| E012-20261128T094451Z-a006 .. -095154Z-3eac (9 runs) | 2026-11-28 | completed | 8201795 | Superseded by the all-history reruns below (kept): LongMemEval main-text strata reads, 61 of 67 histories, one per arm (-a006 full, -08ce no-bm25, -bdc5 no-dense, -6ff6 no-graph-channel, -b112 no-graph-state, -01ec no-graph, -03a2 no-verification, -4f5e no-graph-no-verification, -3eac rules) |
+| E012-20261128T095245Z-3c53 .. -095615Z-1bb9 (9 runs) | 2026-11-28 | completed | 8201795 | Superseded (kept): LongMemEval other strata reads, 30 of 31 histories (-3c53 full, -833e no-bm25, -6e7e no-dense, -29e5 no-graph-channel, -a493 no-graph-state, -e73c no-graph, -c15f no-verification, -db93 no-graph-no-verification, -1bb9 rules) |
+| E012-20261128T095643Z-68a2 | 2026-11-28 | completed | 8201795 | Superseded: LongMemEval main-text strata per-arm metrics, 61 histories |
+| E012-20261128T095654Z-a8a7 | 2026-11-28 | completed | 8201795 | Superseded: LongMemEval other strata per-arm metrics, 30 histories |
+| E012-20261128T101305Z-8c1f .. -102035Z-e806 (9 runs) | 2026-11-28 | completed | 83905a9 | LongMemEval main-text strata reads, all 67 histories (-8c1f full, -844a no-bm25, -c07e no-dense, -b89e no-graph-channel, -58db no-graph-state, -6bdc no-graph, -8857 no-verification, -5e7e no-graph-no-verification, -e806 rules) |
+| E012-20261128T102129Z-87c1 .. -102501Z-e6a1 (9 runs) | 2026-11-28 | completed | 83905a9 | LongMemEval other strata reads, all 31 histories (-87c1 full, -d315 no-bm25, -6b32 no-dense, -8dfb no-graph-channel, -fe69 no-graph-state, -bc4f no-graph, -882f no-verification, -3888 no-graph-no-verification, -e6a1 rules) |
+| E012-20261128T102529Z-38cd | 2026-11-28 | completed | 83905a9 | LongMemEval main-text strata per-arm metrics, 67 reads |
+| E012-20261128T102541Z-8574 | 2026-11-28 | completed | 83905a9 | LongMemEval other strata per-arm metrics, 31 reads |
 
 ## Results
 
@@ -108,35 +112,34 @@ Rule routing: 119 of 308 reads were routed to dense alone and 4 to BM25 alone (r
 
 Verification switch: contexts differ from `full` in 7 of 308 reads with the filter off, against 6 of 308 between two runs of `full`; with the graph off, in 2 of 308. No measurable effect.
 
-### LongMemEval-S dev (per-arm runs E012-20261128T095643Z-68a2, main-text strata, 61 reads; E012-20261128T095654Z-a8a7, other strata, 30 reads)
+### LongMemEval-S dev (per-arm runs E012-20261128T102529Z-38cd, main-text strata, 67 reads; E012-20261128T102541Z-8574, other strata, 31 reads)
 
-No answer accuracy (no judge run). Path recall and unknown share; the abstention questions have no evidence and count only in `unknown`.
+All 98 development histories, read at code 83905a9 (main's snapshot-restore fixes; an earlier pass on 61 + 30 restorable histories is superseded and gave the same picture). No answer accuracy (no judge run). Path recall and unknown share; abstention questions have no evidence and count only in `unknown`.
 
 | Arm | path recall (main) | dPath (main) | unknown (main) | path recall (other) | dPath (other) | unknown (other) |
 | --- | --- | --- | --- | --- | --- | --- |
-| full | 0.812 | | 0.328 | 0.868 | | 0.233 |
-| no-bm25 | 0.849 | +0.036 [-0.031, +0.101] | 0.279 | 0.851 | -0.017 [-0.103, +0.052] | 0.300 |
-| no-dense | 0.696 | -0.117 [-0.188, -0.056] | 0.459 | 0.707 | -0.161 [-0.299, -0.034] | 0.367 |
-| no-graph-channel | 0.821 | | 0.328 | 0.879 | | 0.200 |
-| no-graph-state | 0.812 | +0.000 [-0.025, +0.025] | 0.311 | 0.868 | +0.000 | 0.233 |
-| no-graph | 0.804 | -0.008 [-0.033, +0.017] | 0.311 | 0.868 | +0.000 | 0.200 |
-| no-verification | 0.824 | +0.011 [+0.000, +0.033] | 0.311 | 0.868 | +0.000 | 0.233 |
-| no-graph-no-verification | 0.804 | | 0.311 | 0.868 | | 0.200 |
-| rules | 0.832 | +0.019 [-0.047, +0.083] | 0.311 | 0.868 | +0.000 | 0.233 |
+| full | 0.827 | | 0.313 | 0.872 | | 0.226 |
+| no-bm25 | 0.853 | +0.026 [-0.040, +0.092] | 0.284 | 0.889 | +0.017 [+0.000, +0.050] | 0.290 |
+| no-dense | 0.696 | -0.131 [-0.199, -0.071] | 0.448 | 0.717 | -0.156 [-0.289, -0.033] | 0.355 |
+| no-graph-channel | 0.835 | +0.008 [+0.000, +0.023] | 0.313 | 0.883 | +0.011 [+0.000, +0.033] | 0.194 |
+| no-graph-state | 0.827 | +0.000 [-0.023, +0.023] | 0.299 | 0.872 | +0.000 | 0.226 |
+| no-graph | 0.819 | -0.008 [-0.031, +0.015] | 0.299 | 0.872 | +0.000 | 0.194 |
+| no-verification | 0.827 | +0.000 | 0.313 | 0.872 | +0.000 | 0.226 |
+| no-graph-no-verification | 0.819 | -0.008 [-0.031, +0.015] | 0.299 | 0.872 | +0.000 | 0.194 |
+| rules | 0.837 | +0.010 [-0.054, +0.076] | 0.313 | 0.872 | +0.000 | 0.226 |
 
-Main-text strata path recall of `full`: knowledge-update 0.885 (n 13), multi-session 0.685 (n 24), temporal-reasoning 0.896 (n 24). Without BM25, multi-session rises to 0.815 (+0.130): BM25 candidates displace dense ones that carry the evidence. Without dense, every stratum falls (-0.115, -0.145, -0.090). Unique evidence among the fused candidates of `full`: dense only 16 + 5, BM25 only 2 + 0, graph only 0 + 0 (main + other).
+Path recall of `full` by stratum: knowledge-update 0.893 (n 15), multi-session 0.710 (n 26), temporal-reasoning 0.904 (n 26); single-session-assistant 0.727 (n 11), -preference 0.861 (n 6), -user 1.000 (n 14). Without dense: -0.107, -0.193, -0.083; -0.091, -0.444, -0.077. Without BM25, multi-session rises by 0.100: BM25 candidates displace dense ones that carry the evidence. Unique evidence among the fused candidates of `full`: dense only 16 + 5, BM25 only 2 + 0, graph only 0 + 0 (main + other); the graph channel returns candidates in 15% and 42% of reads.
 
 ### Not measured
 
 - **Stale-value use.** Neither LoCoMo nor LongMemEval carries gold for the superseded value, and the knowledge-update stratum needs the judge. Not measured here; the controlled sequences (E016) are where it can be.
 - **MultiWOZ.** Not run. Estimate: per-turn reads need a `system` run per arm (the read stage restores only end-of-history snapshots), so each arm re-runs the Qwen3-32B writer. E011's GRACE system run on its MultiWOZ dev subset took about 20 minutes wall time over 10 shards per arm (about 3.3M writer tokens), on the shared writer server that E011 is using. Nine arms would be about 3 hours of shared writer load, and arms would differ in writer output as well as in the switch. The read request is a fixed state request ("report the current state for ..."), so the text channels have little to rank. Left as an open item for s00-super.
-- **LongMemEval histories excluded** because their ingest snapshot does not restore (code defects reported in the Log): f9e8c073, 0ddfec37_abs, 7405e8b1, b46e15ee, f0e564bc, gpt4_2655b836 (main-text) and 41275add (other).
 
 ## Conclusion
 
 Development evidence, before D012. On LoCoMo and LongMemEval-S dev at 1,024 tokens:
 
-- C1 holds for dense and partly for BM25: removing dense costs 0.057 F1 on LoCoMo (multi-hop and single-hop categories) and 12 to 16 points of path recall on LongMemEval; removing BM25 costs 0.017 F1 (interval includes 0), concentrated in category 4 (-0.041), and does not hurt LongMemEval.
+- C1 holds for dense and partly for BM25: removing dense costs 0.057 F1 on LoCoMo (multi-hop and single-hop categories) and 13 to 16 points of path recall on LongMemEval; removing BM25 costs 0.017 F1 (interval includes 0), concentrated in category 4 (-0.041), and does not hurt LongMemEval.
 - The graph channel, as extracted and queried now, contributes no measurable accuracy: removing it entirely changes LoCoMo F1 by -0.002 [-0.014, +0.009]. Its only consistent trace is category 1 (-0.025, interval includes 0) and 11 evidence messages only it found. Showing the query answers as state items does not help (+0.009 without them).
 - The "graph gain from retrieval or verification" question cannot be answered on this code: there is no graph gain to split, and the only verification step that exists (the read-time filter) is inert on these data.
 - C3 is not supported: rule routing costs 0.011 F1 and no tokens are saved.
@@ -147,3 +150,4 @@ Development evidence, before D012. On LoCoMo and LongMemEval-S dev at 1,024 toke
 - 2026-11-28: w01-E012 (s00-super batch 2). Added read-side switches `state_items` and `verification` to the assembly config (defaults unchanged), arm configs, the experiment config and `grace.cli.channel_ablation`; `locomo_score` now accepts read runs. LoCoMo arms run on the E006 ingest snapshot. The arms run at a769ac4 had unquoted `description` values in two engine configs (`no-graph`, `rules`), which failed to parse; both were fixed (quotes only) at 8201795 and rerun; the other arm files differ between the two SHAs only by those quotes.
 - 2026-11-28: LongMemEval snapshot defects found while restoring (not fixed here, outside E012's scope): (1) `MessageLog.restore` splits the log with `str.splitlines()`, which also splits on Unicode line separators inside message text, so histories f9e8c073 and 0ddfec37_abs of E006-20261128T083145Z-6288 fail with JSONDecodeError (fix: split on "\n" only); (2) a stored view query with an entity whose name starts with digits (`1950s_era_Cuban_peso_note`, `50mm_f_1_8_prime_lens`) does not re-parse (`grammar.parse`, QueryTypeError), so 7405e8b1, b46e15ee, f0e564bc, gpt4_2655b836 (6288) and 41275add (E006-20261128T084142Z-ee92) fail. The LoCoMo snapshot is unaffected. LongMemEval arms rerun on the restorable histories.
 - 2026-11-28: MultiWOZ not run (estimate in Results). Proposed status: E012 planned -> review.
+- 2026-11-28: both restore defects were fixed on main meanwhile (aa2c9fc, 81e51d7, E013). After merging main, all LongMemEval arms were rerun on all 98 histories at 83905a9; the Results use these runs, the partial runs stay in the Runs table as superseded.
