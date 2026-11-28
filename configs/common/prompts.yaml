@@ -181,7 +181,7 @@ prompts:
       speaker, message (the new message, last).
   extract-claims:
     call_type: extract
-    sha256: d24611419e20717423ed3dcb3bb3b1845bdf0e4b8660ab7d0cc6daa5c798d9f1
+    sha256: 7e48cffd1f5158052b112c39611182687b2fcef405c63d3a69aa2fb3435259bc
     schema: llm/extract-claims  # resources/schemas/llm/extract-claims.json
     schema_sha256: 462ace0dca5d13c10724f432c0d8859fc466773ad4a0ef8829b2cf965de522f0
     note: >-
@@ -199,5 +199,6 @@ prompts:
       controlled development sequences E006 did not score): an ending is written only as a
       negative stance with `ends` (never also as a negative claim, which the program would keep
       instead; a negative claim only for what is not a known claim), with the function of the claim's earlier stance (request for a requirement), a
-      quote naming the old value, and also on a change that names the old value; one invented
+      quote naming the old value, and also on a change that names the old value; a closing
+      reminder in user.txt; one invented
       example.

@@ -12,3 +12,5 @@ Earlier messages (context only, do not extract):
 
 New messages:
 {{messages}}
+
+Reminder: a message that ends, denies or corrects a known claim gets a stance on that claim's handle with "polarity": "negative" and "ends", whose quote names the old value; do not write that claim again as a negative claim.
