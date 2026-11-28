@@ -30,6 +30,16 @@ prompts:
       Fixed-schema slot-table baseline of the pilot (T003, plan 7.2), one call per message. Added by
       T003. Variables: slots and functions (from configs/engines/slot-table.yaml, stable, first),
       earlier (preceding messages for reference resolution), message (the new message, last).
+  reactod:
+    call_type: external
+    sha256: 4929d7e246170b338234f43916e5e39a6ec8194b3e3d870eb0f1a387692f2495
+    schema: null              # one JSON tool call per reply; checked by the ReacTOD validator
+    schema_sha256: null       # (eval/engines/baselines/multiwoz_reactod.py)
+    note: >-
+      ReacTOD reproduction on MultiWOZ (T028; arXiv 2605.19077, which publishes no prompt text).
+      Wording written by T028 from the paper's method section. Variables: intents (stable),
+      previous_intent, state (B_{t-1}), system (previous system utterance), user (user
+      utterance), trace (actions and observations of this turn, last).
   extract-slots-attributed:
     call_type: extract
     sha256: f6f30d080342b6d0a5f76280c84e51f868b8a4016c69b46b31d6b0aab882fa80
