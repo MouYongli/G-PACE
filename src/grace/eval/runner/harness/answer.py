@@ -7,6 +7,11 @@ one request for further retrieval, or "unknown". A further-retrieval request is 
 `ContextEngine.further_retrieval`, followed by a second answering call in which the request is no
 longer allowed. Output that cannot be parsed is `invalid` (after the retries of the model wrapper).
 
+One extra retrieval per read (plan 5.6). When the read trace says the read's one extra retrieval
+is already spent (`ReadTrace.retrieval_used`, e.g. by GRACE's own query expansion), a `retrieve`
+output is resolved as `unknown` (`Answered.retrieve_refused`); the answer prompt stays the same for
+every system and `further_retrieval` is not called.
+
 Second call: the prompt's `context` holds the fragments of the new working context that were
 already in the first one, then a section headed "Further retrieval results" with the fragments the
 further retrieval added (or a note that it added none). The fragments are those of the recorded
@@ -95,6 +100,7 @@ class Answered:
     context: api.WorkingContext
     trace: api.ReadTrace
     dropped_citations: list[str]
+    retrieve_refused: bool = False
 
 
 def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
@@ -118,7 +124,8 @@ def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
         return reply
 
     reply = ask(context.text, final=False)
-    if reply.ok and reply.parsed.output == "retrieve":
+    refused = bool(reply.ok and reply.parsed.output == "retrieve" and trace.retrieval_used)
+    if reply.ok and reply.parsed.output == "retrieve" and not refused:
         second = engine.further_retrieval(task, reply.parsed.request, budget)
         first_context = context
         context, trace = second.context, second.trace
@@ -127,6 +134,8 @@ def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
     trace = api.ReadTrace(**{**trace.__dict__, "call_ids": tuple(call_ids)})
     if not reply.ok:
         return Answered("invalid", None, [], reply.text, context, trace, [])
+    if refused:
+        return Answered("unknown", None, [], reply.text, context, trace, [], True)
     parsed: Reply = reply.parsed
     cited = [c for c in dict.fromkeys(parsed.cited_ids) if c in visible_ids]
     dropped = [c for c in parsed.cited_ids if c not in visible_ids]

@@ -111,7 +111,8 @@ class InterfaceTest(unittest.TestCase):
         self.assertEqual(set(record), {"read_id", "history_id", "version", "candidates",
                                        "included_ids", "provenance", "view_hits",
                                        "staleness_decisions", "further_retrieval", "call_ids",
-                                       "timings_ms"})
+                                       "timings_ms", "retrieval_used", "utilisation",
+                                       "expansions_used"})
         self.assertEqual(set(early.context.to_record()), {"read_id", "history_id", "version",
                                                           "budget_tokens", "tokens", "text",
                                                           "fragments"})

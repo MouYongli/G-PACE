@@ -37,6 +37,7 @@ from typing import Any
 
 import yaml
 
+from grace.config import registry
 from grace.config.paths import REPO_ROOT, project_root, shared_dir
 from grace.context import api
 from grace.eval.datasets.benchmarks.base import BenchmarkConfig
@@ -71,9 +72,10 @@ ENGINE_LLM_KEYS = ENGINE_LLM_REQUIRED | {"auth_header", "input_tokens", "transpo
 def load_engine_config(path: Path) -> dict[str, Any]:
     config = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     unknown = set(config) - ENGINE_KEYS
-    if unknown or config.get("engine") not in ENGINES:
+    kinds = set(ENGINES) | set(registry.ENGINES)
+    if unknown or config.get("engine") not in kinds:
         raise ValueError(f"{path}: bad engine config (unknown keys {sorted(unknown)}, "
-                         f"engine {config.get('engine')!r} not in {sorted(ENGINES)})")
+                         f"engine {config.get('engine')!r} not in {sorted(kinds)})")
     if "engine_llm" in config:
         spec = config["engine_llm"]
         keys = set(spec) if isinstance(spec, dict) else set()
@@ -86,7 +88,10 @@ def load_engine_config(path: Path) -> dict[str, Any]:
 
 
 def build_engine(config: dict[str, Any], model) -> api.ContextEngine:
-    return ENGINES[config["engine"]](model, **config["params"])
+    """A baseline by its class, or an engine of `context/` (GRACE) through the registry."""
+    if config["engine"] in ENGINES:
+        return ENGINES[config["engine"]](model, **config["params"])
+    return registry.load_engine(config["engine"]).from_port(model, **config["params"])
 
 
 def budgets() -> dict[str, Any]:
@@ -218,6 +223,8 @@ def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
             engine.end_read(task)
             metadata = {"dropped_citations": result.dropped_citations} \
                 if result.dropped_citations else {}
+            if result.retrieve_refused:
+                metadata["retrieve_refused"] = True
             prediction = Prediction(
                 benchmark=task.benchmark, split=task.split, history_id=task.history_id,
                 read_id=task.read_id, task_id=task.task_id, version=task.version,

@@ -37,6 +37,7 @@ cites message IDs.
 from __future__ import annotations
 
 import datetime as _dt
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -45,6 +46,8 @@ from grace.context.memory.history.log import MessageLog
 from grace.context.memory.history.spans import message_of
 
 SECTIONS = ("recent", "state", "evidence")
+_ISO_EXTENDED = re.compile(
+    r"\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?")
 STATE_KINDS = frozenset({"view", "claim"})
 
 
@@ -53,12 +56,15 @@ def _unique(items) -> tuple[str, ...]:
 
 
 def check_iso(value: str | None, where: str) -> None:
-    """Fail unless `value` is None or an ISO 8601 date or date-time (`2023-05-08`,
-    `2023-05-08T10:15:00`, with an optional offset or `Z`)."""
+    """Fail unless `value` is None or an ISO 8601 extended date or date-time (`2023-05-08`,
+    `2023-05-08T10:15`, `2023-05-08T10:15:00.5+02:00`, `...Z`). Basic (`20230508`), week
+    (`2023-W19`) and ordinal forms are rejected, because valid times are compared as strings."""
     if value is None:
         return
     if not isinstance(value, str):
         raise ValueError(f"{where}: expected an ISO date string, got {type(value).__name__}")
+    if not _ISO_EXTENDED.fullmatch(value):
+        raise ValueError(f"{where}: {value!r} is not an ISO 8601 extended date (YYYY-MM-DD...)")
     try:
         _dt.datetime.fromisoformat(value)
     except ValueError as exc:

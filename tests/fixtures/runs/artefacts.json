@@ -18,7 +18,8 @@
     "candidates": [{"id": "D1:2", "channel": "bm25", "score": 7.1}, {"id": "view:cat-names", "channel": "graph", "score": 1.0}],
     "included_ids": ["D1:2"], "provenance": {"f2": ["D1:2"]}, "view_hits": ["cat-names"],
     "staleness_decisions": [{"view_id": "cat-names", "strategy": "claim-pattern", "decision": "fresh", "action": "reuse"}],
-    "further_retrieval": false, "call_ids": ["c010"], "timings_ms": {"query": 4.2, "assembly": 1.1}
+    "further_retrieval": false, "call_ids": ["c010"], "timings_ms": {"query": 4.2, "assembly": 1.1},
+    "retrieval_used": false, "utilisation": 0.84, "expansions_used": 0
   },
   "changesets.jsonl": {
     "history_id": "conv-syn-1", "version": 4,
