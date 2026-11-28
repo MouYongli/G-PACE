@@ -69,6 +69,11 @@ class ClientModel:
     def count_tokens(self, text: str) -> int:
         return self.counter.count_text(text)
 
+    def observe(self, texts) -> None:
+        """Record texts an engine sends to the model through `client` directly (GRACE's writer
+        and planner), so that the gold-sentinel audit sees them too."""
+        self.observed.extend(texts)
+
     def chat(self, messages, tag: CallTag, *, prompt_sha256: str | None = None,
              parse: Callable[[str], Any] | None = None,
              max_tokens: int | None = None,
@@ -130,6 +135,18 @@ class EngineLLMModel:
     @property
     def observed(self) -> list[str]:
         return [*self.llm.observed, *self.base.observed]
+
+    @property
+    def client(self):
+        """The engine's chat client: the second model's (GRACE's writer and planner use it)."""
+        return self.llm.client
+
+    @property
+    def decoding(self):
+        return self.llm.decoding
+
+    def observe(self, texts) -> None:
+        self.llm.observe(texts)
 
     def chat(self, messages, tag: CallTag, **kwargs) -> ChatResult:
         return self.llm.chat(messages, tag, **kwargs)

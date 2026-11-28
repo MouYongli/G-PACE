@@ -131,7 +131,7 @@ def answer(engine: api.ContextEngine, task: api.ReadTask, budget: int | None,
         context, trace = second.context, second.trace
         call_ids.extend(trace.call_ids)
         reply = ask(final_context_text(first_context, context), final=True)
-    trace = api.ReadTrace(**{**trace.__dict__, "call_ids": tuple(call_ids)})
+    trace = api.ReadTrace(**{**trace.__dict__, "call_ids": tuple(dict.fromkeys(call_ids))})
     if not reply.ok:
         return Answered("invalid", None, [], reply.text, context, trace, [])
     if refused:

@@ -58,7 +58,7 @@ class EngineTest(unittest.TestCase):
         return RecordingModel(FakeBackend(responder), self.ledger)
 
     def build(self, model) -> GraceEngine:
-        engine = build_engine(load_engine_config(CONFIG), model)
+        engine = build_engine(load_engine_config(CONFIG), model, allow_no_client=True)
         self.assertIsInstance(engine, GraceEngine)
         return engine
 
@@ -79,6 +79,15 @@ class EngineTest(unittest.TestCase):
 
     def test_registry_names_the_engine(self):
         self.assertIs(registry.load_engine("grace"), GraceEngine)
+
+    def test_no_client_fails_unless_allowed(self):
+        with self.assertRaises(ValueError):
+            build_engine(load_engine_config(CONFIG), self.model())
+        settings = GraceEngine.resolved_settings(load_engine_config(CONFIG)["params"], 7,
+                                                 allow_no_client=True)
+        self.assertEqual(settings["writer_decoding"]["seed"], 7)
+        self.assertEqual(settings["planner_decoding"]["seed"], 7)
+        self.assertTrue(settings["allow_no_client"])
 
     def test_traces_carry_the_new_fields_and_respect_the_budget(self):
         for budget in (256, 512, 1024, None):
@@ -110,6 +119,7 @@ class EngineTest(unittest.TestCase):
             else:
                 self.assertTrue(r.trace.further_retrieval)
             self.assertTrue(r.trace.retrieval_used)
+            self.assertEqual(len(r.trace.call_ids), len(set(r.trace.call_ids)))
         answers = [c for c in self.ledger.records if c.call_type == "answer"]
         expected = sum(1 if r.retrieve_refused else 2 for r in results)
         self.assertEqual(len(answers), expected)
@@ -134,6 +144,150 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(again.version, engine.version)
         after = again.read(task, 256).context
         self.assertEqual(after.text, before.text)
+
+
+# ---------------------------------------------------------------------------------------------
+# A scripted writer and planner: a graph, a supersession, a vocabulary change and views
+
+CITY = "t026-city"
+WRITER_SCRIPT = [
+    {"claims": [{"message": 1, "subject": "user", "predicate": "livesIn", "object": "Paris",
+                 "object_type": "entity", "function": "inform", "exclusive": True,
+                 "quote": "live in Paris"}], "stances": []},
+    {"claims": [{"message": 1, "subject": "user", "predicate": "livesIn", "object": "Berlin",
+                 "object_type": "entity", "function": "inform", "exclusive": True,
+                 "correction": True, "quote": "live in Berlin"},
+                {"message": 3, "subject": "user", "predicate": "prefersDrink",
+                 "object": "coffee", "object_type": "entity", "function": "inform",
+                 "exclusive": True, "quote": "I prefer coffee"}], "stances": []},
+]
+
+
+def city_messages():
+    from tests.integration.writer_fixture import message
+    return [message(CITY, 1, "user", "I live in Paris now.", timestamp="2023-05-01T10:00:00"),
+            message(CITY, 2, "user", "Correction: I actually live in Berlin, not Paris.",
+                    timestamp="2023-05-02T10:00:00"),
+            message(CITY, 3, "assistant", "Noted, Berlin. Tea or coffee?",
+                    timestamp="2023-05-02T10:01:00"),
+            message(CITY, 4, "user", "I prefer coffee.", timestamp="2023-05-02T10:02:00")]
+
+
+class ScriptedPlanner:
+    """Returns a fallback plan, or a compiled plan of `query` (an IR text or a parsed query)."""
+
+    def __init__(self):
+        self.query = None
+
+    def plan(self, ctx):
+        from grace.context.pipeline.query.compile import compile_query
+        if self.query is None:
+            return Plan(ctx.read_id, "fallback")
+        q = parse(self.query) if isinstance(self.query, str) else self.query
+        return Plan(ctx.read_id, "llm", query=q, compiled=compile_query(q, "rdf11"),
+                    variables=(("?x", "where the user lives"),))
+
+
+class ScriptedEngineTest(unittest.TestCase):
+    def setUp(self):
+        from grace.context.engine import Components, Views
+        from grace.context.pipeline.assembly.assemble import AssemblyConfig
+        from grace.context.pipeline.retrieval.retrieve import RetrievalConfig
+        from grace.context.pipeline.update.updater import WriterConfig, llm_writer
+        from grace.context.views.store import ViewStore
+        from grace.llm.client import ChatClient, Endpoint
+        from tests.integration.writer_fixture import ScriptedTransport, history_info
+        from tests.llm.fakes import WordCounter
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.messages = city_messages()
+        self.info = history_info(CITY, self.messages)
+        ledger = CallLedger(self.tmp / "calls.jsonl", "T026-20261128T000000Z-0001")
+        self.transport = ScriptedTransport(WRITER_SCRIPT)
+        client = ChatClient(Endpoint("http://fake/v1", "writer", "writer@1"), ledger,
+                            WordCounter(), max_attempts=1, backoff_s=0.0,
+                            transport=self.transport, sleep=lambda s: None)
+        self.observed: list[str] = []
+        from grace.context.engine import ObservedClient
+        observed_client = ObservedClient(client, self.observed.extend)
+        writer = WriterConfig()
+        self.planner = ScriptedPlanner()
+
+        def components():
+            return Components(
+                count=lambda t: len(t.split()),
+                extractor=lambda h: llm_writer(writer, observed_client, h),
+                planner=self.planner, retrieval=RetrievalConfig(channels=("bm25", "graph")),
+                assembly=AssemblyConfig(), writer=writer,
+                views=lambda h, v: Views(ViewStore(h.history_id, vocabulary=v),
+                                         "push_confirm", local_filters=True))
+        self.components = components
+        self.engine = GraceEngine(components())
+        self.engine.open(self.info)
+
+    def task(self, version: int) -> api.ReadTask:
+        return api.ReadTask("fixture", "dev", CITY, f"q@{version}", "q", version, "question",
+                            "Where do I live?", None, None, None)
+
+    def ingest(self):
+        e = self.engine
+        e.write(self.messages[0])
+        self.assertEqual(e.store.head, 0)  # the unit (segment of 8) is still open
+        first = e.read(self.task(1), 256)
+        e.end_read(self.task(1))
+        self.assertEqual(e.store.head, 1)  # flushed before the read (write cost W)
+        self.assertEqual(len(first.trace.call_ids), 1)
+        for m in self.messages[1:]:
+            e.write(m)
+        e.updater.finish()
+        return first
+
+    def test_flush_vocabulary_views_and_sentinel_audit(self):
+        self.ingest()
+        e = self.engine
+        self.assertEqual(e.store.head, 4)
+        self.assertNotEqual(e.updater.vocabulary.version, "v1")  # prefersDrink is local
+        views = {v.view_id: v for v in e.views.store.views()}
+        self.assertIn("current:user:livesIn", views)
+        self.assertTrue(any("I live in Paris now." in t for t in self.observed))
+        self.planner.query = views["current:user:livesIn"].query
+        result = e.read(self.task(4), 256)
+        self.assertEqual(result.trace.view_hits, ("current:user:livesIn",))
+        self.assertIn("Berlin", result.context.text)
+        self.assertTrue(result.trace.staleness_decisions)  # vocabulary change: full rebuild
+
+    def test_time_travel_read_keeps_the_retired_answer(self):
+        self.ingest()
+        e = self.engine
+        state = e.store.state(4)
+        self.assertEqual(len(state.supersessions), 1)
+        self.planner.query = "SELECT ?x WHERE { (user, livesIn, ?x) } AT(known=1, state=current)"
+        result = e.read(self.task(4), 256)
+        claims = [i for i in e._reads["q@4"].items if i.kind == "claim"]
+        self.assertEqual([(i.version, i.retired) for i in claims], [(1, 2)])
+        self.assertIn("x = Paris", result.context.text)
+        self.assertFalse(e._reads["q@4"].constraints.current_only)
+
+    def test_save_and_restore_with_a_graph_and_views(self):
+        self.ingest()
+        e = self.engine
+        self.planner.query = e.views.store.views()[0].query
+        before = e.read(self.task(4), 256)
+        e.end_read(self.task(4))
+        directory = self.tmp / "snapshot"
+        directory.mkdir()
+        e.save(directory)
+        again = GraceEngine(self.components())
+        again.restore(directory)
+        self.assertEqual(again.store.head, 4)
+        self.assertEqual(len(again.views.store.views()), len(e.views.store.views()))
+        self.assertEqual(again.updater.vocabulary.version, e.updater.vocabulary.version)
+        after = again.read(self.task(4), 256)
+        self.assertEqual(after.context.text, before.context.text)
+        self.assertEqual(after.trace.view_hits, before.trace.view_hits)
+        self.assertFalse(self.transport.script)  # the restored engine made no writer call
 
 
 if __name__ == "__main__":

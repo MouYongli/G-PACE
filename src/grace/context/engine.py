@@ -61,7 +61,7 @@ import re
 import time
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -248,6 +248,7 @@ class Components:
     fragment: VocabularyFragment = field(default_factory=VocabularyFragment)
     embed: Embed | None = None
     counter_name: str = "unnamed"
+    no_client: bool = False  # built without a chat client (dry run; see `from_port`)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -286,21 +287,67 @@ class GraceEngine(api.ContextEngine):
 
     # -- construction from a config ------------------------------------------------------------
 
+    @staticmethod
+    def _configs(writer: str | None, planner: str | None, views: str | None,
+                 seed: int | None) -> tuple[WriterConfig, PlannerConfig, ViewConfig | None]:
+        """The writer, planner and view configs with the run's seed in every decoding."""
+        writer_config = WriterConfig.load(REPO_ROOT / writer) if writer else WriterConfig.load()
+        planner_config = (PlannerConfig.load(REPO_ROOT / planner) if planner
+                          else PlannerConfig.load())
+        view_config = load_view_config(REPO_ROOT / views) if views else None
+        if seed is not None:
+            writer_config = replace(writer_config, decoding={**writer_config.decoding,
+                                                             "seed": seed})
+            planner_config = replace(planner_config, decoding={**planner_config.decoding,
+                                                               "seed": seed})
+            if view_config is not None:
+                view_config = replace(view_config, rendering=replace(
+                    view_config.rendering,
+                    decoding={**view_config.rendering.decoding, "seed": seed}))
+        return writer_config, planner_config, view_config
+
+    @classmethod
+    def resolved_settings(cls, params: Mapping[str, Any], seed: int | None, *,
+                          allow_no_client: bool = False) -> dict[str, Any]:
+        """What the engine's own model calls use, for the run's resolved config: the decoding
+        (with seed) of the writer, the planner and view rendering, and whether the engine ran
+        without a chat client (a dry run: no extraction, rule-only planner, template views)."""
+        writer, planner, views = cls._configs(params.get("writer"), params.get("planner"),
+                                              params.get("views", "configs/views/default.yaml"),
+                                              seed)
+        return {"writer_decoding": dict(writer.decoding),
+                "planner_decoding": dict(planner.decoding),
+                "rendering": ({"mode": views.rendering.mode,
+                               "decoding": dict(views.rendering.decoding)}
+                              if views is not None else None),
+                "allow_no_client": allow_no_client}
+
     @classmethod
     def from_port(cls, model: Any, *, writer: str | None = None, planner: str | None = None,
                   retrieval: str = "configs/retrieval/default.yaml",
                   assembly: str = "configs/assembly/default.yaml",
                   views: str | None = "configs/views/default.yaml",
                   staleness: Mapping[str, Any] | None = None,
-                  fragment: Mapping[str, int] | None = None) -> GraceEngine:
-        """Build from the harness's model port and the params of an engine config."""
+                  fragment: Mapping[str, int] | None = None,
+                  allow_no_client: bool = False) -> GraceEngine:
+        """Build from the harness's model port and the params of an engine config.
+
+        The writer, the planner and LLM rendering need the run's chat client (`model.client`);
+        without it construction fails unless `allow_no_client` is set (dry runs and tests only;
+        the harness records the flag in the resolved config). The client is wrapped so that every
+        prompt the engine sends is also recorded in the port's `observed` list (gold-sentinel
+        audit), and the run's seed (`model.decoding["seed"]`) is put into every decoding."""
         client = getattr(model, "client", None)
-        writer_config = WriterConfig.load(REPO_ROOT / writer) if writer else WriterConfig.load()
-        planner_config = (PlannerConfig.load(REPO_ROOT / planner) if planner
-                          else PlannerConfig.load())
+        if client is None and not allow_no_client:
+            raise ValueError("GraceEngine needs the run's chat client (model.client) for the "
+                             "writer and the planner; allow_no_client=True is for dry runs only")
+        if client is not None:
+            client = ObservedClient(client, getattr(model, "observe", None))
+        seed = (getattr(model, "decoding", None) or {}).get("seed")
+        writer_config, planner_config, view_config = cls._configs(writer, planner, views, seed)
         staleness = dict(staleness or {"strategy": "push_confirm", "local_filters": True})
         strategy = staleness.pop("strategy")
-        view_config = load_view_config(REPO_ROOT / views) if views else None
+        no_client = client is None
 
         def make_views(history: api.HistoryInfo, vocabulary) -> Views | NoViews:
             if view_config is None:
@@ -326,7 +373,8 @@ class GraceEngine(api.ContextEngine):
             retrieval=RetrievalConfig.load(REPO_ROOT / retrieval),
             assembly=AssemblyConfig.load(REPO_ROOT / assembly), views=make_views,
             writer=writer_config, fragment=VocabularyFragment(**dict(fragment or {})),
-            embed=embed, counter_name=getattr(model, "model", "model port")))
+            embed=embed, counter_name=getattr(model, "model", "model port"),
+            no_client=no_client))
 
     # -- life cycle ----------------------------------------------------------------------------
 
@@ -427,10 +475,10 @@ class GraceEngine(api.ContextEngine):
         if state.assembly.retrieval_used:
             # The read's one extra retrieval is spent (plan 5.6): nothing more is retrieved; the
             # context of the read is returned unchanged (the harness does not call this then).
-            return self._result(task, state.assembly, state.candidates, state.call_ids,
+            return self._result(task, state.assembly, state.candidates, [],
                                 state.decisions, state.hits, {}, further=True)
         start = time.perf_counter()
-        call_ids = list(state.call_ids)
+        call_ids: list[str] = []  # only the calls of this step; the read's are in its trace
         extra_plan, extra_result = self._plan(task, request)
         call_ids += list(extra_plan.call_ids)
         more_state, _ = self._state_items(task, extra_plan, extra_result, prefix="r")
@@ -622,6 +670,23 @@ class GraceEngine(api.ContextEngine):
 
 # ---------------------------------------------------------------------------------------------
 # Helpers
+
+
+class ObservedClient:
+    """A `grace.llm` chat client whose prompts are also handed to `observe` (the harness port's
+    record of every text sent to a model, audited by the gold-sentinel test); every other
+    attribute is the wrapped client's."""
+
+    def __init__(self, client: Any, observe: Callable[[Sequence[str]], None] | None):
+        self._client, self._observe = client, observe
+
+    def chat(self, messages, context, **kwargs):
+        if self._observe is not None:
+            self._observe([m["content"] for m in messages])
+        return self._client.chat(messages, context, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._client, name)
 
 
 @dataclass(frozen=True)
