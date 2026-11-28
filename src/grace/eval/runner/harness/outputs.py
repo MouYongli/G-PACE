@@ -46,19 +46,25 @@ class Prediction:
 
 
 class RunWriter:
-    """Appends the system-stage artefacts to a run directory."""
+    """Appends the artefacts of a stage to a run directory (`files`: the system stage's by
+    default; `INGEST_FILES` and `READ_FILES` for the ingest and read stages). Writing a file the
+    stage does not own is an error."""
 
     FILES = ("predictions.jsonl", "contexts.jsonl", "traces/write.jsonl", "traces/read.jsonl",
              "changesets.jsonl")
+    INGEST_FILES = ("traces/write.jsonl", "changesets.jsonl")
+    READ_FILES = ("predictions.jsonl", "contexts.jsonl", "traces/read.jsonl")
 
-    def __init__(self, run_dir: Path):
+    def __init__(self, run_dir: Path, files: tuple[str, ...] = FILES):
         self.run_dir = Path(run_dir)
         (self.run_dir / "traces").mkdir(exist_ok=True)
-        for name in self.FILES:
+        for name in files:
             (self.run_dir / name).touch(exist_ok=False)
-        self.counts = dict.fromkeys(self.FILES, 0)
+        self.counts = dict.fromkeys(files, 0)
 
     def _append(self, name: str, record: dict[str, Any]) -> None:
+        if name not in self.counts:
+            raise ValueError(f"this stage does not write {name}")
         with (self.run_dir / name).open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
         self.counts[name] += 1
