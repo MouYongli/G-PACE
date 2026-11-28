@@ -73,6 +73,9 @@ class Capturing(api.ContextEngine):
         self.seen.append(repr(task))
         return self.inner.end_read(task)
 
+    def finish(self):
+        return self.inner.finish()
+
     def save(self, directory):
         return self.inner.save(directory)
 

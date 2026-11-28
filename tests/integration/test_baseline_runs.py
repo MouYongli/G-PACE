@@ -78,7 +78,13 @@ class BaselineRunsTest(unittest.TestCase):
             self.assertTrue(answers)
         writes = read_jsonl(result.run_dir / "traces/write.jsonl")
         n_messages = sum(h["n_messages"] for h in fixture["histories"].values())
-        self.assertEqual(len(writes), n_messages)
+        # One `write` record per message; flushes inside reads (`read`) and the end of the
+        # history (`finish`) add records of their own.
+        self.assertEqual(sum(w["trigger"] == "write" for w in writes), n_messages)
+        self.assertTrue({w["trigger"] for w in writes} <= {"write", "read", "finish"})
+        changesets = read_jsonl(result.run_dir / "changesets.jsonl")
+        keys = [(c["history_id"], c["version"]) for c in changesets]
+        self.assertEqual(len(keys), len(set(keys)))  # every committed version exactly once
         for w in writes:
             self.assertTrue(set(w["call_ids"]) <= call_ids)
 

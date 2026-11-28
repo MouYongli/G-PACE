@@ -11,7 +11,8 @@
   "traces/write.jsonl": {
     "history_id": "conv-syn-1", "version": 4, "message_ids": ["D2:1"], "call_ids": ["c008"],
     "stale_marks": [{"view_id": "instruments-mel", "strategy": "claim-pattern", "level": "answer"}],
-    "timings_ms": {"extract": 812.0, "commit": 3.5, "staleness": 0.4}
+    "timings_ms": {"extract": 812.0, "commit": 3.5, "staleness": 0.4},
+    "trigger": "write"
   },
   "traces/read.jsonl": {
     "read_id": "conv-syn-1:q1@5", "history_id": "conv-syn-1", "version": 5,

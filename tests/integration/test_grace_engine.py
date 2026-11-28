@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 from grace.config import registry
@@ -146,6 +147,35 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(after.text, before.text)
 
 
+class RunFilesTest(unittest.TestCase):
+    """Every committed version reaches changesets.jsonl, and flushes inside reads and the end of
+    the history leave write traces with their trigger (native and streaming schedules)."""
+
+    def test_every_version_and_trigger_in_the_run_files(self):
+        from grace.eval.runner.harness import drive
+        from grace.eval.runner.harness.rundir import CodeState
+        from tests.contracts.records import read_jsonl
+
+        code = CodeState("0123456789abcdef0123456789abcdef01234567", False)
+        for schedule in (None, "streaming"):
+            with self.subTest(schedule=schedule), tempfile.TemporaryDirectory() as tmp:
+                result = drive.run_system(
+                    engine_config=CONFIG, records=LOCOMO, budget=256, experiment="T026",
+                    run_root=Path(tmp), schedule=schedule, code=code, command="test",
+                    backend_factory=lambda c: FakeBackend(prefix_caching=c))
+                self.assertEqual(result.status, "completed", result.failure)
+                item = load_fixture(LOCOMO, schedule).histories[0]
+                n = len(item.messages)
+                versions = sorted(c["version"] for c in
+                                  read_jsonl(result.run_dir / "changesets.jsonl")
+                                  if c["history_id"] == item.history.history_id)
+                self.assertEqual(versions, list(range(1, n + 1)))
+                writes = [w for w in read_jsonl(result.run_dir / "traces/write.jsonl")
+                          if w["history_id"] == item.history.history_id]
+                triggers = Counter(w["trigger"] for w in writes)
+                self.assertEqual(triggers["write"], n)  # read/finish records: scripted tests
+
+
 # ---------------------------------------------------------------------------------------------
 # A scripted writer and planner: a graph, a supersession, a vocabulary change and views
 
@@ -238,16 +268,28 @@ class ScriptedEngineTest(unittest.TestCase):
         first = e.read(self.task(1), 256)
         e.end_read(self.task(1))
         self.assertEqual(e.store.head, 1)  # flushed before the read (write cost W)
-        self.assertEqual(len(first.trace.call_ids), 1)
+        (flush,) = first.writes
+        self.assertEqual(flush.trace.trigger, "read")
+        self.assertEqual(len(flush.trace.call_ids), 1)  # the writer call is write cost
+        self.assertEqual([c["version"] for c in flush.changesets], [1])
+        self.assertNotIn(flush.trace.call_ids[0], first.trace.call_ids)
+        self.writes = []
         for m in self.messages[1:]:
-            e.write(m)
-        e.updater.finish()
+            self.writes.append(e.write(m))
+        self.finished = e.finish()
         return first
 
     def test_flush_vocabulary_views_and_sentinel_audit(self):
         self.ingest()
         e = self.engine
         self.assertEqual(e.store.head, 4)
+        committed = [c["version"] for w in [*self.writes, *self.finished] for c in w.changesets]
+        self.assertEqual(committed, [2, 3, 4])  # every version once, wherever it was committed
+        for w in self.writes:
+            if len(w.changesets) > 1:
+                self.assertEqual(w.changeset, w.changesets[-1])
+        self.assertTrue(all(w.trace.trigger == "finish" for w in self.finished))
+        self.assertEqual(e.finish(), ())  # nothing left open
         self.assertNotEqual(e.updater.vocabulary.version, "v1")  # prefersDrink is local
         views = {v.view_id: v for v in e.views.store.views()}
         self.assertIn("current:user:livesIn", views)

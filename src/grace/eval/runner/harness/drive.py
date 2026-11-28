@@ -261,7 +261,10 @@ class SystemRun:
 
 def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
                   writer: RunWriter, max_tokens: int | None = None) -> int:
-    """Ingest one history and answer its reads; return the number of reads answered."""
+    """Ingest one history and answer its reads; return the number of reads answered.
+
+    Write-side steps a read ran first (a flush, `Answered.writes`) and those of `finish()` after
+    the last message are recorded like writes (write traces and change sets)."""
     engine.open(item.history)
     reads = list(item.reads)
     visible: set[str] = set()
@@ -274,6 +277,8 @@ def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
             result = answer(engine, task, budget, model, visible,
                             asked_at=message_time(message, item.history), max_tokens=max_tokens)
             engine.end_read(task)
+            for step in result.writes:
+                writer.write(step)
             metadata = {"dropped_citations": result.dropped_citations} \
                 if result.dropped_citations else {}
             if result.retrieve_refused:
@@ -289,6 +294,8 @@ def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
             answered += 1
     if reads:
         raise RuntimeError(f"{len(reads)} reads of {item.history.history_id} were not reached")
+    for step in engine.finish():
+        writer.write(step)
     return answered
 
 

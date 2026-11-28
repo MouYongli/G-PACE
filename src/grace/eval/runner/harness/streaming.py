@@ -26,12 +26,10 @@ This module adds:
   saved state is checked through order independence: two orders must give the same version,
   index version and evidence input for every read (tests/integration/test_locomo_streaming.py).
 
-Dependence on an open engine issue (T026 log, item 1): under streaming most reads fall inside an
-open extraction unit, so GRACE flushes it inside `read`. The change sets and stale marks of that
-flush are not carried into `changesets.jsonl` or `traces/write.jsonl`; they exist only in the
-engine state (the probe's fingerprint covers them). Write cost and staleness counts of streaming
-runs are therefore incomplete until that issue is fixed. There is no end-of-history hook either
-(item 6); the read at N flushes the last unit.
+Under streaming most reads fall inside an open extraction unit, so GRACE flushes it inside
+`read`; the flush's change sets, write traces and stale marks come back in `ReadResult.writes`
+(trigger `read`) and are recorded like writes, and `finish()` after the last message extracts a
+unit still open (trigger `finish`), so write cost and staleness counts are complete (T026).
 """
 
 from __future__ import annotations
@@ -167,6 +165,11 @@ class StateProbe(api.ContextEngine):
         if not record.unchanged:
             raise ProbeError(f"{task.read_id}: resident state changed between the read and "
                              "end_read (answering or end_read wrote to the engine)")
+
+    def finish(self):
+        if self._open:
+            raise ProbeError(f"finish while reads are open: {sorted(self._open)}")
+        return self.inner.finish()
 
     def save(self, directory):
         return self.inner.save(directory)

@@ -59,10 +59,13 @@ extra state facts for the assembler, and its own save and restore. Each factory 
 the writer config, the chat client and the view config, plus its options from the config.
 
 Traces. Every read returns `ReadTrace` with the fused candidates, the evidence shown, view hits,
-staleness decisions, every call ID (flush, planner, view maintenance, embeddings), `utilisation`,
+staleness decisions, the read's call IDs (planner, view maintenance, embeddings), `utilisation`,
 `expansions_used` and `retrieval_used`; `last_assembly` keeps the full assembly record of the
-latest read for probes. Every write returns the write trace with stale marks and the change set of
-the latest version it committed (see "Open issue" in the T026 log on several versions per write).
+latest read for probes. Every write returns its write trace (trigger `write`) with stale marks
+and the change sets of every version it committed. A unit flushed before a read is returned in
+`ReadResult.writes` (one write result per unit, trigger `read`), and `finish()` at the end of the
+history extracts the units still open (trigger `finish`), so every committed version and every
+writer call reaches the change-set file and the write traces.
 """
 
 from __future__ import annotations
@@ -327,6 +330,7 @@ class GraceEngine(api.ContextEngine):
         self.views: Views | NoViews | None = None
         self.extension: Any = None
         self._reads: dict[str, _ReadState] = {}
+        self._pending_writes: tuple[api.WriteResult, ...] = ()
         self.last_assembly: Assembly | None = None
 
     # -- construction from a config ------------------------------------------------------------
@@ -479,21 +483,26 @@ class GraceEngine(api.ContextEngine):
         call_ids += self._index(message)
         timings["index"] = (time.perf_counter() - start) * 1000
         start = time.perf_counter()
-        marks, view_calls, changeset = self._commit_views(results)
+        marks, view_calls, records = self._commit_views(results)
         timings["views"] = (time.perf_counter() - start) * 1000
         trace = api.WriteTrace(history.history_id, message.version, (message.message_id,),
                                tuple(call_ids + view_calls), tuple(marks), timings)
-        return api.WriteResult(trace, changeset)
+        return api.WriteResult(trace, changesets=tuple(records))
+
+    def finish(self) -> tuple[api.WriteResult, ...]:
+        """End of the history: extract every unit still open (trigger `finish`, write cost W)."""
+        self._history()
+        return self._unit_writes(self.updater.finish(), "finish")
 
     def read(self, task: api.ReadTask, budget_tokens: int | None) -> api.ReadResult:
         self._check_task(task)
         start = time.perf_counter()
         timings: dict[str, float] = {}
         call_ids: list[str] = []
-        flushed = self.updater.flush(task.version, task.read_id)
-        call_ids += [c for r in flushed for c in r.call_ids]
-        marks_calls = self._commit_views(flushed)[1]
-        call_ids += marks_calls
+        # A unit still open at the read version is extracted first; its calls, change sets and
+        # stale marks are write-side steps (trigger `read`), returned in `ReadResult.writes`.
+        self._pending_writes = self._unit_writes(
+            self.updater.flush(task.version, task.read_id), "read")
         timings["flush"] = (time.perf_counter() - start) * 1000
 
         t = time.perf_counter()
@@ -636,17 +645,37 @@ class GraceEngine(api.ContextEngine):
             self.dense.add(chunk, vector)
         return call_ids
 
-    def _commit_views(self, results) -> tuple[list[api.StaleMark], list[str], Mapping | None]:
+    def _commit_views(self, results) -> tuple[list[api.StaleMark], list[str], list[Mapping]]:
+        """Hand every committed change set to the views; return the stale marks, the view calls
+        and the change-set records, in version order."""
         marks: list[api.StaleMark] = []
         calls: list[str] = []
-        last = None
+        records: list[Mapping] = []
         for result in results:
             for changeset in result.changesets:
                 m, c = self.views.on_commit(changeset, self.store)
                 marks += m
                 calls += c
-                last = changeset
-        return marks, calls, (last.to_record() if last is not None else None)
+                records.append(changeset.to_record())
+        return marks, calls, records
+
+    def _unit_writes(self, results, trigger: str) -> tuple[api.WriteResult, ...]:
+        """One write result per extraction unit run outside `write` (a flush before a read,
+        trigger `read`; the end of the history, trigger `finish`): its calls, its change sets
+        and the stale marks they caused. Units that made no call and committed nothing are
+        skipped."""
+        out = []
+        for result in results:
+            if not result.call_ids and not result.changesets:
+                continue
+            start = time.perf_counter()
+            marks, calls, records = self._commit_views([result])
+            timings = {**result.timings_ms, "views": (time.perf_counter() - start) * 1000}
+            trace = api.WriteTrace(result.history_id, result.last_version, result.message_ids,
+                                   tuple(result.call_ids) + tuple(calls), tuple(marks),
+                                   timings, trigger)
+            out.append(api.WriteResult(trace, changesets=tuple(records)))
+        return tuple(out)
 
     def _plan(self, task: api.ReadTask, request: str, graph: ClaimStore):
         last = None
@@ -728,7 +757,8 @@ class GraceEngine(api.ContextEngine):
                                staleness_decisions=decisions,
                                retrieval_used=assembly.retrieval_used,
                                expansions_used=assembly.expansions_used)
-        return api.ReadResult(context, trace)
+        writes, self._pending_writes = self._pending_writes, ()
+        return api.ReadResult(context, trace, writes)
 
     def _exclusive(self, predicate: str) -> bool:
         predicates = self.updater.vocabulary.current.predicates

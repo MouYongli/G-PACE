@@ -100,7 +100,8 @@ class InterfaceTest(unittest.TestCase):
         for row in read_jsonl(directory / "messages.jsonl"):
             trace = engine.write(api.Message.from_record(row)).trace.to_record()
             self.assertEqual(set(trace), {"history_id", "version", "message_ids", "call_ids",
-                                          "stale_marks", "timings_ms"})
+                                          "stale_marks", "timings_ms", "trigger"})
+            self.assertEqual(trace["trigger"], "write")
             for task in (t for t in tasks if t.version == engine.version):
                 reads.append(engine.read(task, None))
         self.assertEqual(len(reads), len(tasks))
@@ -133,6 +134,22 @@ class InterfaceTest(unittest.TestCase):
             api.StaleMark("v", "s", "maybe")
         with self.assertRaises(api.RecordError):
             api.StalenessDecision("v", "s", "fresh", "drop")
+
+
+class WriteRecordsTest(unittest.TestCase):
+    def test_write_trigger_changesets_and_finish(self):
+        trace = api.WriteTrace("h", 3, ("m3",))
+        self.assertEqual(trace.to_record()["trigger"], "write")
+        with self.assertRaises(api.RecordError):
+            api.WriteTrace("h", 3, ("m3",), trigger="later")
+        one = api.WriteResult(trace, {"version": 3})
+        self.assertEqual(one.changesets, ({"version": 3},))
+        many = api.WriteResult(trace, changesets=({"version": 2}, {"version": 3}))
+        self.assertEqual(many.changeset, {"version": 3})
+        self.assertEqual(api.WriteResult(trace).changesets, ())
+        with self.assertRaises(api.RecordError):
+            api.WriteResult(trace, {"version": 2}, ({"version": 2}, {"version": 3}))
+        self.assertEqual(_Echo().finish(), ())
 
 
 if __name__ == "__main__":
