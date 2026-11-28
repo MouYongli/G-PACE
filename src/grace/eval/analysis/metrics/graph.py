@@ -102,6 +102,8 @@ def read_graph(graph_dir: Path) -> WriterGraph:
                 graph.evidence[key] = e.get("span") or {}
         graph.supersessions += entries.get("supersessions", [])
     state_path = Path(graph_dir) / "writer.json"
+    if not state_path.exists():  # an engine snapshot keeps the writer state under writer/
+        state_path = Path(graph_dir) / "writer" / "writer.json"
     if state_path.exists():
         graph.labels = dict(json.loads(state_path.read_text(encoding="utf-8"))
                             .get("entity_labels", {}))
@@ -119,7 +121,14 @@ class WriterRun:
 
 
 def read_writer_run(run_dir: Path) -> WriterRun:
+    """A writer run (`graphs/<id>/`, `updates.jsonl`), or an `ingest` run of the harness: one
+    graph per history from `snapshot/<history_id>/` (GraceEngine snapshot), no update records
+    (the ingest run keeps write traces and change sets, not the writer's dropped items)."""
     run_dir = Path(run_dir)
+    if (run_dir / "snapshot" / "manifest.json").exists():
+        graphs = {p.name: read_graph(p) for p in sorted((run_dir / "snapshot").iterdir())
+                  if (p / "store" / "changesets.jsonl").exists()}
+        return WriterRun(run_dir, graphs, [])
     graphs = {p.name: read_graph(p) for p in sorted((run_dir / "graphs").iterdir())
               if (p / "store" / "changesets.jsonl").exists()}
     updates = read_jsonl(run_dir / "updates.jsonl") if (run_dir / "updates.jsonl").exists() \

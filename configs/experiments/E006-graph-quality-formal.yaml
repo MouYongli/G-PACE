@@ -1,0 +1,54 @@
+# E006 (graph quality) · formal run at the main configuration (E007, user decision 2026-11-28):
+# writer Qwen3-32B with configs/common/writer.yaml (session units), the default `grace` engine.
+# Decisions recorded in PR #148 (s00-super): LoCoMo is scored on the full-history graph of the
+# main-configuration ingest run (harness `--stage ingest`); LongMemEval-S segment-wise (context +
+# segment) as an optimistic bound, with the LoCoMo segment-vs-full gap of the same writer stated.
+# Segment-wise extraction (stage probe; all 40 T024 segments, so the LoCoMo gap is measured):
+#   uv run python -m grace.cli.graph_quality extract --config configs/experiments/E006-graph-quality-formal.yaml \
+#       --writer-url http://localhost:8253/v1 --run-parent "$PROJECT_ROOT/runs/E006/artifacts/w02-E006"
+# Scoring (stage score) of the ingest run or the probe:
+#   uv run python -m grace.cli.graph_quality score <run-dir> --config configs/experiments/E006-graph-quality-formal.yaml \
+#       --judge-url http://localhost:8252/v1 --run-parent "$PROJECT_ROOT/runs/E006/artifacts/w02-E006"
+# Development splits only. Gold: the two T024 agent label files (human review pending), so precision
+# and recall are bounds.
+experiment: E006
+seed: 0
+writer_config: configs/common/writer.yaml   # session units, context 2, temperature 0, seed 0, json_schema
+model_config: configs/models/qwen3-32b.yaml  # main writer (D006 amendment, 2026-11-28); thinking off
+serving:
+  model: Qwen/Qwen3-32B@9216db5781bf21249d130ec9da846c4624c16137
+  server: shared vLLM server of s00-super (runs/compute.yaml, port 8253)
+
+sample: docs/research/annotations/graph-quality/sample.json   # T024, seed T024-segments-v1
+# How the writer sees a segment (deviation from a full-history reading of plan 6.7, see the E006
+# log): each segment is written on its own, its 6 context messages first (extracted, not scored).
+segment_mode: context+segment
+
+benchmarks:
+  - slug: locomo
+    split: dev
+  - slug: longmemeval-s
+    split: dev
+
+scoring:
+  # Gold label files (guideline docs/research/graph-quality-annotation.md, section 6). Two files:
+  # claims found by both (one-to-one matching of eval/analysis/annotation/graph_quality.match) are
+  # the core reference, single-file claims are uncertain, and precision and recall are reported as
+  # bounds. One file (for example the human-reviewed reference): every claim is core.
+  gold:
+    - docs/research/annotations/graph-quality/labels-agent-A.jsonl
+    - docs/research/annotations/graph-quality/labels-agent-B.jsonl
+  # Segment texts written by the T024 sample command (relative to runs_root).
+  segments: T024/artifacts/sample/segments.jsonl
+  # Predicate matching of anchor-matched pairs (same message, subject and object): `normalised`
+  # (string equality after normalisation, the strict level of T024), `lexical` (normalised or
+  # sharing a content stem after removing light verbs), `judge` (lexical, then an LLM judge for the
+  # remaining pairs). See the E006 log for the check on the agent-agent pairs.
+  predicate_match: judge
+  judge:
+    model_config: configs/models/qwen3-8b.yaml
+    prompt: predicate-judge          # resources/prompts/predicate-judge, pinned in prompts.yaml
+    max_tokens: 4
+    temperature: 0.0
+    seed: 0
+  entailment_judge: true             # LLM check whether the cited span entails the claim
