@@ -1,0 +1,177 @@
+# E014 · Development quality-versus-cost curves (plan 6.7, 7.2, 8; RQ3; experiment file
+# docs/work/experiments/E014-dev-quality-cost.md). Development data only (no held-out split before
+# the T033 preregistration tag). The numbers feed the configuration lock (D012: budgets and
+# non-inferiority margins) and the LoCoMo cost claim (user decision 2026-11-28: the claim waits for
+# this experiment).
+#
+# Drivers (run roots are `runs/E014/artifacts/w01-E014` under PROJECT_ROOT):
+#   system run  uv run python src/grace/eval/runner/harness/drive.py --engine <engine> \
+#                 --benchmark locomo --split dev --budget <b> --experiment E014 --run-root <root> \
+#                 --backend client --base-url <answer url> --embed-url <embed url>
+#   ingest run  ... drive.py --stage ingest --engine <engine> --benchmark locomo --split dev \
+#                 --workers 2 ... [--writer-url <writer url>]
+#   read run    ... drive.py --stage read --engine <engine> --upstream <ingest run dir> \
+#                 --budget <b> --workers 2 ...
+#   score run   uv run python -m grace.cli.locomo_score --run <system or read run> \
+#                 --experiment E014 --run-root <root>
+#   analysis    uv run python -m grace.cli.quality_cost --config configs/experiments/E014-dev-quality-cost.yaml \
+#                 --out <root>/E014/<analysis dir>
+experiment: E014
+seed: 0
+
+# Main configuration (E007 and E013 decisions): GRACE's writer Qwen3-32B (session units), planner,
+# view rendering and answering Qwen3-8B, Qwen3-Embedding-0.6B. Every baseline answers with the same
+# Qwen3-8B, answer prompt and budgets (plan 7).
+models:
+  answer: configs/models/qwen3-8b.yaml        # shared server, port 8252 (no cached-token report)
+  writer: configs/models/qwen3-32b.yaml       # shared server, port 8253 (reports cached tokens)
+servers:
+  answer: http://localhost:8252/v1
+  writer: http://localhost:8253/v1
+  embed: http://localhost:8251/v1
+
+budgets: [256, 512, 1024, full]   # plan 8.1; `full` is the full-history row only
+
+targets:
+  locomo-dev:
+    benchmark: locomo
+    split: dev                     # conv-26, conv-49; 308 end-of-history reads (categories 1-4)
+    metric: f1                     # registered rule-based LoCoMo F1 (configs/common/scorers.yaml)
+  longmemeval-s-dev:
+    benchmark: longmemeval-s
+    split: dev
+    # Quality only (plan 8.4: no token-saving claim on LongMemEval-S). Its registered metrics are
+    # judge metrics only (official and blind judge); no local judge runs before T035, so this
+    # target is reported as blocked on scoring (experiment Log).
+    metric: null
+
+# Shared GRACE ingest run of the main configuration (E006, PR #168). Read-side variants (budgets,
+# the template-serialisation view source) read from it; write-side variants have their own ingest.
+shared_ingest:
+  locomo-dev: E006/artifacts/w02-E006/E006/E006-20261128T082608Z-21cb
+
+# Systems. `reuse` names earlier runs whose code and config still match the current main for that
+# system (checked 2026-11-28: no change to the raw, retrieval, summary, slot or Mem0 engines, their
+# configs, the answer prompt or the answering path that affects a baseline since the run's SHA; the
+# only answering change, `retrieve_refused`, applies only when an engine reports a spent extra
+# retrieval, which no baseline does). Reused runs ran on a server that reported cached tokens.
+# `stage`: system (one run per budget), ingest+read (one ingest, one read run per budget).
+systems:
+  grace:
+    engine: configs/engines/grace.yaml
+    stage: read                    # on shared_ingest
+    budgets: [256, 512, 1024]
+  grace-template:                  # query re-run at every read, template sentences, no rendering
+    engine: configs/engines/grace-template.yaml
+    stage: read                    # view source read at read time: read side (stages.py)
+    budgets: [256, 512, 1024]
+  grace-append-only:               # query-time resolution, no views (write side differs)
+    engine: configs/engines/grace-append-only.yaml
+    stage: ingest+read
+    budgets: [256, 512, 1024]
+  grace-slots:                     # fixed slot table, guard on, bitemporal (write side differs)
+    engine: configs/engines/grace-slots.yaml
+    stage: ingest+read
+    budgets: [256, 512, 1024]
+  full-history-cached:
+    engine: configs/engines/full-history-cached.yaml
+    budgets: [full]
+    reuse: {full: E001/artifacts/manager/E001/E001-20261125T181644Z-4e97}
+  full-history:
+    engine: configs/engines/full-history.yaml
+    budgets: [full]
+    reuse: {full: E001/artifacts/manager/E001/E001-20261125T184148Z-74ee}
+  last-k:
+    engine: configs/engines/last-k.yaml
+    stage: system
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182212Z-9709}
+  bm25:
+    engine: configs/engines/bm25.yaml
+    stage: system
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182211Z-238f}
+  dense:
+    engine: configs/engines/dense.yaml
+    stage: system
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182212Z-f6b5}
+  rrf:
+    engine: configs/engines/rrf.yaml
+    stage: system
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182212Z-2cd5}
+  summary-reuse:                   # rolling summary reused without rewriting ("stale")
+    engine: configs/engines/summary-reuse.yaml
+    stage: ingest+read
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182213Z-25aa}
+  summary-rewrite:                 # rolling summary rewritten after every block
+    engine: configs/engines/summary-rewrite.yaml
+    stage: ingest+read
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182207Z-6a24}
+  slot-table:                      # T003 fixed-schema slot table (pilot inventory)
+    engine: configs/engines/slot-table.yaml
+    stage: ingest+read
+    budgets: [256, 512, 1024]
+    reuse: {1024: E001/artifacts/manager/E001/E001-20261125T182206Z-c9b2}
+  mem0:                            # T029 adapter, local (Qwen3-8B, in-process Qdrant), no paid API
+    engine: configs/engines/mem0.yaml
+    stage: ingest+read
+    budgets: [256, 512, 1024]
+    # one system run per history (T029 acceptance runs, same adapter code and config)
+    reuse: {1024: [T029/artifacts/manager/T029/T029-20261125T180237Z-27cb,
+                   T029/artifacts/manager/T029/T029-20261125T180237Z-4f63]}
+
+# Cost accounting (plan 8.1, 8.2). Price of a record at cache ratio c:
+#   price_c = weight(model) * (input - (1 - c) * cached + output)
+cost:
+  c_marks:
+    warm-read: 0.130               # T013 run T013-20261126T044914Z-811f, median-latency ratio in
+                                   # the warm LoCoMo full-history regime (upper bound)
+    pooled: 0.191                  # same run, pooled latency fit (upper bound)
+  c_grid_steps: 100
+  # Compute weighting (E007): compute per token, prefill and decode alike, scales with the
+  # parameter count; Qwen3-8B is the unit. Embedding calls are reported apart (plan 8.1).
+  weights:
+    tokens: {}                     # every model weight 1
+    compute: {"Qwen/Qwen3-32B": 4.0, "Qwen/Qwen3-8B": 1.0}   # 32.8 B / 8.2 B parameters
+  # The Qwen3-8B server at 8252 runs without --enable-prompt-tokens-details, so records of runs on
+  # it carry cached_input_tokens = 0 although the server caches prefixes. Two accountings:
+  #   reported   - cached tokens as recorded (no cache credit on 8252 runs: an upper bound of the
+  #                cost of those calls);
+  #   imputed    - for records of a model whose run reports no cached token at all, cached tokens
+  #                = the block-aligned token length of the prompt's fixed system message
+  #                (resources/prompts/<name>/system.txt under the model's chat template), the
+  #                part every call of that prompt shares; a lower bound of what an APC server
+  #                serves from its cache (the history-stable vocabulary fragment of plan-query and
+  #                the conversation a repair continues are not credited).
+  #   probe      - the cached share per call type measured on a probe read run of GRACE whose chat
+  #                calls go to the Qwen3-32B server (same tokenizer and prompts; it reports cached
+  #                tokens), applied to the Qwen3-8B records of the same call type.
+  cache_imputation:
+    block_tokens: 16               # vLLM KV block size: prefix hits are whole blocks
+    exempt_runs:                   # ran on a server without prefix caching: zero cached is real
+      - E001-20261125T184148Z-74ee
+    probe:
+      engine: configs/engines/grace.yaml
+      upstream: shared_ingest
+      history: conv-26
+      budget: 1024
+      model_config: configs/models/qwen3-32b.yaml
+      base_url: http://localhost:8253/v1
+  baseline_for_break_even: full-history-cached
+
+# Metrics (plan 6.7, 8.3).
+metrics:
+  accuracy_at_budget: f1           # per system and budget, categories 1-4 and per category
+  tokens_per_read: [logical, computed_reported, computed_imputed]  # incl. W spread over reads
+  tokens_at_similar_quality:
+    reference: grace@1024          # cheapest budget of each system whose F1 is within the margin
+    margins: [0.01, 0.03]
+  cumulative_over_reads: {order: run, seed: 0, budgets: [1024, full]}   # measured order and one fixed-seed draw
+  cost_per_success:
+    success: f1 >= 0.5             # rule-based, no judge (local judge scheduled for T035)
+  break_even:                      # GRACE and its variants against full-history-cached
+    ledgers: [tokens, compute]

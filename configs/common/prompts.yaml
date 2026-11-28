@@ -124,6 +124,17 @@ prompts:
       line per rendering unit, "[row ID] name = value; ...", members of a count indented). Output:
       sentences, each labelled with the row IDs it states; checked by
       src/grace/context/views/render.py, failed sentences fall back to the template.
+  rewrite-view:
+    call_type: render
+    sha256: 1a649ead087216a24088659a0f45a90668d6b7d56a81e0b8c60881c8af0f06b1
+    schema: llm/rewrite-view  # resources/schemas/llm/rewrite-view.json
+    schema_sha256: 32128b25375a850fe44872966a87b46b3bfcce99f93f4de312f3d661fb5ba06a
+    note: >-
+      LLM rewriting from raw text, the third view content source of ablation C (plan 7.3), added
+      by E010. Variables: title (the view's title) and messages (the evidence messages of the
+      view's rows, one line each, "[message ID] (date) speaker: text"); the rows themselves are
+      not shown. Output: sentences, each labelled with the message IDs it is based on; checked by
+      src/grace/context/views/readtime.py (sources must be among the messages given).
   plan-query:
     call_type: plan
     sha256: 02d112490e5fd01feb6fe3ccee7cef13eb8ef6fcea373522b0019c06c8407c07

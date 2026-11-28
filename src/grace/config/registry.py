@@ -22,6 +22,7 @@ ENGINES: dict[str, str] = {
 # param and built by `GraceEngine.from_port`; each value is a factory (see context/engine.py).
 COMPONENTS: dict[str, str] = {
     "serialised-views": "grace.context.views.serialise:serialised_views",
+    "read-time-views": "grace.context.views.readtime:read_time_views",
     "query-time-resolution": "grace.context.pipeline.update.deferred:query_time_resolution",
     "slot-table": "grace.context.pipeline.update.slots:slot_table",
     "single-time": "grace.context.pipeline.update.single_time:single_time",

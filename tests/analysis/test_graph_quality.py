@@ -113,6 +113,11 @@ class AgreementTest(unittest.TestCase):
         self.assertTrue(gq.same_name("Ana's dog", "Ana dog"))
         self.assertTrue(gq.same_name("LGBTQ support group", "support group"))
         self.assertFalse(gq.same_name("Porto", "Lisbon"))
+        # a possessor is not the thing it possesses (E006 follow-up)
+        self.assertFalse(gq.same_name("Caroline", "Caroline's necklace"))
+        self.assertFalse(gq.same_name("Caroline’s necklace", "caroline"))
+        self.assertTrue(gq.same_name("necklace", "Caroline's necklace"))
+        self.assertTrue(gq.same_name("Caroline's necklace", "the necklace of Caroline's"))
         self.assertEqual(gq.norm_predicate("playsInstrument"), "plays instrument")
 
     def test_anchor_and_strict_matches(self):

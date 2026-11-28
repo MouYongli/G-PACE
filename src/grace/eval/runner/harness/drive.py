@@ -11,6 +11,10 @@ synthetic fixture directory (`--records`, tests and CI only). Model calls go thr
 `--model-config`, embeddings from `--embed-url`), or through the deterministic fake
 (`--backend fake`, the default; no network, no score from it is real).
 
+`--stage ingest` and `--stage read --upstream <ingest run>` run the two stages of end-of-history
+reading instead (`stages.py`): one ingest run (writes, `finish()`, snapshot) serves several read
+runs (budgets, read-side variants); `--workers N` processes N histories in parallel there.
+
 Streaming and other interleaved schedules (`--schedule streaming` for LoCoMo, T031) run on the
 same loop. `--task` keeps only the reads of some questions (smoke runs), `--read-order reversed`
 answers the reads of one version in reverse schedule order, and `--state-probe` wraps the engine
@@ -259,6 +263,26 @@ class SystemRun:
     n_reads: int
 
 
+def answer_read(engine: api.ContextEngine, task: api.ReadTask, budget: int | None, model,
+                visible: set[str], asked_at: str | None, max_tokens: int | None = None):
+    """Answer one read and end it; return the answering result and its prediction record."""
+    result = answer(engine, task, budget, model, visible, asked_at=asked_at,
+                    max_tokens=max_tokens)
+    engine.end_read(task)
+    metadata = {"dropped_citations": result.dropped_citations} \
+        if result.dropped_citations else {}
+    if result.retrieve_refused:
+        metadata["retrieve_refused"] = True
+    prediction = Prediction(
+        benchmark=task.benchmark, split=task.split, history_id=task.history_id,
+        read_id=task.read_id, task_id=task.task_id, version=task.version,
+        output=result.output, prediction=result.prediction, cited_ids=result.cited_ids,
+        context_ids=result.context.context_ids,
+        further_retrieval=result.trace.further_retrieval, raw_output=result.raw_output,
+        metadata=metadata)
+    return result, prediction
+
+
 def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
                   writer: RunWriter, max_tokens: int | None = None) -> int:
     """Ingest one history and answer its reads; return the number of reads answered.
@@ -274,22 +298,10 @@ def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
         visible.add(message.message_id)
         while reads and reads[0].version == message.version:
             task = reads.pop(0)
-            result = answer(engine, task, budget, model, visible,
-                            asked_at=message_time(message, item.history), max_tokens=max_tokens)
-            engine.end_read(task)
+            result, prediction = answer_read(engine, task, budget, model, visible,
+                                             message_time(message, item.history), max_tokens)
             for step in result.writes:
                 writer.write(step)
-            metadata = {"dropped_citations": result.dropped_citations} \
-                if result.dropped_citations else {}
-            if result.retrieve_refused:
-                metadata["retrieve_refused"] = True
-            prediction = Prediction(
-                benchmark=task.benchmark, split=task.split, history_id=task.history_id,
-                read_id=task.read_id, task_id=task.task_id, version=task.version,
-                output=result.output, prediction=result.prediction, cited_ids=result.cited_ids,
-                context_ids=result.context.context_ids,
-                further_retrieval=result.trace.further_retrieval, raw_output=result.raw_output,
-                metadata=metadata)
             writer.read(prediction, result.context, result.trace)
             answered += 1
     if reads:
@@ -297,6 +309,77 @@ def drive_history(engine: api.ContextEngine, item, budget: int | None, model,
     for step in engine.finish():
         writer.write(step)
     return answered
+
+
+@dataclass
+class Models:
+    """How a run builds its model port (and the engine's, when the config names its own)."""
+
+    make_model: Callable[[CallLedger], Any]
+    make_engine_model: Callable[[CallLedger, Any], Any] | None
+    info: dict[str, Any]
+    device: str
+
+    def build(self, ledger: CallLedger) -> tuple[Any, Any]:
+        model = self.make_model(ledger)
+        engine_model = self.make_engine_model(ledger, model) if self.make_engine_model else model
+        return model, engine_model
+
+
+def models_for(config: dict[str, Any], seed: int, client: ClientSettings | None,
+               backend_factory: Callable[[bool], Backend] | None) -> Models:
+    """`client` selects the real model path, otherwise `backend_factory` (default: the fake)."""
+    if client is not None and backend_factory is not None:
+        raise ValueError("give at most one of client and backend_factory")
+    if client is not None:
+        info = client.model_info()
+        if (writer_info := client.writer_info(config)) is not None:
+            info = {**info, "writer": writer_info}
+        return Models(client.factory(config, seed), client.engine_factory(config, seed), info,
+                      "cpu (model on the serving endpoint)")
+    backend = (backend_factory or (lambda caching: FakeBackend(prefix_caching=caching)))(
+        config["prefix_caching"])
+
+    def make_model(ledger):
+        return RecordingModel(backend, ledger, max_attempts=2)
+    return Models(make_model, None, {"label": backend.model}, backend.device)
+
+
+def data_entries(inputs: Inputs) -> list[dict[str, Any]]:
+    """The `data` entries of run.json for the records a run read."""
+    data = [{"benchmark": inputs.benchmark, "version": inputs.data_version,
+             "manifest_sha256": inputs.manifest_sha256, "split": inputs.split,
+             "path": inputs.path.resolve().as_posix()}]
+    data += [{"benchmark": inputs.benchmark, "version": version, "manifest_sha256": sha,
+              "split": inputs.split, "path": (inputs.path.parent / version).resolve().as_posix()}
+             for version, sha in inputs.extra_manifests]
+    return data
+
+
+def start_run(run_dir: Path, *, experiment: str, stage: str, upstream: list[dict[str, Any]],
+              resolved: dict[str, Any], config_path: str, inputs: Inputs, seed: int,
+              command: str | None, code: rundir.CodeState, device: str) -> rundir.RunJson:
+    """Write resolved-config.yaml and run.json (status `running`) of a new run."""
+    (run_dir / "resolved-config.yaml").write_text(
+        yaml.safe_dump(resolved, sort_keys=True, allow_unicode=True), encoding="utf-8")
+    return rundir.RunJson(run_dir, {
+        "run_id": run_dir.name, "experiment": experiment, "stage": stage, "upstream": upstream,
+        "code_sha": code.sha, "code_dirty": code.dirty, "config_path": config_path,
+        "config_sha256": rundir.file_sha256(run_dir / "resolved-config.yaml"),
+        "resources_sha256": rundir.resources_sha256(), "data": data_entries(inputs),
+        "project_root": project_root().as_posix(), "seed": seed,
+        "command": command or " ".join(shlex.quote(a) for a in sys.argv),
+        "environment": rundir.environment(device)})
+
+
+def load_inputs(records: Path | None, benchmark: str | None, split: str, schedule: str | None,
+                history_ids: list[str] | None, benchmark_config: BenchmarkConfig | None = None
+                ) -> Inputs:
+    """Exactly one of `records` (fixture directory) and `benchmark` (development split)."""
+    if (records is None) == (benchmark is None):
+        raise ValueError("give exactly one of records (fixtures) and benchmark (development data)")
+    return (load_fixture(records, schedule, history_ids) if records is not None
+            else load_dev(benchmark, split, schedule, history_ids, config=benchmark_config))
 
 
 def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_root: Path,
@@ -316,33 +399,13 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
 
     Exactly one of `records` (fixture directory) and `benchmark` (development split) is given;
     `client` selects the real model path, otherwise `backend_factory` (default: the fake)."""
-    if (records is None) == (benchmark is None):
-        raise ValueError("give exactly one of records (fixtures) and benchmark (development data)")
-    if client is not None and backend_factory is not None:
-        raise ValueError("give at most one of client and backend_factory")
     config = load_engine_config(engine_config)
-    inputs: Inputs = (load_fixture(records, schedule, history_ids) if records is not None
-                      else load_dev(benchmark, split, schedule, history_ids,
-                                    config=benchmark_config))
+    inputs = load_inputs(records, benchmark, split, schedule, history_ids, benchmark_config)
     if task_ids is not None or read_order != "schedule":
         inputs = streaming.select_reads(inputs, task_ids, read_order)
     code = code or rundir.code_state()
     max_tokens = int(budgets()["answer"]["output_reserve_tokens"])
-    make_engine_model = None
-    if client is not None:
-        make_model = client.factory(config, seed)
-        make_engine_model = client.engine_factory(config, seed)
-        model_info, device = client.model_info(), "cpu (model on the serving endpoint)"
-        if (writer_info := client.writer_info(config)) is not None:
-            model_info = {**model_info, "writer": writer_info}
-    else:
-        backend = (backend_factory or (lambda caching: FakeBackend(prefix_caching=caching)))(
-            config["prefix_caching"])
-        attempts = 2
-
-        def make_model(ledger):
-            return RecordingModel(backend, ledger, max_attempts=attempts)
-        model_info, device = {"label": backend.model}, backend.device
+    models = models_for(config, seed, client, backend_factory)
     run_dir = rundir.create(run_root, experiment)
     run_id = run_dir.name
     config_path = repo_relative(engine_config)
@@ -350,7 +413,7 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
                 "engine": config, "benchmark": inputs.benchmark, "split": inputs.split,
                 "read_tasks": inputs.schedule, "histories": [h.history.history_id
                                                              for h in inputs.histories],
-                "budget_tokens": budget, "seed": seed, "model": model_info,
+                "budget_tokens": budget, "seed": seed, "model": models.info,
                 "answer_max_tokens": max_tokens, "max_attempts": 2}
     if task_ids is not None:
         resolved["task_ids"] = sorted(task_ids)
@@ -360,29 +423,15 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
         resolved["state_probe"] = True
     if (settings := engine_settings(config, seed, client is None)) is not None:
         resolved["engine_settings"] = settings
-    (run_dir / "resolved-config.yaml").write_text(
-        yaml.safe_dump(resolved, sort_keys=True, allow_unicode=True), encoding="utf-8")
-    data = [{"benchmark": inputs.benchmark, "version": inputs.data_version,
-             "manifest_sha256": inputs.manifest_sha256, "split": inputs.split,
-             "path": inputs.path.resolve().as_posix()}]
-    data += [{"benchmark": inputs.benchmark, "version": version, "manifest_sha256": sha,
-              "split": inputs.split, "path": (inputs.path.parent / version).resolve().as_posix()}
-             for version, sha in inputs.extra_manifests]
-    run = rundir.RunJson(run_dir, {
-        "run_id": run_id, "experiment": experiment, "stage": "system", "upstream": [],
-        "code_sha": code.sha, "code_dirty": code.dirty, "config_path": config_path,
-        "config_sha256": rundir.file_sha256(run_dir / "resolved-config.yaml"),
-        "resources_sha256": rundir.resources_sha256(), "data": data,
-        "project_root": project_root().as_posix(), "seed": seed,
-        "command": command or " ".join(shlex.quote(a) for a in sys.argv),
-        "environment": rundir.environment(device)})
+    run = start_run(run_dir, experiment=experiment, stage="system", upstream=[],
+                    resolved=resolved, config_path=config_path, inputs=inputs, seed=seed,
+                    command=command, code=code, device=models.device)
     log = (run_dir / "run.log").open("a", encoding="utf-8")
     ledger = CallLedger(run_dir / "calls.jsonl", run_id)
     ledger.path.touch()
     answered, failure = 0, None
     try:
-        model = make_model(ledger)
-        engine_model = make_engine_model(ledger, model) if make_engine_model else model
+        model, engine_model = models.build(ledger)
         if on_model:
             on_model(model)
         writer = RunWriter(run_dir)
@@ -419,9 +468,11 @@ def run_system(*, engine_config: Path, budget: int | None, experiment: str, run_
 
 
 def main(argv: list[str] | None = None) -> int:
+    from grace.eval.runner.harness import stages
+
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--engine", type=Path, required=True, help="configs/engines/<name>.yaml")
-    source = parser.add_mutually_exclusive_group(required=True)
+    source = parser.add_mutually_exclusive_group()
     source.add_argument("--benchmark", help="benchmark slug; its development split is loaded "
                                             "through load_split")
     source.add_argument("--records", type=Path,
@@ -449,6 +500,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="order of the reads that share a version")
     parser.add_argument("--state-probe", action="store_true",
                         help="check that answering and end_read leave the engine state unchanged")
+    stages.add_stage_arguments(parser)
     args = parser.parse_args(argv)
     budget = None if args.budget == "full" else int(args.budget)
     run_root = args.run_root or shared_dir("runs_root") / "T003" / "artifacts" / "manager"
@@ -458,13 +510,42 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("--backend client needs --base-url")
         client = ClientSettings(args.base_url, args.model_config, args.embed_url,
                                 writer_url=args.writer_url)
-    result = run_system(engine_config=args.engine, records=args.records,
-                        benchmark=args.benchmark, split=args.split, budget=budget,
-                        experiment=args.experiment, run_root=run_root, schedule=args.schedule,
-                        seed=args.seed, history_ids=args.history, client=client,
-                        task_ids=args.task, read_order=args.read_order,
-                        state_probe=args.state_probe)
-    print(f"{result.run_id}: {result.status} ({result.n_reads} reads) -> {result.run_dir}")
+    if args.stage == "read":
+        if args.upstream is None or args.benchmark or args.records:
+            parser.error("--stage read takes --upstream (the ingest run) and no "
+                         "--benchmark/--records")
+        if args.task or args.read_order != "schedule" or args.state_probe:
+            parser.error("--task, --read-order and --state-probe are system-stage options")
+        result = stages.run_read(engine_config=args.engine, upstream=args.upstream,
+                                 budget=budget, experiment=args.experiment, run_root=run_root,
+                                 schedule=args.schedule, seed=args.seed,
+                                 history_ids=args.history, client=client,
+                                 workers=args.workers)
+    else:
+        if not (args.benchmark or args.records):
+            parser.error(f"--stage {args.stage} needs --benchmark or --records")
+        if args.upstream is not None:
+            parser.error("--upstream is for --stage read")
+        if args.stage == "ingest":
+            if args.task or args.read_order != "schedule" or args.state_probe or args.schedule:
+                parser.error("--task, --read-order, --state-probe and --schedule are not "
+                             "ingest options")
+            result = stages.run_ingest(engine_config=args.engine, records=args.records,
+                                       benchmark=args.benchmark, split=args.split,
+                                       experiment=args.experiment, run_root=run_root,
+                                       seed=args.seed, history_ids=args.history,
+                                       client=client, workers=args.workers)
+        else:
+            if args.workers != 1:
+                parser.error("--workers is for the ingest and read stages")
+            result = run_system(engine_config=args.engine, records=args.records,
+                                benchmark=args.benchmark, split=args.split, budget=budget,
+                                experiment=args.experiment, run_root=run_root,
+                                schedule=args.schedule, seed=args.seed,
+                                history_ids=args.history, client=client, task_ids=args.task,
+                                read_order=args.read_order, state_probe=args.state_probe)
+    n = getattr(result, "n_records", getattr(result, "n_reads", 0))
+    print(f"{result.run_id}: {result.status} ({n} records) -> {result.run_dir}")
     if result.failure:
         print(f"failure: {result.failure}")
     return 0 if result.status == "completed" else 1

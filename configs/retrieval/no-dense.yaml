@@ -1,0 +1,21 @@
+# GRACE retrieval, ablation D arm (dense switched off; E012, plan 7.3). Identical to default.yaml except
+# `channels`; `total` and `depth` are unchanged, so the same number of fused candidates reaches
+# assembly. Development data only.
+version: 1
+total: 20            # fused candidates handed to assembly; fixed when a channel is switched off
+depth: 20            # candidates per channel before fusion (>= total)
+channels: [bm25, graph]   # ablation D: dense switched off
+fusion: rrf          # rrf (main configuration) | weighted
+rrf_k: 60
+weights: {bm25: 1.0, dense: 1.0, graph: 1.0}
+routing: all         # rules | all (main configuration: all)
+min_confidence: 1    # structural signal families needed before routing narrows the channels
+backfill: true       # fill up to `total` from the other enabled channels when routed ones run dry
+bm25: {k1: 1.5, b: 0.75}
+dense:
+  # Qwen3-Embedding query instruction, as in configs/engines/dense.yaml (plan 7.1: query
+  # instruction strings frozen and published).
+  query_instruction: Given a question about a conversation, retrieve the messages that answer it
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B

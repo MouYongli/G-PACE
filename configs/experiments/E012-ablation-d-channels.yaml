@@ -1,0 +1,71 @@
+# E012 · Ablation D: retrieval channels (plan 5.5, 7.3 ablation D; claims C1, C3; RQ1; experiment
+# file docs/work/experiments/E012-ablation-d-channels.md). Development data only (no held-out split
+# before the T033 preregistration tag). Every value is a development choice before D012.
+#
+# Every arm is read-side only: one read run per arm x target restores the shared main-configuration
+# ingest snapshot (same graphs, same text indexes), so arms differ only in the switch named below.
+#   uv run python src/grace/eval/runner/harness/drive.py --stage read --upstream <ingest RUN_DIR> \
+#       --engine <arm engine> --budget 1024 --experiment E012 --run-root <RUN_ROOT> \
+#       --backend client --base-url <planner/answer url> --embed-url <embed url> --workers 2
+#   uv run python -m grace.cli.locomo_score --run <read run> --experiment E012 --run-root <RUN_ROOT>
+#   uv run python -m grace.cli.channel_ablation --experiment E012 --run-root <RUN_ROOT> \
+#       --arm <name>=<read run> ... --score <name>=<score run> ... --reference full
+experiment: E012
+seed: 0
+
+models:
+  answer: configs/models/qwen3-8b.yaml      # planner, view rendering and answering
+  writer: configs/models/qwen3-32b.yaml     # write side of the shared ingest runs (not called here)
+
+# Fixed across arms (plan 7.3: "at fixed total candidates and returned tokens"): `total: 20` fused
+# candidates and `depth: 20` per channel (configs/retrieval/*.yaml), memory budget 1,024 tokens.
+budget: 1024
+
+arms:
+  # Main configuration: BM25 + dense + graph, routing all, state items and filter checks on.
+  full: {engine: configs/engines/grace.yaml}
+  # C1: remove one channel at a time from retrieval and fusion.
+  no-bm25: {engine: configs/experiments/E012/grace-no-bm25.yaml}
+  no-dense: {engine: configs/experiments/E012/grace-no-dense.yaml}
+  no-graph-channel: {engine: configs/experiments/E012/grace-no-graph-channel.yaml}
+  # The graph reaches the context two ways: its channel's evidence messages in fusion, and the
+  # query answers (and view sentences) as state items. `no-graph-state` removes the second only,
+  # `no-graph` both (graph switch off).
+  no-graph-state: {engine: configs/experiments/E012/grace-no-graph-state.yaml}
+  no-graph: {engine: configs/experiments/E012/grace-no-graph.yaml}
+  # Graph switch x verification switch over the same candidates. "Verification" is the read-time
+  # attribution-and-time filter of assembly (retired, valid window, scope, attribution); the
+  # verification LLM call of plan 5.6 is not implemented, so it cannot be switched (experiment file).
+  no-verification: {engine: configs/experiments/E012/grace-no-verification.yaml}
+  no-graph-no-verification: {engine: configs/experiments/E012/grace-no-graph-no-verification.yaml}
+  # C3 (s00-super, 2026-11-28: rule routing is an E012 arm): rule routing against routing: all.
+  rules: {engine: configs/experiments/E012/grace-rules.yaml}
+
+targets:
+  locomo-dev:
+    benchmark: locomo
+    split: dev                # conv-26, conv-49; 308 end-of-history reads
+    ingest: E006-20261128T082608Z-21cb   # runs/E006/artifacts/w02-E006/E006/
+  longmemeval-s-dev:
+    benchmark: longmemeval-s
+    split: dev                # main-text strata first (67 histories), then the other 31
+    ingest: E006-20261128T083145Z-6288   # main-text strata; second ingest E006-20261128T084142Z-ee92
+    # All 98 histories (an earlier pass excluded 7 whose snapshot did not restore before main's
+    # restore fixes; see the experiment file's Log).
+  multiwoz-dev:
+    benchmark: multiwoz
+    split: dev                # not run: per-turn reads need a system run per arm (estimate in the
+    ingest: null              # experiment file)
+
+metrics:
+  - f1                 # LoCoMo token F1 (categories 1-4), registered in configs/common/scorers.yaml
+  - unknown            # share of `unknown` outputs
+  - fused_recall       # gold evidence among the 20 fused candidates
+  - strict_recall      # gold evidence shown as raw text; full_hit: all of it
+  - path_recall        # gold evidence the context rests on, raw or cited by a state item
+  - unique             # gold evidence ranked by exactly one channel (reference arm)
+  - read_tokens        # read-side LLM tokens per read (U), and answer tokens (A)
+# Strata: LoCoMo category, LongMemEval question_type. LongMemEval has no judge run here (the
+# configured judges are remote and paid; the local primary judge is scheduled for T035), so it gets
+# evidence metrics only. Stale-value use needs gold for the superseded value; LoCoMo and LongMemEval
+# carry none, so it is not measured here (controlled sequences, E016).

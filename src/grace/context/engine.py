@@ -22,7 +22,10 @@ Read path (`read(task, budget)`), plan 5.3-5.6:
    planner LLM, one repair); the plan runs on the graph at the read version.
 3. Views: the staleness strategy checks and repairs resident views (lazy rebuilds are booked to
    W); a resident view whose bound query equals the plan's query is a view hit, and its sentences
-   are verified state. Without a hit, the query answers themselves are the state items.
+   are verified state. Without a hit, the query answers themselves are the state items, unless
+   the view component presents them (`present`, ablation C read-time view sources, E010): it
+   then turns the answers into sentences (template, LLM rendering of the rows, or LLM rewriting
+   of their evidence messages) and may name the resident-equivalent view the query matched.
 4. `pipeline/retrieval/` (T025): routing and fusion over BM25, dense and the graph channel (the
    plan's query result).
 5. `pipeline/assembly/` (T026): demand from the plan's variables, constraints from the read
@@ -86,6 +89,7 @@ from grace.context.memory.graph.entries import Entity
 from grace.context.memory.graph.store import ClaimStore
 from grace.context.memory.graph.vocabulary import load_vocabulary
 from grace.context.memory.history.log import MessageLog
+from grace.context.memory.history.spans import message_of
 from grace.context.memory.index.bm25 import BM25Index
 from grace.context.memory.index.chunking import chunk_message
 from grace.context.memory.index.dense import DenseIndex
@@ -208,6 +212,11 @@ class Views:
                                                        decision, action))
         return decisions, calls
 
+    def present(self, plan: Plan, result, graph: ClaimStore, version: int, read_id: str,
+                message: Callable[[str], api.Message]):
+        """The resident store presents no query answers itself (the engine's default lines)."""
+        return None
+
     def hit(self, plan: Plan):
         """The resident view whose bound query is the plan's query, or None."""
         if not plan.view_eligible:
@@ -239,6 +248,9 @@ class NoViews:
         return [], []
 
     def hit(self, plan):
+        return None
+
+    def present(self, plan, result, graph, version, read_id, message):
         return None
 
     def save(self, directory: Path) -> list[Path]:
@@ -515,7 +527,8 @@ class GraceEngine(api.ContextEngine):
         t = time.perf_counter()
         decisions, view_calls = self.views.on_read(graph, task.version, task.read_id)
         call_ids += view_calls
-        state_items, hits = self._state_items(task, plan, result, graph)
+        state_items, hits, present_calls = self._state_items(task, plan, result, graph)
+        call_ids += present_calls
         state_items += self._facts(task, request, len(state_items) + 1)
         timings["views"] = (time.perf_counter() - t) * 1000
 
@@ -536,7 +549,9 @@ class GraceEngine(api.ContextEngine):
         if assembly.pending is not None:
             extra_plan, extra_result = self._plan(task, assembly.pending.query, graph)
             call_ids += list(extra_plan.call_ids)
-            more_state, _ = self._state_items(task, extra_plan, extra_result, graph, prefix="x")
+            more_state, _, present_calls = self._state_items(task, extra_plan, extra_result,
+                                                             graph, prefix="x")
+            call_ids += present_calls
             more_text, more_cands, more_calls = self._retrieve(
                 task, assembly.pending.query, extra_result, len(items) + len(more_state) + 1)
             call_ids += more_calls
@@ -566,8 +581,9 @@ class GraceEngine(api.ContextEngine):
         call_ids: list[str] = []  # only the calls of this step; the read's are in its trace
         extra_plan, extra_result = self._plan(task, request, state.graph)
         call_ids += list(extra_plan.call_ids)
-        more_state, _ = self._state_items(task, extra_plan, extra_result, state.graph,
-                                          prefix="r")
+        more_state, _, present_calls = self._state_items(task, extra_plan, extra_result,
+                                                         state.graph, prefix="r")
+        call_ids += present_calls
         more_text, more_cands, more_calls = self._retrieve(task, request, extra_result, 1)
         call_ids += more_calls
         items = more_state + more_text + [i for i in state.items if i.item_id not in
@@ -701,16 +717,17 @@ class GraceEngine(api.ContextEngine):
                 for i, f in enumerate(self.extension.state_facts(task, request))]
 
     def _state_items(self, task, plan: Plan, result, graph: ClaimStore, prefix: str = "q"
-                     ) -> tuple[list[Item], list[str]]:
+                     ) -> tuple[list[Item], list[str], list[str]]:
+        """State items of a plan, the view hits among them and the model calls made for them."""
         view = self.views.hit(plan)
         if view is not None:
             covers = frozenset(view.columns)
             items = [Item(f"{view.view_id}#{i}", "view", s.text, tuple(s.evidence), (),
                           version=view.cutoff, rank=i + 1, covers=covers)
                      for i, s in enumerate(view.sentences) if s.text and s.evidence]
-            return items, [view.view_id]
+            return items, [view.view_id], []
         if result is None:
-            return [], []
+            return [], [], []
         state = graph.state(task.version)
         versions = {m.message_id: m.version for m in self.log.messages(task.version)}
 
@@ -721,8 +738,48 @@ class GraceEngine(api.ContextEngine):
         def retired(claim: str) -> int | None:
             ends = [s.version for s in state.supersessions_of(claim)]
             return min(ends) if ends else None
-        return answer_items(result, prefix=f"{task.read_id}:{prefix}", version_of=versions.get,
-                            stamp_of=stamp, retired_of=retired), []
+        items = answer_items(result, prefix=f"{task.read_id}:{prefix}", version_of=versions.get,
+                             stamp_of=stamp, retired_of=retired)
+        shown = self.views.present(plan, result, graph, task.version, task.read_id,
+                                   lambda mid: self.log.by_id(mid, task.version))
+        if shown is None:
+            return items, [], []
+        # A hit's lines are named `<view_id>#<k>` like a resident view's, so that the read trace
+        # counts the hit only when one of them is shown.
+        ids = f"{shown.view_id}#" if shown.view_id else f"{task.read_id}:{prefix}v"
+        return (self._presented(items, shown, versions, ids,
+                                tuple(getattr(result, "variables", ()))),
+                [shown.view_id] if shown.view_id else [], list(shown.call_ids))
+
+    @staticmethod
+    def _presented(answers: list[Item], shown, versions: Mapping[str, int], prefix: str,
+                   columns: tuple[str, ...]) -> list[Item]:
+        """Items from a view component's presentation of a query result (`present`): one item
+        per sentence. A sentence bound to answers inherits their stamps, retirement and coverage;
+        a sentence bound to no answer (rewritten from raw text) is stamped by the messages it
+        cites and covers the query's columns."""
+        out = []
+        for k, (text, rows, evidence) in enumerate(shown.sentences):
+            base = [answers[i] for i in rows]
+            cited = tuple(dict.fromkeys(evidence)) or tuple(
+                dict.fromkeys(e for b in base for e in b.evidence_ids))
+            stamps = []
+            for e in cited:
+                v = versions.get(message_of(e))
+                if v is None:
+                    raise ValueError(f"presented sentence {k + 1} of {prefix}: unknown evidence "
+                                     f"message {e!r}")
+                stamps.append(v)
+            retired = (max(b.retired for b in base)
+                       if base and all(b.retired is not None for b in base) else None)
+            covers = (frozenset().union(*(b.covers for b in base)) if base
+                      else frozenset(columns))
+            if not text or not cited:
+                continue
+            out.append(Item(f"{prefix}{k + 1}", "view", text, cited, (),
+                            version=max([*(b.version for b in base), *stamps], default=0),
+                            retired=retired, rank=k + 1, covers=covers))
+        return out
 
     def _retrieve(self, task, query: str, graph_result, rank_start: int):
         config = self.c.retrieval

@@ -139,6 +139,16 @@ class GrammarTest(unittest.TestCase):
         q = parse(VALID[5])
         self.assertEqual(q.where[0].subject, Entity("id with spaces"))
 
+    def test_entity_ids_starting_with_digits_round_trip(self):
+        # E013: "50mm_f_1_8_prime_lens" was lexed as the number 5 followed by "0mm_...", so a
+        # resident view saved in a LongMemEval-S snapshot could not be restored.
+        for entity in ("50mm_f_1_8_prime_lens", "2b", "3_day_pass", "10-speed"):
+            q = parse(f"SELECT ?x WHERE {{ ({entity}, brand, ?x) }}")
+            self.assertEqual(q.where[0].subject, Entity(entity))
+            self.assertEqual(parse(to_text(q)), q)
+        q = parse("SELECT ?x WHERE { (?x, count, 50) }")
+        self.assertEqual(q.where[0].object, Value("50", "integer"))
+
     def test_entity_named_like_an_aggregate_is_an_entity(self):
         q = parse("SELECT ?x WHERE { (max, likes, ?x) }")
         self.assertEqual(q.where[0].subject, Entity("max"))

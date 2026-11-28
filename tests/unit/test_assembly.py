@@ -484,6 +484,41 @@ class _Result:
         self.variables, self.answers = variables, answers
 
 
+class AblationSwitchTest(unittest.TestCase):
+    """The read-side switches of ablation D (E012): state items and the filter's checks."""
+
+    ITEMS = [
+        item("c1", "train TR123 accepted", rank=1, kind="claim", covers={"train"}),
+        item("old", "train TR9 accepted", rank=2, version=2, retired=4),
+        item("m1", "the train arrives at noon", rank=3),
+    ]
+
+    def run_with(self, **kw):
+        return assembler(AssemblyConfig(**kw)).assemble(task(5), DEMAND, self.ITEMS, 1024,
+                                                        Constraints(version=5))
+
+    def test_defaults_keep_state_items_and_verify(self):
+        a = self.run_with()
+        self.assertIn("c1", [f.fragment_id for f in a.context.fragments])
+        self.assertIn(("old", "retired"), a.dropped)
+
+    def test_state_items_off_drops_claims_and_views_only(self):
+        a = self.run_with(state_items=False)
+        shown = [f.fragment_id for f in a.context.fragments]
+        self.assertNotIn("c1", shown)
+        self.assertIn("m1", shown)
+        self.assertIn(("c1", "state_off"), a.dropped)
+
+    def test_verification_off_keeps_retired_items_but_not_later_ones(self):
+        a = self.run_with(verification=False)
+        self.assertIn("old", [f.fragment_id for f in a.context.fragments])
+        self.assertFalse(a.constraints.current_only)
+        late = item("late", "train after the read", rank=4, version=6)
+        b = assembler(AssemblyConfig(verification=False)).assemble(
+            task(5), DEMAND, [*self.ITEMS, late], 1024, Constraints(version=5))
+        self.assertIn(("late", "version"), b.dropped)
+
+
 class ConfigTest(unittest.TestCase):
     def test_config_files_load_and_reject_unknown_keys(self):
         for path in sorted(Path(CONFIGS).glob("*.yaml")):
