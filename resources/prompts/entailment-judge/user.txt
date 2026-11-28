@@ -1,0 +1,6 @@
+Speaker: {{speaker}}
+Message: {{message}}
+
+Cited span: {{span}}
+
+Claim: {{subject}} | {{predicate}} | {{object}}

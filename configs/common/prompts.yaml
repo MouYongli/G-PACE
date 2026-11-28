@@ -36,6 +36,23 @@ prompts:
     schema: null              # one word, CORRECT or INCORRECT
     schema_sha256: null
     note: Blind judge (configs/judges/blind.yaml).
+  predicate-judge:
+    call_type: judge
+    sha256: 1dc885ab2bffe91087f813b49bf11a5f1c0cb05c593cfaadceeb19e8de3a7125
+    schema: null              # one word, SAME or DIFFERENT
+    schema_sha256: null
+    note: >-
+      E006 graph-quality scorer (grace.eval.analysis.metrics.graph): whether two predicates of an
+      anchor-matched pair (same message, subject and object) state the same proposition. Variables:
+      quote, subject, object, predicate_a, predicate_b.
+  entailment-judge:
+    call_type: judge
+    sha256: f5b4c8e9578c604ef6d9d738624974a27b83e967536e10b0edc4a76639a80ff9
+    schema: null              # one word, ENTAILED or NOT_ENTAILED
+    schema_sha256: null
+    note: >-
+      E006 graph-quality scorer: whether the span a writer claim cites entails the claim.
+      Variables: speaker, message, span, subject, predicate, object.
   judge-longmemeval-default:
     call_type: judge
     sha256: f225aa30921d3c778de1581712f4dbc99aa8c600f566a691f4e86e8b923ee267

@@ -31,7 +31,7 @@ import json
 import shlex
 import sys
 import traceback
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -172,6 +172,220 @@ def extract(args: argparse.Namespace) -> int:
     return 0 if run.data["status"] == "completed" else 1
 
 
+class _Run:
+    """A score-stage run directory with run.json, run.log and resolved-config.yaml."""
+
+    def __init__(self, args: argparse.Namespace, config_path: Path, resolved: dict,
+                 upstream: list[dict], data: list[dict], seed: int):
+        parent = (args.run_parent or shared_dir("runs_root") / args.experiment / "artifacts"
+                  / WORKER)
+        self.dir = rundir.create(parent, args.experiment, args.run_id)
+        self.id = self.dir.name
+        self._log = (self.dir / "run.log").open("a", encoding="utf-8")
+        (self.dir / "resolved-config.yaml").write_text(yaml.safe_dump(resolved, sort_keys=False),
+                                                       encoding="utf-8")
+        code = rundir.code_state()
+        self.json = rundir.RunJson(self.dir, {
+            "run_id": self.id, "experiment": args.experiment, "stage": "score",
+            "upstream": upstream, "code_sha": code.sha, "code_dirty": code.dirty,
+            "config_path": config_path.relative_to(REPO_ROOT).as_posix(),
+            "config_sha256": rundir.file_sha256(self.dir / "resolved-config.yaml"),
+            "resources_sha256": rundir.resources_sha256(), "data": data,
+            "project_root": project_root().as_posix(), "seed": seed,
+            "command": " ".join(shlex.quote(a) for a in sys.argv),
+            "environment": rundir.environment("cpu (judge model on the serving endpoint)"),
+            "compute": args.compute or "none", "held_out_access": "none",
+            "label": args.label})
+
+    def say(self, text: str) -> None:
+        print(text, flush=True)
+        self._log.write(text + "\n")
+        self._log.flush()
+
+    def close(self) -> None:
+        self._log.close()
+
+
+def _write_jsonl(path: Path, rows) -> None:
+    with path.open("x", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False, sort_keys=True, default=sorted) + "\n")
+
+
+def _parallel(workers: int):
+    def run_many(fn, items):
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+            return list(pool.map(fn, items))
+    return run_many
+
+
+def _judges(config: dict, url: str | None, run: _Run, need_predicate: bool, need_entail: bool):
+    from grace.eval.analysis.metrics import graph as g
+    from grace.llm.prompts import load_pinned
+    if not (need_predicate or need_entail):
+        return None, None
+    if not url:
+        raise SystemExit("--judge-url is required for the judge predicate matcher or the "
+                         "entailment check")
+    jc = config["scoring"]["judge"]
+    client = _client(REPO_ROOT / jc["model_config"], url, run.dir / "calls.jsonl", run.id)
+    registry = REPO_ROOT / "configs" / "common" / "prompts.yaml"
+    decoding = {"temperature": jc["temperature"], "max_tokens": jc["max_tokens"],
+                "seed": jc["seed"]}
+    pj = g.llm_judge(client, load_pinned(jc["prompt"], registry), decoding,
+                     g.PREDICATE_VERDICTS) if need_predicate else None
+    ej = g.llm_judge(client, load_pinned(jc.get("entailment_prompt", "entailment-judge"),
+                                         registry), decoding,
+                     g.ENTAILMENT_VERDICTS) if need_entail else None
+    return pj, ej
+
+
+def _gold_paths(args: argparse.Namespace, config: dict) -> list[Path]:
+    paths = args.gold or [REPO_ROOT / p for p in config["scoring"]["gold"]]
+    return [p if Path(p).is_absolute() else REPO_ROOT / p for p in map(Path, paths)]
+
+
+def _segments_path(args: argparse.Namespace, config: dict) -> Path:
+    return args.segments or shared_dir("runs_root") / config["scoring"]["segments"]
+
+
+def score(args: argparse.Namespace) -> int:
+    from grace.eval.analysis.annotation import graph_quality as gq
+    from grace.eval.analysis.metrics import graph as g
+    from grace.eval.analysis.metrics import writer as wm
+
+    config_path, config = _load_config(args.config)
+    sc = config["scoring"]
+    writer_dir = args.writer_run.resolve()
+    writer_json = json.loads((writer_dir / "run.json").read_text(encoding="utf-8"))
+    if writer_json.get("status") != "completed" and not args.allow_incomplete:
+        raise SystemExit(f"upstream run {writer_dir.name} is {writer_json.get('status')!r}, "
+                         "not completed (contracts.md, Stages and upstream runs)")
+    gold_paths = _gold_paths(args, config)
+    segments_path = _segments_path(args, config)
+    method = args.predicate_match or sc["predicate_match"]
+    entail = sc.get("entailment_judge", False) and not args.no_entailment
+    resolved = {"experiment": config, "writer_run": writer_dir.as_posix(),
+                "gold": [{"path": p.as_posix(), "sha256": rundir.file_sha256(p)}
+                         for p in gold_paths],
+                "segments": {"path": segments_path.as_posix(),
+                             "sha256": rundir.file_sha256(segments_path)},
+                "predicate_match": method, "entailment_judge": entail,
+                "judge_url": args.judge_url, "workers": args.workers,
+                "benchmarks": args.benchmarks}
+    upstream = [{"run_id": writer_json["run_id"], "stage": writer_json["stage"],
+                 "path": writer_dir.as_posix(),
+                 "run_json_sha256": rundir.file_sha256(writer_dir / "run.json")}]
+    run = _Run(args, config_path, resolved, upstream, writer_json.get("data", []),
+               int(config["seed"]))
+    n = 0
+    try:
+        pj, ej = _judges(config, args.judge_url, run, method == "judge", entail)
+        segments = gq.read_segments(segments_path)
+        if args.benchmarks:
+            segments = {k: v for k, v in segments.items() if v.benchmark in args.benchmarks}
+        raw = {json.loads(line)["key"]: json.loads(line)
+               for line in segments_path.read_text(encoding="utf-8").splitlines() if line}
+        history_of = {k: raw[k]["history_id"] for k in segments}
+        texts = {k: [m["text"] for m in raw[k]["messages"] + raw[k].get("context", [])]
+                 + [m.get("speaker") or "" for m in raw[k]["messages"]]
+                 + list(raw[k].get("participants") or []) for k in segments}
+        files = [gq.read_jsonl(p) for p in gold_paths]
+        units = g.gold_units(files, segments)
+        units_by_id = {u.uid: u for us in units.values() for u in us}
+        wrun = g.read_writer_run(writer_dir)
+        matcher = g.PredicateMatcher(method, pj)
+        run_many = _parallel(args.workers)
+        metrics, claim_rows, gold_rows = g.score(wrun, segments, units, matcher, history_of,
+                                                 run_many)
+        spans = g.span_checks(claim_rows, segments, units_by_id,
+                              (lambda xs: run_many(ej, xs)) if ej else None)
+        metrics = {
+            "claims": metrics,
+            "per_predicate": g.per_predicate(claim_rows),
+            "spans": spans["metrics"],
+            "entity_labels": g.entity_labels(wrun, segments, claim_rows, units_by_id, texts),
+            "ending_drops": g.ending_drops(wrun, segments, units, history_of),
+            "restatements": g.restatements(claim_rows, units_by_id),
+            "predicate_matcher": {"method": method, "judged_pairs": len(matcher.log),
+                                  "verdicts": dict(sorted(
+                                      Counter(
+                                          x["verdict"] for x in matcher.log).items()))},
+            "gold": {"files": [p.name for p in gold_paths],
+                     "mode": "reference" if len(files) == 1 else "two annotators"},
+            "writer_run": {"run_id": writer_json["run_id"], "units": wm.unit_stats(wrun.updates)
+                           if wrun.updates else None},
+        }
+        calls_path = writer_dir / "calls.jsonl"
+        if calls_path.exists():
+            metrics["writer_run"]["calls"] = wm.call_stats(wm.read_jsonl(calls_path))
+        (run.dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True)
+                                              + "\n", encoding="utf-8")
+        _write_jsonl(run.dir / "claims.jsonl", claim_rows)
+        _write_jsonl(run.dir / "gold.jsonl", gold_rows)
+        _write_jsonl(run.dir / "judgements.jsonl", matcher.log + spans["log"])
+        n = len(segments)
+        c = metrics["claims"]["all"]
+        run.say(json.dumps({"writer_claims": c["writer_claims"], "gold_core": c["gold_core"],
+                            "gold_all": c["gold_all"], "loose": c["loose"]}, sort_keys=True))
+        run.json.data["model_calls"] = sum(1 for _ in (run.dir / "calls.jsonl").open()) \
+            if (run.dir / "calls.jsonl").exists() else 0
+        run.json.finish(n)
+        run.say(f"run directory: {run.dir} status={run.json.data['status']}"
+                + (f" failure={run.json.data['failure']}" if run.json.data["failure"] else ""))
+    except BaseException as exc:
+        run.say(traceback.format_exc())
+        run.json.finish(n, f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        run.close()
+    return 0 if run.json.data["status"] == "completed" else 1
+
+
+def predicate_check(args: argparse.Namespace) -> int:
+    from grace.eval.analysis.annotation import graph_quality as gq
+    from grace.eval.analysis.metrics import graph as g
+
+    config_path, config = _load_config(args.config)
+    gold_paths = _gold_paths(args, config)
+    if len(gold_paths) != 2:
+        raise SystemExit("predicate-check needs two label files")
+    segments_path = _segments_path(args, config)
+    reference_path = args.reference if args.reference.is_absolute() else REPO_ROOT / args.reference
+    resolved = {"experiment": config, "check": "predicate matcher",
+                "gold": [{"path": p.as_posix(), "sha256": rundir.file_sha256(p)}
+                         for p in gold_paths],
+                "reference": {"path": reference_path.as_posix(),
+                              "sha256": rundir.file_sha256(reference_path)},
+                "n_negative": args.n_negative, "judge_url": args.judge_url}
+    run = _Run(args, config_path, resolved, [], [], int(config["seed"]))
+    n = 0
+    try:
+        pj, _ = _judges(config, args.judge_url, run, True, False)
+        segments = gq.read_segments(segments_path)
+        a, b = (gq.read_jsonl(p) for p in gold_paths)
+        pairs = g.predicate_check_pairs(a, b, segments, args.n_negative)
+        reference = {r["pair_id"]: r["reference"] for r in gq.read_jsonl(reference_path)}
+        verdicts = dict(zip([p["pair_id"] for p in pairs],
+                            _parallel(args.workers)(pj, pairs), strict=True))
+        result = g.predicate_check(pairs, reference, lambda p: verdicts[p["pair_id"]])
+        (run.dir / "metrics.json").write_text(json.dumps(result["metrics"], indent=2,
+                                                         sort_keys=True) + "\n",
+                                              encoding="utf-8")
+        _write_jsonl(run.dir / "judgements.jsonl", result["rows"])
+        n = result["metrics"]["n"]
+        run.say(json.dumps(result["metrics"], sort_keys=True))
+        run.json.finish(n)
+        run.say(f"run directory: {run.dir} status={run.json.data['status']}")
+    except BaseException as exc:
+        run.say(traceback.format_exc())
+        run.json.finish(n, f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        run.close()
+    return 0 if run.json.data["status"] == "completed" else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -181,13 +395,35 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_ext.add_argument("--compute", default=None, help="reservation copied into run.json")
     p_ext.add_argument("--segments-only", nargs="*", default=None, help="segment keys")
     p_ext.add_argument("--workers", type=int, default=4, help="segments written in parallel")
-    p_ext.add_argument("--experiment", default="E006")
-    p_ext.add_argument("--run-parent", type=Path, default=None)
-    p_ext.add_argument("--run-id", default=None)
+    for p in (p_sco := sub.add_parser("score", help="score one writer run directory"),
+              p_chk := sub.add_parser("predicate-check",
+                                      help="check predicate matchers on two label files")):
+        p.add_argument("--config", type=Path, required=True)
+        p.add_argument("--judge-url", default=None)
+        p.add_argument("--gold", type=Path, nargs="*", default=None,
+                       help="gold label files (default: scoring.gold of the config)")
+        p.add_argument("--segments", type=Path, default=None)
+        p.add_argument("--compute", default=None)
+        p.add_argument("--workers", type=int, default=8, help="parallel judge calls")
+        p.add_argument("--label", default=None, help="free text stored in run.json")
+    p_sco.add_argument("writer_run", type=Path)
+    p_sco.add_argument("--predicate-match", choices=("normalised", "lexical", "judge"),
+                       default=None)
+    p_sco.add_argument("--no-entailment", action="store_true")
+    p_sco.add_argument("--benchmarks", nargs="*", default=None,
+                       help="score only the segments of these benchmarks")
+    p_sco.add_argument("--allow-incomplete", action="store_true",
+                       help="score a writer run that is not completed (dry runs only)")
+    p_chk.add_argument("--reference", type=Path, default=Path(
+        "docs/research/annotations/graph-quality/predicate-check-reference.jsonl"))
+    p_chk.add_argument("--n-negative", type=int, default=80)
+    for p in (p_ext, p_sco, p_chk):
+        p.add_argument("--experiment", default="E006")
+        p.add_argument("--run-parent", type=Path, default=None)
+        p.add_argument("--run-id", default=None)
     args = parser.parse_args(argv)
-    if args.command == "extract":
-        return extract(args)
-    return 2
+    return {"extract": extract, "score": score, "predicate-check": predicate_check}[
+        args.command](args)
 
 
 if __name__ == "__main__":

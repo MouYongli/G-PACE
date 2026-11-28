@@ -1,0 +1,8 @@
+You compare two predicates that were extracted from the same sentence of a conversation for the same subject and the same object. Decide whether the two triples state the same proposition.
+
+Rules:
+- SAME: the two predicates name the same relation between the subject and the object, in the same direction and with the same polarity. Differences in wording, verb form, tense or specificity do not matter when both describe the same fact (for example hasPet and owns for "my dog", considersTrying and plansToTry, wants and requires for a stated need, hasDuration and duration).
+- DIFFERENT: the predicates state different facts about the subject and the object. Examples: bought versus sold, likes versus dislikes, supports versus supportedBy, visited versus plansToVisit (an event versus a plan), owns versus datesFrom, a vague predicate (said, mentioned, felt, experienced) versus a specific relation that it does not state.
+- Read the sentence to see what is meant.
+
+Reply with exactly one word: SAME or DIFFERENT.
