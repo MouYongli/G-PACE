@@ -77,7 +77,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(load_engine_config(ENGINES / "grace-writer-8b.yaml")["writer_model"],
                          "configs/models/qwen3-8b.yaml")
 
-    def test_variants_with_the_claim_writer_share_the_main_writer(self):
+    def test_variants_share_the_main_writer_model(self):
         main = yaml.safe_load((ENGINES / "grace.yaml").read_text(encoding="utf-8"))
         for path in sorted(ENGINES.glob("grace-*.yaml")):
             config = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -85,9 +85,10 @@ class ConfigTest(unittest.TestCase):
             with self.subTest(config=path.name):
                 self.assertIn(config["params"]["writer"], ("configs/common/writer.yaml",
                                                            "configs/common/writer-segment8.yaml"))
-                if ext.get("factory") == "slot-table" or path.stem == "grace-writer-8b":
-                    continue   # own extractor (slot writer) or the small-writer arm
-                self.assertEqual(config.get("writer_model"), main["writer_model"])
+                if path.stem == "grace-writer-8b":
+                    continue   # the small-writer arm
+                # slot-table arms too (own extractor, same writer model: ablation B)
+                self.assertEqual(config.get("writer_model"), main["writer_model"], ext)
 
     def test_writer_endpoint(self):
         config = load_engine_config(ENGINES / "grace.yaml")
