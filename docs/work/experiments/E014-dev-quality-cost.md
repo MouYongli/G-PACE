@@ -143,6 +143,7 @@ Run directories: `runs/E014/artifacts/w01-E014/E014/<run-id>/` (`report.yaml` in
 | `E014-20261128T093929Z-9179` | 2026-11-28 | failed | `4af4755` | longmemeval-s: read grace @256, upstream `E006-20261128T083145Z-6288` |
 | `E014-20261128T093929Z-9d08` | 2026-11-28 | failed | `4af4755` | longmemeval-s: read grace @1024, upstream `E006-20261128T083145Z-6288` |
 | `E014-20261128T093929Z-bb4a` | 2026-11-28 | failed | `4af4755` | longmemeval-s: read grace @512, upstream `E006-20261128T083145Z-6288` |
+| 10 LongMemEval-S judge runs E014-20261128T1138*Z-* .. T1140*Z-* (no judge run for last-k 256 and 512: no answer), 12 score runs E014-20261128T1146*Z-* / T1147*Z-*; LoCoMo judge run E014-20261128T114012Z-add0, score E014-20261128T114744Z-31e1, judge rerun E014-20261128T114539Z-7196 | 2026-11-28 | completed | 125d34f (judge), 2389bd3 (score) | `runs/E014/artifacts/w01-judge/E014/<run-id>/report.yaml` |
 
 ## Results
 
@@ -230,6 +231,41 @@ Quality match: full history cached scores 0.359 F1 (0.365 uncached) against GRAC
 
 Not scored: its registered metrics are judge metrics only (official and blind judge; `configs/common/scorers.yaml`), and no local judge runs before T035. Baseline predictions exist for judging later (67 reads each; last-k, BM25, dense, RRF at 256 / 512 / 1,024; context tokens per read 228-999, logical tokens per read 743-1,528; unknown outputs: last-k 66-67, BM25 26-27, dense 19-32, RRF 19-28). The full-history baseline does not fit Qwen3-8B's 32,768-token window on LongMemEval-S (the plan's long-context answering model is not served) and was not run. GRACE reads on the shared ingest `E006-20261128T083145Z-6288` fail while restoring the snapshot (two defects in GRACE's snapshot restore, see Log); no GRACE prediction exists for LongMemEval-S.
 
+### Judge (uncalibrated, T035 pending)
+
+Local primary judge DeepSeek-V4-Flash-0731 (D006; `configs/judges/blind.yaml` v2, chat mode, thinking off, temperature 0); registered metric `judge-accuracy` (`grace.cli.judge_score`: answer reads take the verdict, `unknown` is correct exactly on abstention tasks). Not calibrated against human labels (T035): development evidence only. Judge runs at 125d34f, score runs at 2389bd3; run directories `runs/E014/artifacts/w01-judge/E014/<run-id>/` with `report.yaml`. Judge rerun noise: 46 of 46 identical verdicts (E013-20261128T114537Z-b627 against E013-20261128T113752Z-80f5), 260 of 265 on a LoCoMo run. Strata have fewer than 100 reads (descriptive). Judge-invalid verdicts 0 and invalid predictions 0 in every LongMemEval-S run; local input-token counts equal the server's on every call.
+
+**LongMemEval-S dev, main-text strata (67 reads), baselines.** GRACE's own E014 reads failed (above); GRACE at 256 / 512 / 1,024 on the same 67 histories is E013's greedy main configuration: 0.328 / 0.403 / 0.433 (E013 Results, "Judge (uncalibrated, T035 pending)").
+
+| Budget | Engine | Upstream run | Judge run | Score run | accuracy | unknown | knowledge-update (15) | multi-session (26) | temporal-reasoning (26) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 256 | last-k | E014-20261128T092109Z-bb06 | none (no answer) | E014-20261128T114753Z-5a50 | 0.060 | 67 | 0.067 | 0.077 | 0.038 |
+| 256 | BM25 | E014-20261128T092109Z-80b3 | E014-20261128T113931Z-68bc | E014-20261128T114703Z-3078 | 0.373 | 27 | 0.733 | 0.192 | 0.346 |
+| 256 | dense | E014-20261128T092109Z-cc1e | E014-20261128T114011Z-86d8 | E014-20261128T114736Z-b9e6 | 0.269 | 32 | 0.533 | 0.077 | 0.308 |
+| 256 | RRF | E014-20261128T092109Z-af74 | E014-20261128T113939Z-6b4f | E014-20261128T114711Z-5b95 | 0.328 | 28 | 0.533 | 0.192 | 0.346 |
+| 512 | last-k | E014-20261128T092108Z-ef96 | none (no answer) | E014-20261128T114745Z-6d18 | 0.060 | 67 | 0.067 | 0.077 | 0.038 |
+| 512 | BM25 | E014-20261128T092109Z-c5be | E014-20261128T114003Z-a58b | E014-20261128T114727Z-6e2a | 0.373 | 26 | 0.733 | 0.192 | 0.346 |
+| 512 | dense | E014-20261128T092109Z-4b73 | E014-20261128T113923Z-bdd0 | E014-20261128T114655Z-7c2c | 0.448 | 19 | 0.867 | 0.346 | 0.308 |
+| 512 | RRF | E014-20261128T092109Z-3d3f | E014-20261128T113907Z-745b | E014-20261128T114639Z-8e19 | 0.478 | 19 | 0.867 | 0.385 | 0.346 |
+| 1,024 | last-k | E014-20261128T092109Z-0b0d | E014-20261128T113859Z-8507 | E014-20261128T114631Z-2585 | 0.075 | 66 | 0.133 | 0.077 | 0.038 |
+| 1,024 | BM25 | E014-20261128T092108Z-9fef | E014-20261128T113842Z-bdc3 | E014-20261128T114623Z-01f3 | 0.358 | 27 | 0.733 | 0.231 | 0.269 |
+| 1,024 | dense | E014-20261128T092109Z-c07e | E014-20261128T113955Z-931b | E014-20261128T114719Z-fecc | 0.373 | 20 | 0.733 | 0.308 | 0.231 |
+| 1,024 | RRF | E014-20261128T092109Z-3e0b | E014-20261128T113915Z-4cdf | E014-20261128T114647Z-002b | 0.418 | 19 | 0.933 | 0.269 | 0.269 |
+
+last-k answers `unknown` on (almost) every read; its accuracy is the 4 abstention tasks (correct `unknown`). RRF at 512 (0.478) and GRACE at 1,024 (0.433) are the best cells; the difference is 3 of 67 reads.
+
+**LoCoMo dev: judge accuracy against F1 (categories 1-4, 308 reads; temporal = category 2, 70 reads)**
+
+| System | Upstream run | Judge run | Judge-accuracy score run | F1 score run | judge acc. (scored / total) | F1 | temporal judge acc. | temporal F1 | judge invalid |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GRACE 1,024 (E014) | E014-20261128T090613Z-5f08 | E014-20261128T114012Z-add0 | E014-20261128T114744Z-31e1 | E014-20261128T091341Z-23dd | 0.350 (306/308) | 0.342 | 0.129 (70/70) | 0.081 | 2 |
+| GRACE 1,024 (E006 read) | E006-20261128T083248Z-24b4 | E006-20261128T114014Z-56b9 | E006-20261128T114218Z-d34c | E006-20261128T113438Z-426d | 0.354 (305/308) | 0.342 | 0.129 (70/70) | 0.081 | 3 |
+| RRF 1,024 (E001) | E001-20261125T182212Z-2cd5 | E001-20261128T114017Z-6687 | E001-20261128T114218Z-ef00 | E014-20261128T091352Z-47d7 | 0.351 (305/308) | 0.347 | 0.129 (70/70) | 0.081 | 3 |
+
+(E006 and E001 judge and score runs are under `runs/E006/artifacts/w01-judge/` and `runs/E001/artifacts/w01-judge/`.) Other categories, judge accuracy / F1, GRACE E014 vs RRF: multi-hop (1, 69 reads) 0.246 / 0.320 vs 0.176 / 0.292; open-domain (3, 26) 0.154 / 0.130 vs 0.269 / 0.200; single-hop (4, 143) 0.546 / 0.519 vs 0.560 / 0.530.
+
+Date format is not what keeps temporal scores low. The judge accepts an ISO date that denotes the reference date (`2023-07-05` for "5 July 2023" is judged correct), yet temporal accuracy is 0.129 (9 of 70) for all three runs. Most temporal answers give the session date instead of the event date the reference resolves relative to it: "The Friday before 15 July 2023" answered `2023-07-15`, "The week before 9 June 2023" answered `2023-06-09`, "7 May 2023" answered `2023-05-08`. The F1 penalty for ISO format is real but small next to this answer error. The 8 judge-invalid verdicts (all on LoCoMo) are replies with a leading colon (`: CORRECT`, `: INCORRECT`), which the fixed one-word parse rule rejects.
+
 ## Conclusion
 
 - Accuracy at equal budget (LoCoMo dev): GRACE 0.266 / 0.314 / 0.342 at 256 / 512 / 1,024 is level with RRF (0.261 / 0.313 / 0.347) and dense (0.257 / 0.306 / 0.343), below Mem0 (0.333 / 0.339 / 0.362, which leads mainly on temporal questions: 0.217 vs 0.081) and below full history (0.359 / 0.365). The template variant (no rendering) and query-time resolution (no views) tie with the main configuration within 0.013 F1 at every budget; RQ3's premise that LLM-rendered views are needed for accuracy is not supported on LoCoMo end-of-history reads, where no view was rendered at read time. Summaries, last-k and both slot tables are far below (F1 at most 0.17).
@@ -248,3 +284,4 @@ Open items: LongMemEval-S scoring (judge, T035) and GRACE's LongMemEval-S reads 
 - 2026-11-28: LoCoMo runs and analysis complete (Results). GRACE's LongMemEval-S reads failed twice while restoring the shared ingest snapshot, both defects in GRACE's snapshot restore, outside this node's scope: (1) `context/memory/history/log.py` `MessageLog.restore` splits the JSONL file with `str.splitlines()`, which also splits on U+2028 inside message text (histories `0ddfec37_abs`, `f9e8c073`) -> `JSONDecodeError` (runs `E014-20261128T093829Z-cc16`, `-cffb`, `-ede7`); (2) with those two histories left out, `context/views/view.py` `View.from_record` cannot re-parse a stored view query whose entity ID starts with a digit (`...50mm_f_1_8_prime_lens`, histories `41698283`, `7405e8b1`) -> `QueryTypeError` (runs `E014-20261128T093929Z-9179`, `-9d08`, `-bb4a`). Reported to s00-super; LongMemEval-S scoring is also blocked on a judge (T035).
 - 2026-11-28: recorded done with a remark by the integration owner (s00-super): PR #174 merged; LoCoMo complete. Remark: LongMemEval-S needs a judge (GRACE reads there were blocked by snapshot-restore defects, since fixed in PR #176); cache credit for the Qwen3-8B calls is a probe on the Qwen3-32B server; the near-zero last-k rows are a recency effect at end-of-history reading (E010 diagnosis); summary-rewrite and slot-table rows are not diagnosed. The LoCoMo cost-claim wording is with the user.
 - 2026-11-28: user decision on the LoCoMo cost claim: no savings claimed on LoCoMo; curves and break-even points are reported (D007 log).
+- 2026-11-28: judge (uncalibrated, T035 pending): the local primary judge (DeepSeek-V4-Flash-0731, D006) judged the LongMemEval-S baseline runs and the LoCoMo GRACE and RRF references, and `judge-accuracy` was scored (session w01-judge; Results, "Judge (uncalibrated, T035 pending)"). LoCoMo judge accuracy follows F1 overall (GRACE 0.350 vs 0.342, RRF 0.351 vs 0.347); temporal stays at 0.129 under the judge, so its low F1 is mainly wrong event dates, not date format.

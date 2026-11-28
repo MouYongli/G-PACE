@@ -102,7 +102,8 @@ class BudgetAndModelPinTest(unittest.TestCase):
     def test_model_pins_match_d006(self):
         roles = {"qwen3-8b": "primary", "qwen3.5-9b": "contemporary",
                  "qwen3.5-27b": "long-context", "gemma-4-31b-it": "long-context",
-                 "qwen3-32b": "writer-scale", "mistral-small-3.2-24b": "renderer"}
+                 "qwen3-32b": "writer-scale", "mistral-small-3.2-24b": "renderer",
+                 "deepseek-v4-flash-0731": "judge"}
         paths = sorted((CONFIGS / "models").glob("*.yaml"))
         self.assertEqual({p.stem for p in paths}, set(roles))
         for path in paths:
@@ -118,6 +119,16 @@ class BudgetAndModelPinTest(unittest.TestCase):
                     self.assertEqual(config["tokenizer"]["backend"], "mistral-common")
                     continue
                 self.assertEqual(pin.template_kwargs.get("enable_thinking"), False)
+                if roles[path.stem] == "judge":
+                    # The primary judge's decoding lives in its judge config, which names this pin.
+                    judge = yaml_file(CONFIGS / "judges" / "blind.yaml")
+                    self.assertEqual(judge["model"]["model_config"],
+                                     f"configs/models/{path.name}")
+                    self.assertEqual((judge["model"]["hf_repo"], judge["model"]["revision"]),
+                                     (pin.hf_repo, pin.revision))
+                    self.assertEqual(config["tokenizer"]["backend"], "deepseek-v4-encoding")
+                    self.assertEqual(judge["decoding"]["temperature"], 0.0)
+                    continue
                 self.assertEqual(config["decoding"]["temperature"], 0.0)
 
 if __name__ == "__main__":

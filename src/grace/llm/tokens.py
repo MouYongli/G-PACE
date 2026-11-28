@@ -169,6 +169,78 @@ class HFTokenCounter:
         return len(ids)
 
 
+class DSV4ChatCounter:
+    """Counts DeepSeek-V4 prompts in chat mode (thinking off) with the pinned `tokenizer.json`.
+
+    The snapshot has no Jinja template; the model's encoder (`encoding/encoding_dsv4.py`,
+    `encode_messages(messages, thinking_mode="chat")`, pinned by hash) renders system and user
+    messages as `<｜begin▁of▁sentence｜>{system}<｜User｜>{user}<｜Assistant｜></think>` and an
+    earlier plain assistant reply as `{content}<｜end▁of▁sentence｜>`. This class reproduces that
+    rendering for those three roles (no tools, reasoning content or tasks) without executing the
+    snapshot's code; the judge stage checks every count against the server's `prompt_tokens`."""
+
+    BOS = "<｜begin▁of▁sentence｜>"
+    EOS = "<｜end▁of▁sentence｜>"
+    USER = "<｜User｜>"
+    ASSISTANT = "<｜Assistant｜>"
+    THINK_END = "</think>"
+
+    def __init__(self, pin: TokenizerPin, snapshot: Path):
+        verify_snapshot(pin, snapshot)
+        if pin.chat_template != "encoding/encoding_dsv4.py" or pin.thinking:
+            raise TokenizerPinError(f"{pin.model}: DSV4ChatCounter needs the encoding_dsv4.py "
+                                    "pin with thinking off")
+        import tokenizers
+
+        self.pin = pin
+        self.name = f"{pin.hf_repo}@{pin.revision}"
+        self._tokenizer = tokenizers.Tokenizer.from_file(str(snapshot / "tokenizer.json"))
+
+    @classmethod
+    def from_model_config(cls, path: Path) -> DSV4ChatCounter:
+        pin = TokenizerPin.from_file(path)
+        return cls(pin, locate_snapshot(pin))
+
+    @classmethod
+    def render(cls, messages: Sequence[Message]) -> str:
+        """The prompt string of `encode_messages(messages, thinking_mode="chat")`."""
+        prompt = cls.BOS
+        for index, m in enumerate(messages):
+            if set(m) - {"role", "content"}:
+                raise ValueError(f"DeepSeek-V4 chat counter: unsupported fields {sorted(m)}")
+            role, content = m["role"], m.get("content") or ""
+            if role == "system":
+                prompt += content
+            elif role == "user":
+                prompt += cls.USER + content
+            elif role == "assistant":
+                prompt += content + cls.EOS
+            else:
+                raise ValueError(f"DeepSeek-V4 chat counter: unsupported role {role!r}")
+            if role == "user" and (index + 1 == len(messages)
+                                   or messages[index + 1]["role"] == "assistant"):
+                prompt += cls.ASSISTANT + cls.THINK_END
+        return prompt
+
+    def count_text(self, text: str) -> int:
+        return len(self._tokenizer.encode(text, add_special_tokens=False).ids)
+
+    def count_messages(self, messages: Sequence[Message]) -> int:
+        return self.count_text(self.render(messages))
+
+
+def counter_for_model_config(path: Path) -> TokenCounter:
+    """The counter a model config's `tokenizer.backend` names: a transformers chat template
+    (no backend) or the DeepSeek-V4 encoder (`deepseek-v4-encoding`)."""
+    backend = (yaml.safe_load(Path(path).read_text(encoding="utf-8"))["tokenizer"]
+               .get("backend"))
+    if backend is None:
+        return HFTokenCounter.from_model_config(path)
+    if backend == "deepseek-v4-encoding":
+        return DSV4ChatCounter.from_model_config(path)
+    raise TokenizerPinError(f"{path}: no counter for tokenizer backend {backend!r}")
+
+
 class TokenizerJsonCounter:
     """Counts with a pinned `tokenizer.json` (Hugging Face `tokenizers`) for a hosted model whose
     chat template is not published, e.g. Azure OpenAI gpt-4.1-mini with o200k_base. A prompt is
