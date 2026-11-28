@@ -1,0 +1,21 @@
+# Append-only memory without views, resolving conflicts at query time, same backbone (plan 7.2;
+# T027). The writer and the guard are GRACE's, but no supersession is committed: the guard's
+# inputs go to a resolution log and every read replays the guard over the stored claims
+# (pipeline/update/deferred.py), with nothing cached between reads. No views.
+engine: grace
+description: GRACE backbone, append-only, conflicts resolved at query time, no views
+prefix_caching: false
+params:
+  writer: configs/common/writer.yaml
+  planner: configs/common/planner.yaml
+  retrieval: configs/retrieval/default.yaml
+  assembly: configs/assembly/default.yaml
+  views: null
+  staleness: {strategy: push_confirm, local_filters: true}   # unused: no views
+  fragment: {max_predicates: 30, max_entities: 30}
+  components:
+    extension: {factory: query-time-resolution}
+embedding:
+  hf_repo: Qwen/Qwen3-Embedding-0.6B
+  revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  served_name: Qwen/Qwen3-Embedding-0.6B

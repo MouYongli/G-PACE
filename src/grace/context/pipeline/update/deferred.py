@@ -29,7 +29,7 @@ from types import MappingProxyType
 from typing import Any
 
 from grace.context.memory.graph.entries import Supersession, SupersessionKind
-from grace.context.memory.graph.store import GraphState
+from grace.context.memory.graph.store import ClaimStore, GraphState
 from grace.context.pipeline.update.guard import Decision, Guard, Pending
 
 LOG_FILE = "resolution-log.json"
@@ -93,15 +93,6 @@ class Resolution:
     blocked: tuple[dict[str, Any], ...] = ()
 
 
-def _prefix(state: GraphState, version: int, supersessions: dict) -> GraphState:
-    """The entries stamped before `version`, with the supersessions derived so far."""
-    def before(entries):
-        return MappingProxyType({k: e for k, e in entries.items() if e.version < version})
-    return GraphState(version - 1, before(state.claims), before(state.attributions),
-                      before(state.evidence_links), MappingProxyType(dict(supersessions)),
-                      before(state.equivalences), before(state.labels))
-
-
 def _apply(decision: Decision, attribution_id: str, version: int,
            derived: dict[str, Supersession], pending: Pending) -> None:
     for s in decision.supersede:
@@ -111,21 +102,36 @@ def _apply(decision: Decision, attribution_id: str, version: int,
         pending.superseded.add(s.claim_id)
 
 
+def _by_version(entries) -> dict[int, list]:
+    out: dict[int, list] = {}
+    for e in entries.values():
+        out.setdefault(e.version, []).append(e)
+    return out
+
+
 def resolve_at_read(state: GraphState, log: ResolutionLog, guard: Guard) -> Resolution:
-    """Replay the guard over `state` (which must hold no supersession) at every call."""
+    """Replay the guard over `state` (which must hold no supersession) at every call.
+
+    One pass in version order: the prefix state the guard sees at version v holds the entries
+    stamped before v and the supersessions derived so far (live dictionaries, grown after v)."""
     if state.supersessions:
         raise ValueError("the append-only write path commits no supersessions; got "
                          f"{len(state.supersessions)}")
+    kinds = (state.claims, state.attributions, state.evidence_links, state.equivalences,
+             state.labels)
+    groups = [_by_version(k) for k in kinds]
+    live: list[dict] = [{} for _ in kinds]
     derived: dict[str, Supersession] = {}
+    base = GraphState(0, *(MappingProxyType(d) for d in live[:3]), MappingProxyType(derived),
+                      *(MappingProxyType(d) for d in live[3:]))
     conflicts: list[dict[str, Any]] = []
     blocked: list[dict[str, Any]] = []
-    versions = sorted({a.version for a in state.attributions.values()})
+    versions = sorted(set().union(*(g.keys() for g in groups)))
     for version in versions:
-        prefix = _prefix(state, version, derived)
+        prefix = replace(base, version=version - 1)
         pending = Pending(reps=replace(state, version=version).representatives())
         seen_first: set[str] = set()
-
-        for a in (a for a in state.attributions.values() if a.version == version):
+        for a in groups[1].get(version, ()):
             claim = state.claims[a.claim_id]
             if claim.version == version and a.claim_id not in seen_first:
                 seen_first.add(a.claim_id)
@@ -152,5 +158,59 @@ def resolve_at_read(state: GraphState, log: ResolutionLog, guard: Guard) -> Reso
                                         "reason": decision.blocked})
                     _apply(decision, a.attribution_id, version, derived, pending)
             pending.add_attribution(a)
-    resolved = replace(state, supersessions=MappingProxyType(derived))
+        for group, target in zip(groups, live, strict=True):
+            for e in group.get(version, ()):
+                target[e.entry_id] = e
+    resolved = replace(state, supersessions=MappingProxyType(dict(derived)))
     return Resolution(resolved, tuple(conflicts), tuple(blocked))
+
+
+def resolved_store(store: ClaimStore, version: int, log: ResolutionLog, guard: Guard
+                   ) -> ClaimStore:
+    """A fresh claim store of the entries up to `version` plus the supersessions derived at
+    this read (`resolve_at_read`), for the read path's queries; built anew at every read."""
+    resolution = resolve_at_read(store.state(version), log, guard)
+    extra: dict[int, list[Supersession]] = {}
+    for s in resolution.state.supersessions.values():
+        extra.setdefault(s.version, []).append(s)
+    out = ClaimStore(store.history_id, store.mode)
+    for cs in store.changesets(upto=version):
+        out.commit(replace(cs, supersessions=cs.supersessions + tuple(extra.pop(cs.version,
+                                                                                ()))))
+    if extra:
+        raise ValueError(f"derived supersessions at versions without a change set: {sorted(extra)}")
+    return out
+
+
+class QueryTimeResolution:
+    """Per-history component of the append-only variant (the engine's extension hook, see
+    `context/engine.py`): the updater records guard inputs in `deferred` and commits no
+    supersession; every read queries `read_graph`, resolved at that read."""
+
+    def __init__(self, guard: Guard):
+        self.guard = guard
+        self.deferred = ResolutionLog()
+
+    def extractor(self, default):
+        return default
+
+    def read_graph(self, store: ClaimStore, version: int) -> ClaimStore:
+        return resolved_store(store, version, self.deferred, self.guard)
+
+    def state_facts(self, task, request: str) -> list:
+        return []
+
+    def save(self, directory: Path) -> list[Path]:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        return self.deferred.save(directory)
+
+    def restore(self, directory: Path) -> None:
+        self.deferred = ResolutionLog.restore(directory)
+
+
+def query_time_resolution(*, writer, client=None, view_config=None, **options):
+    """Component factory (`config/registry.py`, name `query-time-resolution`): one
+    `QueryTimeResolution` per history, with the writer config's guard setting."""
+    if options:
+        raise TypeError(f"query-time-resolution takes no options, got {sorted(options)}")
+    return lambda history: QueryTimeResolution(Guard(enabled=writer.guard))

@@ -16,15 +16,30 @@ Supersession is decided by `SlotTable.state` (guard and time are factors of the 
 from __future__ import annotations
 
 import datetime as _dt
+import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from grace.config.paths import REPO_ROOT
 from grace.context.api import Message
-from grace.context.memory.graph.slots import SlotInventory, SlotRow
-from grace.context.pipeline.update.extract import render_messages
+from grace.context.memory.graph.slots import (
+    DEFAULT_EXCLUSIVE,
+    INVENTORY_FILE,
+    SlotInventory,
+    SlotRow,
+    SlotTable,
+    load_inventory,
+)
+from grace.context.pipeline.update.extract import (
+    Extraction,
+    Extractor,
+    WriterInput,
+    render_messages,
+)
+from grace.context.pipeline.update.patch import ClaimPatch
 from grace.llm.client import ChatClient, LLMCallFailed
 from grace.llm.prompts import Prompt, load_pinned
 from grace.llm.records import CallContext
@@ -155,3 +170,114 @@ class SlotWriter:
             return SlotExtraction("invalid_output", error=parsed.error, call_ids=call_ids)
         rows, dropped = rows_from_entries(parsed.value["entries"], unit, self.inventory)
         return SlotExtraction("ok", tuple(rows), dict(dropped), call_ids=call_ids)
+
+
+# ---------------------------------------------------------------------------------------------
+# Engine component (ablation B, slot-table arm)
+
+
+_WORD = re.compile(r"[a-z0-9]+")
+
+
+@dataclass(frozen=True)
+class SlotFact:
+    """A current slot value offered to the assembler as a state item (duck-typed by the engine:
+    `item_id`, `text`, `evidence_ids`, `version`, `valid`)."""
+
+    item_id: str
+    text: str
+    evidence_ids: tuple[str, ...]
+    version: int
+    valid: tuple[str | None, str | None] | None
+
+
+class SlotExtractorAdapter(Extractor):
+    """The updater's extractor for the slot arm: every unit goes to the slot writer, its rows to
+    the slot table, and the claim graph receives an empty patch. Units, granularity, flushes
+    before a read and retries stay the updater's."""
+
+    name = "slots"
+
+    def __init__(self, writer: SlotWriter | None, table: SlotTable):
+        self.writer, self.table = writer, table
+
+    def extract(self, request: WriterInput) -> Extraction:
+        if self.writer is None:  # dry run without a chat client
+            return Extraction("ok", ClaimPatch())
+        result = self.writer.extract(request.history_id, request.messages, request.earlier,
+                                     trigger=request.trigger, read_id=request.read_id)
+        if result.status != "ok":
+            return Extraction(result.status, error=result.error, call_ids=result.call_ids)
+        for rows in result.by_version():
+            self.table.append(rows)
+        return Extraction("ok", ClaimPatch(), call_ids=result.call_ids,
+                          statuses=("ok",) * len(result.call_ids))
+
+
+class SlotMemory:
+    """Per-history component of the slot-table arm (the engine's extension hook, see
+    `context/engine.py`): the slot table replaces the claim graph as the store of state; at a
+    read the current values (bitemporal: those not ended) are offered as state items, ranked by
+    word overlap with the request, then by recency."""
+
+    deferred = None
+
+    def __init__(self, history_id: str, inventory: SlotInventory, writer: SlotWriter | None, *,
+                 guard: bool, time: str):
+        self.table = SlotTable(history_id, inventory, guard=guard, time=time)
+        self.writer = writer
+
+    def extractor(self, default: Extractor) -> Extractor:
+        return SlotExtractorAdapter(self.writer, self.table)
+
+    def read_graph(self, store, version: int):
+        return store
+
+    def state_facts(self, task, request: str) -> list[SlotFact]:
+        words = set(_WORD.findall(request.lower()))
+        values = self.table.state(task.version).current()
+
+        def score(v):
+            text = f"{v.first.subject} {v.first.slot} {v.value}".lower()
+            return (-len(words & set(_WORD.findall(text))), -v.rows[-1].version)
+
+        out = []
+        for i, v in enumerate(sorted(values, key=score), start=1):
+            first = v.first
+            speakers = ", ".join(dict.fromkeys(f"{r.speaker} {r.function}" for r in v.rows))
+            when = ""
+            if v.valid_from or v.valid_until:
+                when = f" (valid {v.valid_from or '?'} to {v.valid_until or 'open'})"
+            text = f"{first.subject} | {first.slot} = {v.value}{when} [{speakers}]"
+            valid = (v.valid_from, v.valid_until) if (v.valid_from or v.valid_until) else None
+            out.append(SlotFact(f"{task.read_id}:slot{i}", text, v.evidence_ids,
+                                max(r.version for r in v.rows), valid))
+        return out
+
+    def save(self, directory: Path) -> list[Path]:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        return self.table.save(directory)
+
+    def restore(self, directory: Path) -> None:
+        self.table = SlotTable.restore(directory, self.table.inventory)
+
+
+def slot_table(*, writer, client=None, view_config=None, guard: bool = True,
+               time: str = "bitemporal", inventory: str | None = None,
+               exclusive: Sequence[str] | None = None):
+    """Component factory (`config/registry.py`, name `slot-table`): one `SlotMemory` per
+    history; the slot writer uses the writer config's decoding, context and clipping."""
+    inv = load_inventory(REPO_ROOT / inventory if inventory else INVENTORY_FILE,
+                         exclusive if exclusive is not None else DEFAULT_EXCLUSIVE)
+
+    def make(history) -> SlotMemory:
+        slot_writer = None
+        if client is not None:
+            slot_writer = SlotWriter(client, inv, structured_output=writer.structured_output,
+                                     decoding=dict(writer.decoding),
+                                     message_chars=writer.message_chars,
+                                     earlier_chars=writer.earlier_chars,
+                                     dates={s.segment_id: s.timestamp
+                                            for s in history.segments})
+        return SlotMemory(history.history_id, inv, slot_writer, guard=guard, time=time)
+    return make

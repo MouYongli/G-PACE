@@ -39,6 +39,12 @@ the change set of the first version whose entries name the entity (subject, enti
 speaker or merged entity) and that the store does not reject, once per entity. A label of an
 entity whose claims were all dropped stays in the writer state only, until an entry names it.
 
+Deferred resolution (T027, append-only baseline): with `deferred` (a `deferred.ResolutionLog`)
+the guard still decides against the state as resolved at the writer's head, so known claims and
+repeated mentions behave as in the main configuration, but no supersession is committed; the
+guard's inputs (exclusivity and correction of every new claim, kind and valid end of every ending
+stance) are recorded in the log instead, and the read path resolves conflicts at query time.
+
 Every call of a unit, including retries, invalid outputs and failed attempts, is in the cost
 ledger by construction (`grace.llm.client`); `UnitResult.call_ids` lists them with their statuses.
 """
@@ -69,6 +75,7 @@ from grace.context.memory.graph.vocabulary import Vocabulary, load_vocabulary
 from grace.context.memory.history.log import MessageLog
 from grace.context.pipeline.update.candidates import build_candidates
 from grace.context.pipeline.update.commit import ChangeSetBuilder, commit_version
+from grace.context.pipeline.update.deferred import ResolutionLog, resolve_at_read
 from grace.context.pipeline.update.extract import Extraction, Extractor, LLMWriter, WriterInput
 from grace.context.pipeline.update.guard import Guard, Pending
 from grace.context.pipeline.update.patch import ClaimPatch
@@ -264,7 +271,7 @@ class Updater:
 
     def __init__(self, history: HistoryInfo, log: MessageLog, store: ClaimStore,
                  extractor: Extractor, config: WriterConfig | None = None, *,
-                 vocabulary: Vocabulary | None = None):
+                 vocabulary: Vocabulary | None = None, deferred: ResolutionLog | None = None):
         if log.history_id != history.history_id or store.history_id != history.history_id:
             raise ValueError("history, log and store must belong to one history")
         self.history = history
@@ -275,6 +282,7 @@ class Updater:
         self.vocabulary = LocalVocabulary(vocabulary or load_vocabulary(),
                                           self.config.unknown_predicates)
         self.guard = Guard(enabled=self.config.guard)
+        self.deferred = deferred  # None: supersessions are committed at write (main config)
         self.segmenter = Segmenter(self.config.granularity, history)
         self.failures: Counter = Counter()      # first version of a unit -> failed extractions
         self.entity_labels: dict[str, str] = {}  # entity ID -> surface name it was made from
@@ -313,6 +321,13 @@ class Updater:
             if not results or results[-1].status != "failed":
                 break
         return out
+
+    def _state(self) -> GraphState:
+        """The graph at the writer's head; resolved at query time when deferred."""
+        state = self.store.state(self.store.head)
+        if self.deferred is None:
+            return state
+        return resolve_at_read(state, self.deferred, self.guard).state
 
     # -- save and restore ----------------------------------------------------------------------
 
@@ -381,7 +396,7 @@ class Updater:
 
     def _unit(self, unit: Unit, trigger: str, read_id: str | None) -> list[UnitResult]:
         started = time.perf_counter()
-        state = self.store.state(self.store.head)
+        state = self._state()
         request = self._request(unit, state, trigger, read_id)
         extraction: Extraction = self.extractor.extract(request)
         extract_ms = (time.perf_counter() - started) * 1000
@@ -417,7 +432,7 @@ class Updater:
 
     def _apply(self, unit: Unit, patch: ClaimPatch, request: WriterInput,
                result: UnitResult) -> None:
-        state = self.store.state(self.store.head)
+        state = self._state()
         entities = EntityTable.from_state(state, request.participants,
                                           {**state.entity_labels(), **self.entity_labels})
         ordered = ClaimPatch(tuple(sorted(patch.claims, key=lambda c: c.message)),
@@ -448,7 +463,7 @@ class Updater:
     def _apply_message(self, message: Message, resolution: Resolution,
                        local_ids: dict[str, str], label: str, result: UnitResult) -> None:
         version = message.version
-        state = self.store.state(self.store.head)
+        state = self._state()
         builder = ChangeSetBuilder(self.history.history_id, version, label)
         claims, stances, aliases = resolution.for_message(version)
         attributed: set[tuple] = set()
@@ -479,9 +494,13 @@ class Updater:
             attributed.add((claim.claim_id, rc.speaker, rc.stance))
             decision = self.guard.replacement(state, claim, a, exclusive=rc.exclusive,
                                               correction=rc.correction, pending=pending)
+            if self.deferred is not None:
+                self.deferred.note_claim(claim.claim_id, exclusive=rc.exclusive,
+                                         correction=rc.correction)
             for s in decision.supersede:
-                builder.supersession(s.claim_id, s.kind, s.valid_end, s.replacing_claim_id,
-                                     a.attribution_id)
+                if self.deferred is None:
+                    builder.supersession(s.claim_id, s.kind, s.valid_end, s.replacing_claim_id,
+                                         a.attribution_id)
                 pending.superseded.add(s.claim_id)
             for c in decision.conflicts:
                 result.conflicts.append({"version": version, "kept": c.kept_claim_id,
@@ -569,6 +588,8 @@ class Updater:
         a: Attribution = builder.attribution(claim_id, rs.speaker, rs.stance,
                                              rs.message.message_id)
         builder.evidence_link(claim_id, rs.message.message_id, rs.span)
+        if rs.ends is not None and self.deferred is not None:
+            self.deferred.note_ending(a.attribution_id, rs.ends, rs.valid_end)
         if rs.ends is not None:
             current = claim_id not in pending.superseded and (
                 claim_id not in state.claims or state.is_current(claim_id))
@@ -582,7 +603,9 @@ class Updater:
                     result.blocked.append({"version": rs.message.version, "claim": claim_id,
                                            "reason": decision.blocked})
                 for s in decision.supersede:
-                    builder.supersession(s.claim_id, s.kind, s.valid_end, None, a.attribution_id)
+                    if self.deferred is None:
+                        builder.supersession(s.claim_id, s.kind, s.valid_end, None,
+                                             a.attribution_id)
                     pending.superseded.add(s.claim_id)
         pending.add_attribution(a)
         result.notes["stances"] += 1
