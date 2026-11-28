@@ -1,0 +1,42 @@
+# E007 (ablation G) · T025 evidence recall on LoCoMo dev with the graph channel on the claim graphs of
+# one E007 writer arm (target locomo-dev). A proxy for the arms' effect downstream, not answer
+# accuracy. Planner LLM Qwen3-8B for every arm (as in the T022 comparison), so only the writer
+# differs. Retrieval settings, conditions and cut-offs as in T022/T025; nothing is tuned here.
+# Driver, one run per writer arm:
+#   uv run python -m grace.cli.retrieval_recall --config configs/experiments/E007-recall-locomo.yaml \
+#       --embed-url http://127.0.0.1:<port>/v1 --planner-url http://127.0.0.1:<port>/v1 \
+#       --writer-run <E007 writer run ID>
+experiment: E007
+seed: 0
+retrieval_config: configs/retrieval/default.yaml
+model_config: configs/models/qwen3-8b.yaml   # planner LLM (T023) and token counter
+
+cutoffs: [5, 10, 20, 50]
+depth: 50
+embed_batch: 32
+
+benchmarks:
+  # LoCoMo development histories conv-26 and conv-49 (plan 6.5). The graph channel reads the graph
+  # written for each history by the writer run given with --writer-run (completed, clean SHA, no --limit); the
+  # planner sees a per-question vocabulary fragment of that graph (ExtractedGraph.fragment).
+  - slug: locomo
+    split: dev
+    graph: extracted
+    writer_run: null                         # given per run with --writer-run
+    fragment_predicates: 30
+    fragment_entities: 30
+
+conditions:
+  bm25:            {channels: [bm25], routing: all, fusion: rrf}
+  dense:           {channels: [dense], routing: all, fusion: rrf}
+  graph:           {channels: [graph], routing: all, fusion: rrf, backfill: false}
+  rrf-all:         {channels: [bm25, dense, graph], routing: all, fusion: rrf}
+  rrf-routed:      {channels: [bm25, dense, graph], routing: rules, fusion: rrf}
+  weighted-all:    {channels: [bm25, dense, graph], routing: all, fusion: weighted}
+  weighted-routed: {channels: [bm25, dense, graph], routing: rules, fusion: weighted}
+  rrf-no-bm25:     {channels: [dense, graph], routing: all, fusion: rrf}
+  rrf-no-dense:    {channels: [bm25, graph], routing: all, fusion: rrf}
+  rrf-no-graph:    {channels: [bm25, dense], routing: all, fusion: rrf}
+
+strata:
+  locomo: [category]

@@ -3,12 +3,13 @@
     uv run python -m grace.cli.retrieval_recall \\
         --config configs/experiments/T025-retrieval-recall.yaml \\
         --embed-url http://127.0.0.1:<port>/v1 [--planner-url http://127.0.0.1:<port>/v1] \\
-        [--compute "<session> GPU <n> ports <p>"] [--workers 4]
+        [--compute "<session> GPU <n> ports <p>"] [--workers 4] [--writer-run <run-id>]
 
 Runs `grace.eval.runner.probes.retrieval_recall` over every benchmark of the config (development
 splits only) and writes, in a new run directory under
-`$PROJECT_ROOT/runs/<experiment>/artifacts/manager/<experiment>/<run-id>/` (experiment T025, or
-T022 for the graph channel on the graphs of a T022 writer run, `graph: extracted`):
+`$PROJECT_ROOT/runs/<experiment>/artifacts/<worker>/<experiment>/<run-id>/` (experiment T025, or
+T022 or E007 for the graph channel on the graphs of a T022 or E007 writer run, `graph: extracted`;
+worker `manager`, or `w01-E007` for E007):
 
 - `run.json`, `resolved-config.yaml`, `run.log`, `calls.jsonl` (contracts.md, Experiment run);
 - `records/<benchmark>/` the checked benchmark records (incl. `gold.jsonl`, scoring side only);
@@ -50,12 +51,18 @@ from grace.llm.embeddings import EmbeddingClient
 from grace.llm.records import CallLedger
 from grace.llm.tokens import HFTokenCounter, TokenizerPin, locate_snapshot
 
-EXPERIMENTS = ("T025", "T022")   # T022: graph channel on graphs of a T022 writer run
+EXPERIMENTS = ("T025", "T022", "E007")   # T022, E007: graph channel on graphs of a writer run
+WORKERS = {"E007": "w01-E007"}            # run-directory worker of an experiment (default manager)
 
 
 def writer_run_dir(run_id: str) -> Path:
-    """Directory of a T022 writer run (`grace.cli.writer_smoke`)."""
-    return shared_dir("runs_root") / "T022" / "artifacts" / "manager" / "T022" / run_id
+    """Directory of a writer run: T022 (`grace.cli.writer_smoke`) or E007
+    (`grace.cli.writer_ablation`, target of kind `histories`), by the run ID's experiment."""
+    experiment = run_id.split("-", 1)[0]
+    if experiment not in ("T022", "E007"):
+        raise ValueError(f"{run_id}: not a T022 or E007 writer run")
+    worker = WORKERS.get(experiment, "manager")
+    return shared_dir("runs_root") / experiment / "artifacts" / worker / experiment / run_id
 
 
 def check_writer_run(path: Path) -> dict[str, Any]:
@@ -94,6 +101,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--benchmarks", nargs="*", default=None,
                         help="restrict to these benchmark slugs (default: all of the config)")
+    parser.add_argument("--writer-run", default=None,
+                        help="writer run ID for every `graph: extracted` benchmark (overrides "
+                             "the config's writer_run; recorded in resolved-config.yaml)")
     parser.add_argument("--run-id", default=None)
     args = parser.parse_args(argv)
 
@@ -110,12 +120,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("depth must be >= the largest cut-off")
     entries = [e for e in config["benchmarks"]
                if args.benchmarks is None or e["slug"] in args.benchmarks]
+    if args.writer_run is not None:
+        for e in entries:
+            if e.get("graph") == "extracted":
+                e["writer_run"] = args.writer_run
+    if any(e.get("graph") == "extracted" and not e.get("writer_run") for e in entries):
+        parser.error("a `graph: extracted` benchmark needs writer_run (config or --writer-run)")
     configs = {e["slug"]: benchmark_config(e) for e in entries}
     writer_runs = {e["slug"]: writer_run_dir(e["writer_run"]) for e in entries
                    if e.get("graph") == "extracted"}
     upstream = [check_writer_run(path) for path in writer_runs.values()]
 
-    run_parent = shared_dir("runs_root") / experiment / "artifacts" / "manager"
+    run_parent = (shared_dir("runs_root") / experiment / "artifacts"
+                  / WORKERS.get(experiment, "manager"))
     run_dir = rundir.create(run_parent, experiment, args.run_id)
     run_id = run_dir.name
     log = (run_dir / "run.log").open("a", encoding="utf-8")

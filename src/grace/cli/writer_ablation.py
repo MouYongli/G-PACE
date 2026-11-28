@@ -39,6 +39,7 @@ import json
 import re
 import shlex
 import sys
+import threading
 import traceback
 from collections import defaultdict
 from collections.abc import Sequence
@@ -63,6 +64,26 @@ from grace.llm.tokens import HFTokenCounter, TokenizerPin, locate_snapshot
 
 EXPERIMENT = "E007"
 WORKER = "w01-E007"
+
+
+def serialise_shacl() -> None:
+    """Run SHACL validation of change sets one at a time across the graphs written in parallel.
+
+    pyshacl parses the SPARQL constraints of the shapes with pyparsing, which is not thread safe:
+    run E007-20261128T002008Z-9da7 (8 parallel segments) failed with a ParseException inside
+    `shacl.validate_changeset`. Validation results are unchanged; only their order is serial."""
+    from grace.context.memory.graph import shacl
+
+    if getattr(shacl.validate_changeset, "serialised", False):
+        return
+    original, lock = shacl.validate_changeset, threading.Lock()
+
+    def validate_changeset(*args, **kwargs):
+        with lock:
+            return original(*args, **kwargs)
+
+    validate_changeset.serialised = True
+    shacl.validate_changeset = validate_changeset
 
 
 def arm_writer_config(base: WriterConfig, arm: dict[str, Any]) -> WriterConfig:
@@ -195,6 +216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "compute": args.compute or "none", "held_out_access": "none"})
     n_units = 0
     try:
+        serialise_shacl()
         ledger = CallLedger(run_dir / "calls.jsonl", run_id)
         pin = arm_pin(model_config, bool(arm["thinking"]))
         counter = HFTokenCounter(pin, locate_snapshot(pin))
@@ -305,9 +327,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                    "model_calls": len(calls)}
         n_messages = metrics["units"]["messages"]
         tok = metrics["calls"]["tokens"].get("all", {})
-        metrics["per_message"] = {
-            k: (round(tok.get(k, 0) / n_messages, 2) if n_messages else None)
-            for k in ("input_tokens", "output_tokens", "cached_input_tokens")}
+        # Writer tokens per message of history (D007: inputs to recompute T013's break-even):
+        # input split into the cached prefix the server reported and the rest.
+        totals = {"input_tokens": tok.get("input_tokens", 0),
+                  "cached_input_tokens": tok.get("cached_input_tokens", 0),
+                  "uncached_input_tokens": (tok.get("input_tokens", 0)
+                                            - tok.get("cached_input_tokens", 0)),
+                  "output_tokens": tok.get("output_tokens", 0)}
+        metrics["writer_tokens"] = {
+            "messages": n_messages, "calls": len(calls), "totals": totals,
+            "per_message": {k: (round(v / n_messages, 2) if n_messages else None)
+                            for k, v in totals.items()},
+            "per_call": {k: (round(v / len(calls), 2) if calls else None)
+                         for k, v in totals.items()}}
+        metrics["per_message"] = metrics["writer_tokens"]["per_message"]
         (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True)
                                               + "\n", encoding="utf-8")
         flat = [{**u, "history_id": u["segment"] or u["history_id"]} for u in updates]
