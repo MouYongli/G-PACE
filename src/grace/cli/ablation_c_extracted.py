@@ -216,9 +216,10 @@ def view_stats(run_dir: Path) -> dict[str, Any]:
                                                      for e in no_hit),
             # Why a near binding missed: its bound query differs from the plan's query only in
             # variable names, also in attribution constraints, or in more (readtime.near_class).
-            "no_hit_near_class": dict(Counter(e.get("near_class") for e in no_hit)),
-            "no_hit_near_class_eligible": dict(Counter(e.get("near_class") for e in no_hit
-                                                       if e["view_eligible"])),
+            "no_hit_near_class": dict(Counter(e.get("near_class") or "no_near_binding"
+                                              for e in no_hit)),
+            "no_hit_near_class_eligible": dict(Counter(e.get("near_class") or "no_near_binding"
+                                                       for e in no_hit if e["view_eligible"])),
             "reads_hit_if_variable_names_ignored": len({e["read_id"] for e in no_hit
                                                         if e["view_eligible"] and
                                                         e.get("near_class") == "variable_names"}),
