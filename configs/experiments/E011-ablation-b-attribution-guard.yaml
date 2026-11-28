@@ -140,6 +140,17 @@ benchmarks:
       # (gold metadata outdated_text), on reads that have one and whose premise is not outdated.
       descriptive: [stale_value_use]
 
+  # Added 2026-11-28 after the MultiWOZ and change-seq system runs, before any LoCoMo run ("if time
+  # allows" in the brief): the representation contrast on open-domain dialogue (plan 9.1: "if the
+  # fixed slot table matches the claim graph on open-domain slices, no gain from open predicates is
+  # claimed"). Two arms only, through the common harness (drive.py, --experiment E011), scored with
+  # grace.cli.locomo_score (registered f1, categories 1-4). LongMemEval-S is not run (cost).
+  locomo:
+    split: dev              # conv-26, conv-49; 308 end-of-history reads
+    budget: 1024            # main memory level (E013)
+    arms: [graph-guard-bi, slots-guard-bi]
+    cluster: question       # two histories only: a question-level paired bootstrap, descriptive
+
 # Contrasts reported with paired 95% cluster-bootstrap intervals (10,000 resamples, seed 0; D002).
 # Gains are differences of micro means over the same items: a - b.
 contrasts:
