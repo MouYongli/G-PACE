@@ -1,0 +1,52 @@
+# E013 · Ablation E: assembly (plan 5.5, 7.3 ablation E; claim C4; experiment file
+# docs/work/experiments/E013-ablation-e-assembly.md). DRAFT, written during the E013 development
+# diagnosis (2026-11-28) and not yet reviewed: arms, budgets and metrics below follow the experiment
+# file; open points are marked TODO. No formal run uses this file until s00-super accepts it.
+# Development data only (no held-out split before the T033 preregistration tag).
+#
+# Driver (one system run per arm x benchmark x budget, then the benchmark's scorer):
+#   uv run python src/grace/eval/runner/harness/drive.py --engine <arm.engine> \
+#       --benchmark <slug> --split dev --budget <budget> --experiment E013 --run-root <RUN_ROOT> \
+#       --backend client --base-url <answer/planner url> --embed-url <embed url> \
+#       --writer-url <writer url>
+#   uv run python -m grace.cli.locomo_score --run <system run> --experiment E013 --run-root <RUN_ROOT>
+experiment: E013
+seed: 0
+
+# Main configuration of E007 (user decision 2026-11-28): writer Qwen3-32B (session units), planner,
+# view rendering and answering Qwen3-8B, Qwen3-Embedding-0.6B for the dense channel.
+models:
+  answer: configs/models/qwen3-8b.yaml
+  writer: configs/models/qwen3-32b.yaml
+
+# The arms differ only in the selection rule of assembly; everything else (writer, planner,
+# retrieval, filter, fill rule, layout, answer prompt) is the main configuration.
+arms:
+  greedy:                  # evidence-demand assembly (plan 5.5 steps 1-5), main configuration
+    engine: configs/engines/grace.yaml
+  truncate:                # fused top-k: rank truncation of the same candidates (T026 decision 3)
+    engine: configs/experiments/E013-dev/grace-truncate.yaml   # TODO: move to configs/engines/
+  rrf-baseline:            # the text-only fused top-k baseline, as a reference row
+    engine: configs/engines/rrf.yaml
+  # TODO "expandable pointers versus summaries only": the engine produces no summary items yet
+  # (assembly/expand.py supports them; context/engine.py never creates one), so this arm needs an
+  # implementation decision first (s00-super).
+
+budgets: [256, 512, 1024]
+
+targets:
+  locomo-dev:
+    benchmark: locomo
+    split: dev             # conv-26, conv-49; 308 end-of-history reads
+  longmemeval-s-dev:
+    benchmark: longmemeval-s
+    split: dev             # TODO: confirm the development subset and its size
+
+metrics:
+  - full_evidence_hit      # all gold evidence messages shown as raw text in the context
+  - unsupported_answer     # answer given although no gold evidence is shown (TODO: definition
+                           # with the contracts owner; candidate: answer output and full hit false)
+  - context_tokens         # working-context tokens (<= budget) and total prompt tokens
+  - f1                     # LoCoMo token F1 as registered in configs/common/scorers.yaml
+# TODO: decide whether a claim-cited message (citation shown, raw text not shown) counts as a hit;
+# the read trace's `included_ids` lists raw messages only (E013 diagnosis).
