@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph-quality review</title>
+<!--
+  Graph-quality review page (T024, outside the plan; user decision 2026-11-28). A human reviews the
+  merged agent annotation of the 40 segments: for every claim row accept A, accept B, accept it as it
+  is, reject it or edit it, and add claims both agents missed. Two views: the segment list and one segment.
+  Open index.html straight from disk, or serve the repository root and open the page:
+      uv run python -m http.server 8000 --bind 127.0.0.1
+      http://localhost:8000/web/human-reviewer/graph-quality/
+  The segment texts are development data and are not part of the repository: use "Import data" to pick
+  segments.jsonl (runs/T024/artifacts/sample/) and merged-agent-A-agent-B.jsonl
+  (docs/research/annotations/graph-quality/). Without imported data the page shows data/example.js, a
+  synthetic example. Imported data and drafts stay in this browser; nothing is uploaded.
+-->
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/shell.css">
+<link rel="stylesheet" href="../css/graph-quality.css">
+</head>
+<body>
+
+<header class="topbar bar">
+  <h1><a href="#/" class="home">Graph-quality review</a></h1>
+  <span class="spacer"></span>
+  <span class="save-state" data-save></span>
+  <div class="bar-group">
+    <button type="button" id="import-data">Import data</button>
+    <button type="button" id="load-draft">Load draft</button>
+    <button type="button" id="save-draft">Save draft</button>
+    <button type="button" id="export-jsonl">Export JSONL</button>
+    <button type="button" class="help-button" aria-label="Help">?</button>
+  </div>
+  <label class="annotator">Annotator
+    <input type="text" id="annotator" placeholder="your ID" autocomplete="off" spellcheck="false">
+  </label>
+</header>
+<div id="notice" class="notice-line" hidden><span id="notice-text"></span><button type="button" class="icon" id="notice-close" aria-label="Dismiss">×</button></div>
+
+<!-- View 1: segment list -->
+<div class="view" id="list-view" hidden>
+  <main class="list-main">
+    <div class="table-wrap card">
+      <table id="segments" class="data-table">
+        <thead>
+          <tr>
+            <th>Segment</th><th>Benchmark</th><th class="num wide-only">Messages</th>
+            <th class="num">Rows</th><th class="num wide-only">Need review</th><th>Progress</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <footer class="list-foot">
+      <span id="list-total"></span>
+      <span class="spacer"></span>
+      <span id="data-source" class="muted"></span>
+    </footer>
+  </main>
+</div>
+
+<!-- View 2: one segment -->
+<div class="view" id="seg-view" hidden>
+  <nav class="context-bar" aria-label="Segment">
+    <label class="conv-pick">Segment:
+      <select id="seg-select" aria-label="Segment"></select>
+    </label>
+    <span id="seg-progress" class="progress-text"></span>
+    <span class="spacer"></span>
+    <div class="segmented" role="group" aria-label="Rows shown">
+      <button type="button" data-show="all">All rows</button>
+      <button type="button" data-show="review">Need review</button>
+    </div>
+    <a class="back" href="#/">← Back to List</a>
+  </nav>
+  <main class="gq-main scroll" id="gq-main"><div id="gq-inner"></div></main>
+  <footer class="gq-foot" id="gq-foot"></footer>
+</div>
+
+<dialog id="help">
+  <form method="dialog" class="help-head"><h2>Help</h2><button aria-label="Close">Close</button></form>
+  <div class="help-body">
+    <h3>Task</h3>
+    <p>The merged file lists the claims of two agent annotators (A and B) for every segment. Decide every row,
+       following <span class="mono">docs/research/graph-quality-annotation.md</span>. Context messages (grey) are not annotated.</p>
+    <table class="help-table">
+      <tr><td><b>Accept A / B</b></td><td>Keep that agent's version. For a pair that is identical, one button: Accept.</td></tr>
+      <tr><td><b>Reject</b></td><td>The claim does not belong in the reference (not a claim, wrong, or a duplicate).</td></tr>
+      <tr><td><b>Edit</b></td><td>Correct fields (closed values) or the quote, which must occur verbatim in the message.</td></tr>
+      <tr><td><b>Add claim</b></td><td>A claim both agents missed, under the message that states it.</td></tr>
+    </table>
+    <p>Highlighted fields differ between A and B. <b>Need review</b> hides pairs that are identical; spot-check
+       a sample of them in <b>All rows</b>.</p>
+    <h3>Finishing a segment</h3>
+    <p>When every row is decided, <b>Mark segment done</b> (optionally with the minutes spent). Changing a decision
+       reopens the segment. <b>Export JSONL</b> writes the done segments as <span class="mono">labels-&lt;annotator&gt;.jsonl</span>
+       (claims renumbered c1..cN, one segment_done each); the agents' stances and entity alignments are not part of the merged file.</p>
+    <h3>Files</h3>
+    <p><b>Import data</b> reads segments.jsonl and the merged JSONL (pick both at once, or one after the other).
+       Decisions are kept at once in this browser. <b>Save draft</b> downloads them as a JSON backup and
+       <b>Load draft</b> reads it back, to continue in another browser. Nothing is uploaded.</p>
+    <p class="muted" id="help-source"></p>
+  </div>
+</dialog>
+
+<input type="file" id="data-file" accept=".json,.jsonl,application/json" multiple hidden>
+<input type="file" id="draft-file" accept=".json,application/json" hidden>
+
+<script src="data/example.js"></script>
+<script src="../js/base.js"></script>
+<script src="../js/graph-quality-data.js"></script>
+<script src="../js/graph-quality.js"></script>
+</body>
+</html>
