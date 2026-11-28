@@ -785,6 +785,8 @@ def main(argv: list[str] | None = None) -> int:
     est = sub.add_parser("estimate", help="writer tokens and break-even curves (CPU)")
     est.add_argument("--config", type=Path, required=True)
     est.add_argument("--run-root", type=Path, default=None)
+    est.add_argument("--no-plot", action="store_true",
+                     help="skip break-even.png (needs matplotlib, absent from the base env)")
     mc = sub.add_parser("measure-c", help="compute ratio c on an exclusive GPU")
     mc.add_argument("--config", type=Path, required=True)
     mc.add_argument("--base-url", required=True)
@@ -794,7 +796,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.run_root or default_run_root()
     if args.command == "estimate":
-        run_dir, status = run_estimate(args.config, root)
+        run_dir, status = run_estimate(args.config, root, draw=not args.no_plot)
     else:
         run_dir, status = run_measure_c(args.config, root, base_url=args.base_url, gpu=args.gpu,
                                         server_pid=args.server_pid)
