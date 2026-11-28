@@ -303,7 +303,10 @@ class ClaimStore:
         directory = Path(directory)
         meta = json.loads((directory / "store.json").read_text(encoding="utf-8"))
         store = cls(meta["history_id"], meta["mode"])
-        for line in (directory / "changesets.jsonl").read_text(encoding="utf-8").splitlines():
+        # JSON Lines are split on "\n" only: str.splitlines() also splits on U+2028
+        # and U+0085, which json.dumps(ensure_ascii=False) leaves inside strings.
+        text = (directory / "changesets.jsonl").read_text(encoding="utf-8")
+        for line in filter(None, text.split("\n")):
             store.commit(ChangeSet.from_json(line))
         if store.head != meta["head"] or list(store.versions()) != meta["versions"]:
             raise ValueError(f"{directory}: replayed versions differ from store.json")
